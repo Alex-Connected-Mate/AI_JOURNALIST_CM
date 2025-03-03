@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run vercel-build",
+  "framework": "nextjs",
   "routes": [
     {
       "src": "/_next/static/(.*)",
@@ -17,6 +18,7 @@
     }
   ],
   "env": {
-    "NEXT_MINIMAL_ERROR_HANDLING": "true"
+    "NEXT_MINIMAL_ERROR_HANDLING": "true",
+    "NEXT_SKIP_404_GENERATION": "1"
   }
 } 
