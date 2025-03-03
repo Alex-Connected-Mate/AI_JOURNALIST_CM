@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next",
+      "config": {
+        "skipAutoInstall": false,
+        "buildCommand": "next build",
+        "outputDirectory": ".next"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/_next/static/(.*)",
+      "headers": { "cache-control": "public,max-age=31536000,immutable" },
+      "continue": true
+    },
+    {
+      "src": "/404",
+      "status": 404,
+      "dest": "/_error"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "NEXT_MINIMAL_ERROR_HANDLING": "true"
+  }
+} 
