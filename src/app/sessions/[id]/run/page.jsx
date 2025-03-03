@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useStore } from '@/lib/store';
 
 export default function SessionRunPage({ params }) {
@@ -200,11 +200,10 @@ export default function SessionRunPage({ params }) {
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Scan to join the session</h2>
             
             <div className="bg-white p-6 border-4 border-indigo-200 rounded-lg mb-6">
-              <QRCode 
+              <QRCodeSVG 
                 value={getShareUrl()} 
                 size={300}
                 level="H"
-                renderAs="svg"
               />
             </div>
             

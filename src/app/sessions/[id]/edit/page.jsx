@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
-import { SessionCreationFlow } from '@/components/SessionCreationFlow';
+import SessionCreationFlow from '@/components/SessionCreationFlow';
 
 export default function EditSessionPage({ params }) {
   const sessionId = params.id;
