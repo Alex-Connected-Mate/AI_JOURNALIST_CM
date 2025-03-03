@@ -1,0 +1,127 @@
+{
+  "common": {
+    "back_to_dashboard": "Back to dashboard",
+    "loading": "Loading...",
+    "error": "Error",
+    "not_found": "Not found",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "scan_to_join": "Scan to join",
+    "join": "Join",
+    "logout": "Logout",
+    "appName": "AI Journalist",
+    "login": "Login",
+    "signup": "Sign Up",
+    "home": "Home",
+    "settings": "Settings"
+  },
+  "session": {
+    "name": "Session name",
+    "description": "Description",
+    "institution": "Institution/Company",
+    "professor_name": "Professor name",
+    "max_participants": "Maximum participants",
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "ended": "Ended"
+    },
+    "actions": {
+      "start": "Start session",
+      "end": "End session",
+      "edit": "Edit",
+      "share": "Share session",
+      "join": "Join session",
+      "participate": "Participate in session",
+      "view_results": "View results"
+    },
+    "participant_instructions": {
+      "title": "Instructions for participants",
+      "step1": "Click on the link above to join the session",
+      "step2": "Sign in or create an account if necessary",
+      "step3": "Wait for the host to start the session"
+    },
+    "flow": {
+      "basic_info": "Basic Information",
+      "connection": "User Connection",
+      "discussion": "Discussion & Votes",
+      "ai_interaction": "AI Journalist",
+      "break": "Break",
+      "lightbulb": "Ideas",
+      "reading": "Reading",
+      "analysis": "Final Analysis"
+    }
+  },
+  "connection": {
+    "title": "Connection to Session",
+    "profile_mode": "Profile Mode",
+    "require_approval": "Approval required to join the session",
+    "approval_description": "If enabled, you will need to manually approve each participant before they can join the session.",
+    "max_participants": "Maximum Number of Participants",
+    "participants_joined": "participants have joined the session",
+    "no_participants": "No participants have joined this session yet.",
+    "join_qr_description": "Participants can join via this QR code or URL:",
+    "qr_note": "This QR code and URL will be automatically generated once the session is created.",
+    "profile_modes": {
+      "real_identity": {
+        "title": "Real Identity",
+        "description": "Name, profile picture and a personal link (LinkedIn, WhatsApp, Instagram, website...)"
+      },
+      "semi_anonymous": {
+        "title": "Semi-Anonymous",
+        "description": "No image, but with a color, an emoji and a nickname"
+      },
+      "anonymous": {
+        "title": "Completely Anonymous",
+        "description": "Identification via an anonymous method of choice"
+      }
+    },
+    "anonymous_methods": {
+      "random_id": {
+        "title": "Random ID",
+        "description": "Ex: #56301 - A randomly assigned identifier"
+      },
+      "initials_dob": {
+        "title": "Initials + Date of Birth",
+        "description": "Ex: A.C. 16/12/2001 - First letter of first and last name + date of birth"
+      }
+    },
+    "best_practices": {
+      "title": "Best Practices",
+      "real_identity": "Real identity: Ideal for courses where participants already know each other",
+      "semi_anonymous": "Semi-anonymous: Perfect for encouraging free expression while maintaining personalization",
+      "anonymous": "Anonymous: Optimal for sensitive discussions or to avoid social biases"
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signUp": "Sign Up",
+    "logIn": "Log In",
+    "name": "Name",
+    "enterEmail": "Enter your email",
+    "enterPassword": "Enter your password",
+    "enterName": "Enter your name"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcomeMessage": "Welcome to AI Journalist",
+    "description": "Create, manage, and publish AI-generated content with ease.",
+    "currentDate": "Current date",
+    "quickStats": "Quick Stats",
+    "articlesCreated": "Articles created",
+    "sessionsCompleted": "Sessions completed",
+    "recentActivity": "Recent Activity",
+    "noRecentActivity": "No recent activity",
+    "quickActions": "Quick Actions",
+    "newSession": "New Session",
+    "viewArticles": "View Articles",
+    "create_session": "Create a new session",
+    "active_sessions": "Active sessions",
+    "past_sessions": "Past sessions",
+    "no_sessions": "No sessions found"
+  }
+} 

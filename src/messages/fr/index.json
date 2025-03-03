@@ -1,0 +1,129 @@
+{
+  "common": {
+    "back_to_dashboard": "Retour au tableau de bord",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "not_found": "Non trouvé",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "scan_to_join": "Scanner pour rejoindre",
+    "join": "Rejoindre",
+    "logout": "Déconnexion",
+    "appName": "Journaliste IA",
+    "login": "Connexion",
+    "signup": "S'inscrire",
+    "home": "Accueil",
+    "settings": "Paramètres"
+  },
+  "session": {
+    "name": "Nom de la session",
+    "description": "Description",
+    "institution": "Institution/Entreprise",
+    "professor_name": "Nom du professeur",
+    "max_participants": "Nombre maximum de participants",
+    "status": {
+      "draft": "Brouillon",
+      "active": "Active",
+      "ended": "Terminée"
+    },
+    "actions": {
+      "start": "Démarrer la session",
+      "end": "Terminer la session",
+      "edit": "Modifier",
+      "share": "Partager la session",
+      "join": "Rejoindre la session",
+      "participate": "Participer à la session",
+      "view_results": "Voir les résultats"
+    },
+    "participant_instructions": {
+      "title": "Instructions pour les participants",
+      "step1": "Cliquez sur le lien ci-dessus pour rejoindre la session",
+      "step2": "Connectez-vous ou créez un compte si nécessaire",
+      "step3": "Attendez que l'hôte démarre la session"
+    },
+    "flow": {
+      "basic_info": "Informations de base",
+      "connection": "Connexion des Utilisateurs",
+      "discussion": "Discussion & Votes",
+      "ai_interaction": "IA Journaliste",
+      "break": "Pause",
+      "lightbulb": "Idées",
+      "reading": "Lecture",
+      "analysis": "Analyse Finale"
+    }
+  },
+  "connection": {
+    "title": "Connexion à la Session",
+    "profile_mode": "Mode de Profil",
+    "require_approval": "Approbation requise pour rejoindre la session",
+    "approval_description": "Si activé, vous devrez approuver manuellement chaque participant avant qu'il puisse rejoindre la session.",
+    "max_participants": "Nombre Maximum de Participants",
+    "participants_joined": "participants ont déjà rejoint la session",
+    "no_participants": "Aucun participant n'a encore rejoint cette session.",
+    "join_qr_description": "Les participants peuvent rejoindre via ce QR code ou l'URL:",
+    "qr_note": "Ce QR code et l'URL seront générés automatiquement une fois la session créée.",
+    "profile_modes": {
+      "real_identity": {
+        "title": "Identité Réelle",
+        "description": "Nom, prénom, image de profil et un lien personnel (LinkedIn, WhatsApp, Instagram, site web...)"
+      },
+      "semi_anonymous": {
+        "title": "Semi-Anonyme",
+        "description": "Sans image, mais avec une couleur, un emoji et un pseudonyme"
+      },
+      "anonymous": {
+        "title": "Totalement Anonyme",
+        "description": "Identification via une méthode anonyme au choix"
+      }
+    },
+    "anonymous_methods": {
+      "random_id": {
+        "title": "ID Aléatoire",
+        "description": "Ex: #56301 - Un identifiant aléatoire attribué automatiquement"
+      },
+      "initials_dob": {
+        "title": "Initiales + Date de Naissance",
+        "description": "Ex: A.C. 16/12/2001 - Première lettre du prénom et nom + date de naissance"
+      }
+    },
+    "best_practices": {
+      "title": "Bonnes Pratiques",
+      "real_identity": "Identité réelle: Idéal pour les cours où les participants se connaissent déjà",
+      "semi_anonymous": "Semi-anonyme: Parfait pour favoriser l'expression libre tout en gardant une personnalisation",
+      "anonymous": "Anonyme: Optimal pour les discussions sensibles ou pour éviter les biais sociaux"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "create_session": "Créer une nouvelle session",
+    "createSession": "Créer une session",
+    "active_sessions": "Sessions actives",
+    "past_sessions": "Sessions passées",
+    "no_sessions": "Aucune session trouvée",
+    "noSessions": "Aucune session pour le moment",
+    "createYourFirst": "Créez votre première session pour commencer",
+    "yourSessions": "Vos sessions",
+    "welcomeMessage": "Bienvenue sur Journaliste IA",
+    "description": "Créez, gérez et publiez du contenu généré par IA en toute simplicité.",
+    "currentDate": "Date actuelle",
+    "quickStats": "Statistiques rapides",
+    "articlesCreated": "Articles créés",
+    "sessionsCompleted": "Sessions terminées",
+    "recentActivity": "Activité récente",
+    "noRecentActivity": "Aucune activité récente",
+    "quickActions": "Actions rapides"
+  },
+  "auth": {
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié?",
+    "noAccount": "Vous n'avez pas de compte?",
+    "hasAccount": "Vous avez déjà un compte?",
+    "signUp": "S'inscrire",
+    "logIn": "Se connecter",
+    "name": "Nom",
+    "enterEmail": "Entrez votre e-mail",
+    "enterPassword": "Entrez votre mot de passe",
+    "enterName": "Entrez votre nom"
+  }
+} 

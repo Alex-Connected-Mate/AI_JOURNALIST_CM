@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&display=swap');
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 246, 247, 249;
+  --background-end-rgb: 255, 255, 255;
+  --background-dots-rgb: 191, 191, 191;
+  --background-dots: #BBBEC3;
+}
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #F9FAFB;
+    background-image: radial-gradient(var(--background-dots) 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+    min-height: 100%;
+  }
+
+  h1, h2, h3, h4, h5, h6, .brand-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+  }
+}
+
+@layer components {
+  /* Header */
+  .floating-header {
+    @apply fixed top-4 right-4 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-4 z-50;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  .powered-by {
+    @apply flex items-center gap-2 text-sm text-gray-500;
+  }
+
+  /* Niveaux de profondeur selon le Design System */
+  .first-level-block {
+    @apply bg-white rounded-[13px];
+    box-shadow: 
+      0px 0px 0.5px 0px rgba(0, 0, 0, 0.30),
+      0px 1px 3px 0px rgba(0, 0, 0, 0.15);
+  }
+
+  .second-level-block {
+    @apply bg-[#F6F7F9] rounded-[9.391px] border-[2.512px] border-white;
+    box-shadow: 0px 0px 3.925px 0px rgba(35, 39, 46, 0.08);
+  }
+
+  .third-level-block {
+    @apply bg-white rounded-[13px];
+    box-shadow: 
+      0px 0px 0.5px 0px rgba(0, 0, 0, 0.30),
+      0px 1px 3px 0px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Composants communs */
+  .cm-input {
+    @apply w-full px-3 py-2 bg-white border border-gray-200 rounded-[9.391px] 
+    focus:ring-2 focus:ring-gray-400 focus:border-gray-400 transition-colors;
+  }
+
+  .cm-button {
+    @apply text-white px-4 py-2 font-medium
+    transition-all disabled:opacity-50 disabled:cursor-not-allowed
+    transform hover:scale-[1.02] active:scale-[0.98];
+    border-radius: 6.818px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.00) 0%, rgba(0, 0, 0, 0.24) 100%), #343A46;
+    box-shadow: 0px 0px 3.409px 1.705px rgba(35, 39, 46, 0.24), 
+                0px 1.705px 1.705px 0px rgba(255, 255, 255, 0.24) inset;
+  }
+
+  .cm-button-secondary {
+    @apply bg-white text-gray-700 rounded-[9.391px] hover:bg-gray-50
+    transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium
+    border border-gray-200
+    transform hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .cm-button-danger {
+    @apply bg-red-600 text-white rounded-[9.391px] hover:bg-red-700
+    transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium
+    transform hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  /* Utilitaires */
+  .font-bricolage {
+    font-family: 'Bricolage Grotesque', sans-serif;
+  }
+
+  .bento-card {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-gray-100;
+    position: relative;
+    isolation: isolate;
+  }
+
+  .bento-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    @apply rounded-2xl;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  }
+
+  .floating-navbar {
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100;
+    position: fixed;
+    left: 1.5rem;
+    top: 1.5rem;
+    bottom: 1.5rem;
+    width: 280px;
+    isolation: isolate;
+  }
+
+  .floating-navbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    @apply rounded-2xl;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  }
+
+  /* Classe utilitaire pour les points */
+  .dot-pattern {
+    background-color: #F9FAFB;
+    background-image: radial-gradient(var(--background-dots) 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+  }
+}
+
+/* Styles de base */
+body {
+  @apply text-gray-900 antialiased;
+  background-color: #F9FAFB;
+  background-image: radial-gradient(var(--background-dots) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Focus styles */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2;
+}
+
+/* Hover effects */
+.hover-lift {
+  @apply transition-transform hover:translate-y-[-2px];
+}
+
+/* Loading states */
+.loading-overlay {
+  @apply absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center;
+}
+
+/* Typing indicator for AI chat */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-indicator .dot {
+  width: 8px;
+  height: 8px;
+  background-color: #8b5cf6;
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: typingAnimation 1.4s infinite ease-in-out;
+}
+
+.typing-indicator .dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-indicator .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingAnimation {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+} 

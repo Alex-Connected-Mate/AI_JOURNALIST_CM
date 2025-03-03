@@ -1,0 +1,127 @@
+{
+  "common": {
+    "back_to_dashboard": "ダッシュボードに戻る",
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "not_found": "見つかりません",
+    "copy": "コピー",
+    "copied": "コピーしました！",
+    "scan_to_join": "スキャンして参加",
+    "join": "参加する",
+    "logout": "ログアウト",
+    "appName": "AIジャーナリスト",
+    "login": "ログイン",
+    "signup": "新規登録",
+    "home": "ホーム",
+    "settings": "設定"
+  },
+  "session": {
+    "name": "セッション名",
+    "description": "説明",
+    "institution": "機関/会社",
+    "professor_name": "教授名",
+    "max_participants": "最大参加者数",
+    "status": {
+      "draft": "下書き",
+      "active": "アクティブ",
+      "ended": "終了"
+    },
+    "actions": {
+      "start": "セッションを開始",
+      "end": "セッションを終了",
+      "edit": "編集",
+      "share": "セッションを共有",
+      "join": "セッションに参加",
+      "participate": "セッションに参加する",
+      "view_results": "結果を見る"
+    },
+    "participant_instructions": {
+      "title": "参加者向け指示",
+      "step1": "上記のリンクをクリックしてセッションに参加",
+      "step2": "必要に応じてサインインまたはアカウントを作成",
+      "step3": "ホストがセッションを開始するのを待つ"
+    },
+    "flow": {
+      "basic_info": "基本情報",
+      "connection": "ユーザー接続",
+      "discussion": "ディスカッション＆投票",
+      "ai_interaction": "AIジャーナリスト",
+      "break": "休憩",
+      "lightbulb": "アイデア",
+      "reading": "読書",
+      "analysis": "最終分析"
+    }
+  },
+  "connection": {
+    "title": "セッションへの接続",
+    "profile_mode": "プロフィールモード",
+    "require_approval": "セッションに参加するには承認が必要",
+    "approval_description": "有効にすると、各参加者が参加できるようになる前に手動で承認する必要があります。",
+    "max_participants": "最大参加者数",
+    "participants_joined": "人が参加しています",
+    "no_participants": "まだ参加者はいません。",
+    "join_qr_description": "参加者はこのQRコードまたはURLから参加できます：",
+    "qr_note": "このQRコードとURLはセッション作成後に自動的に生成されます。",
+    "profile_modes": {
+      "real_identity": {
+        "title": "実名",
+        "description": "名前、プロフィール画像、個人リンク（LinkedIn、WhatsApp、Instagram、ウェブサイトなど）"
+      },
+      "semi_anonymous": {
+        "title": "半匿名",
+        "description": "画像なし、色、絵文字、ニックネームあり"
+      },
+      "anonymous": {
+        "title": "完全匿名",
+        "description": "選択した匿名方法による識別"
+      }
+    },
+    "anonymous_methods": {
+      "random_id": {
+        "title": "ランダムID",
+        "description": "例：#56301 - 自動的に割り当てられたランダム識別子"
+      },
+      "initials_dob": {
+        "title": "イニシャル + 生年月日",
+        "description": "例：A.C. 16/12/2001 - 名と姓の最初の文字 + 生年月日"
+      }
+    },
+    "best_practices": {
+      "title": "ベストプラクティス",
+      "real_identity": "実名：参加者がすでにお互いを知っているコースに最適",
+      "semi_anonymous": "半匿名：パーソナライズを維持しながら自由な表現を促進するのに最適",
+      "anonymous": "匿名：敏感な議論やソーシャルバイアスを避けるのに最適"
+    }
+  },
+  "dashboard": {
+    "title": "ダッシュボード",
+    "create_session": "新しいセッションを作成",
+    "active_sessions": "アクティブなセッション",
+    "past_sessions": "過去のセッション",
+    "no_sessions": "セッションが見つかりません",
+    "welcomeMessage": "AIジャーナリストへようこそ",
+    "description": "AIで生成されたコンテンツを簡単に作成、管理、公開できます。",
+    "currentDate": "現在の日付",
+    "quickStats": "クイック統計",
+    "articlesCreated": "作成された記事",
+    "sessionsCompleted": "完了したセッション",
+    "recentActivity": "最近のアクティビティ",
+    "noRecentActivity": "最近のアクティビティはありません",
+    "quickActions": "クイックアクション",
+    "newSession": "新しいセッション",
+    "viewArticles": "記事を表示"
+  },
+  "auth": {
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "forgotPassword": "パスワードを忘れましたか？",
+    "noAccount": "アカウントをお持ちでないですか？",
+    "hasAccount": "すでにアカウントをお持ちですか？",
+    "signUp": "新規登録",
+    "logIn": "ログイン",
+    "name": "名前",
+    "enterEmail": "メールアドレスを入力してください",
+    "enterPassword": "パスワードを入力してください",
+    "enterName": "名前を入力してください"
+  }
+} 
