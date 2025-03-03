@@ -1,32 +1,21 @@
-'use client';
-
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-// A safer component that conditionally uses useSearchParams within Suspense
-const SafeSearchParamsConsumer = () => {
-  // Checking if window is defined for extra safety
-  if (typeof window === 'undefined') {
-    return null;
-  }
+// A component that safely uses useSearchParams within Suspense
+const SearchParamsComponent = () => {
+  const searchParams = useSearchParams();
+  const referrer = searchParams?.get('from') || '';
   
-  try {
-    const searchParams = useSearchParams();
-    const referrer = searchParams?.get('from') || '';
-    
-    return (
-      <p className="text-gray-600 mb-8">
-        {referrer ? `You were redirected from ${referrer}` : ''}
-      </p>
-    );
-  } catch (error) {
-    console.error('Error accessing search params:', error);
-    return null;
-  }
+  return (
+    <p className="text-gray-600 mb-8">
+      {referrer ? `You were redirected from ${referrer}` : ''}
+    </p>
+  );
 };
 
-export default function NotFound() {
+// Wrap any component that uses useSearchParams in Suspense
+const NotFoundPage = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md text-center">
@@ -36,9 +25,9 @@ export default function NotFound() {
           The page you are looking for doesn't exist or has been moved.
         </p>
         
-        {/* Wrap any component using useSearchParams in Suspense */}
-        <Suspense fallback={<p className="text-gray-400 mb-8">Loading referrer information...</p>}>
-          <SafeSearchParamsConsumer />
+        {/* Suspense boundary for the SearchParams component */}
+        <Suspense fallback={<p className="text-gray-400 mb-8">Loading...</p>}>
+          <SearchParamsComponent />
         </Suspense>
         
         <Link 
@@ -50,4 +39,6 @@ export default function NotFound() {
       </div>
     </div>
   );
-} 
+};
+
+export default NotFoundPage; 
