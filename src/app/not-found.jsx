@@ -1,8 +1,8 @@
-'use server';
+export const dynamic = 'force-static';
 
 import Link from 'next/link';
 
-export default function NotFound() {
+export default async function NotFound() {
   return (
     <div style={{ 
       display: 'flex', 

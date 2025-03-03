@@ -28,8 +28,7 @@ const nextConfig = {
   experimental: {
     // These are compatible with Next.js 15.2.0
     ppr: false,
-    optimizePackageImports: ['next/navigation'],
-    disableStaticImages: true
+    optimizePackageImports: ['next/navigation']
   },
   
   // Instruct Next.js to skip the static generation of the 404 page
