@@ -1,20 +1,7 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 
-// A component that safely uses useSearchParams within Suspense
-const SearchParamsComponent = () => {
-  const searchParams = useSearchParams();
-  const referrer = searchParams?.get('from') || '';
-  
-  return (
-    <p className="text-gray-600 mb-8">
-      {referrer ? `You were redirected from ${referrer}` : ''}
-    </p>
-  );
-};
-
-// Wrap any component that uses useSearchParams in Suspense
+// Simple 404 page that avoids using useSearchParams
 const NotFoundPage = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -24,11 +11,6 @@ const NotFoundPage = () => {
         <p className="text-gray-600 mb-8">
           The page you are looking for doesn't exist or has been moved.
         </p>
-        
-        {/* Suspense boundary for the SearchParams component */}
-        <Suspense fallback={<p className="text-gray-400 mb-8">Loading...</p>}>
-          <SearchParamsComponent />
-        </Suspense>
         
         <Link 
           href="/"

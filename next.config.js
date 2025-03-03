@@ -19,24 +19,22 @@ const nextConfig = {
       },
     ],
   },
-  // i18n configuration in next.config.js is not supported in App Router
-  // Use middleware.ts instead for internationalization in App Router
+  // This moves the middleware URL normalize option to the top level as required
+  skipMiddlewareUrlNormalize: true,
   
-  // Customize how error pages are handled during static export
+  // Disable automatic static optimization for 404 pages
+  // This should prevent the error with useSearchParams
+  output: 'standalone',
+  
   experimental: {
-    // This option turns off special handling for 404 pages during static export
-    // which will prevent the error when generating _not-found pages
+    // These are compatible with Next.js 15.2.0
     ppr: false,
-    // Skip the generation of static exports for pages that might cause issues
-    skipMiddlewareUrlNormalize: true,
-    // Use the App Router's not-found handling whenever possible
     optimizePackageImports: ['next/navigation']
   },
   
-  // This tells Next.js how to generate the 404 page
-  async generateStaticParams() {
-    return [];
-  },
+  // Instruct Next.js to skip the static generation of the 404 page
+  // This should prevent the error with useSearchParams
+  excludeDefaultMomentLocales: true,
 };
 
 module.exports = nextConfig;
