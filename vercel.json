@@ -1,16 +1,5 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "skipAutoInstall": false,
-        "buildCommand": "npm run vercel-build",
-        "outputDirectory": ".next"
-      }
-    }
-  ],
+  "buildCommand": "npm run vercel-build",
   "routes": [
     {
       "src": "/_next/static/(.*)",

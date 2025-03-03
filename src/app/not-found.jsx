@@ -1,4 +1,4 @@
-export const dynamic = 'force-static';
+'use server';
 
 import Link from 'next/link';
 
