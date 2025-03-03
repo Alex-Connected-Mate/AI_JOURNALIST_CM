@@ -6,7 +6,7 @@
       "use": "@vercel/next",
       "config": {
         "skipAutoInstall": false,
-        "buildCommand": "next build",
+        "buildCommand": "npm run vercel-build",
         "outputDirectory": ".next"
       }
     }
