@@ -1,8 +1,8 @@
-'use client';
+'use server';
 
 import Link from 'next/link';
 
-export default function NotFound() {
+export default async function NotFound() {
   return (
     <div style={{ 
       display: 'flex', 

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "NEXT_MINIMAL_ERROR_HANDLING=true NEXT_SKIP_404_GENERATION=1 next build"
+    "vercel-build": "NEXT_MINIMAL_ERROR_HANDLING=true next build"
   },
   "keywords": [],
   "author": "",

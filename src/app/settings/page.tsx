@@ -172,7 +172,6 @@ interface UserData {
   title: string; 
   bio: string;
   avatar_url: string | null;
-  agents?: { id: string; name: string; twilio_phone_number: string }[];
 }
 
 export default function SettingsPage() {
@@ -224,7 +223,6 @@ export default function SettingsPage() {
         title: userProfile.title || '',
         bio: userProfile.bio || '',
         avatar_url: userProfile.avatar_url || null,
-        agents: userProfile.agents || [],
       });
     }
   }, [userProfile, user]);
@@ -624,45 +622,6 @@ export default function SettingsPage() {
                 </h2>
                 
                 <div className="space-y-4">
-                  {/* Section Widgets */}
-                  <div className="second-level-block p-4 rounded-xl">
-                    <h3 className="font-medium text-gray-900 mb-3">Widgets Web</h3>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Configurez des widgets web pour vos agents et intégrez-les sur votre site.
-                    </p>
-                    
-                    {userData?.agents && userData.agents.length > 0 ? (
-                      <div className="space-y-3">
-                        {userData.agents.map((agent) => (
-                          <div key={agent.id} className="flex items-center justify-between border-b pb-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="bg-blue-100 p-2 rounded-full">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-800">{agent.name}</p>
-                                <p className="text-xs text-gray-500">{agent.twilio_phone_number}</p>
-                              </div>
-                            </div>
-                            <Link 
-                              href={`/settings/widget/${agent.id}`}
-                              className="cm-button px-3 py-1 text-sm"
-                            >
-                              Configurer
-                            </Link>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 bg-gray-50 rounded-lg">
-                        <p className="text-gray-500">Aucun agent disponible pour configurer un widget</p>
-                        <p className="text-sm text-gray-400 mt-1">Créez d'abord un agent pour continuer</p>
-                      </div>
-                    )}
-                  </div>
-
                   <div className="second-level-block p-4 rounded-xl">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
