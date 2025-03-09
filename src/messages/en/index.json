@@ -49,7 +49,16 @@
       "break": "Break",
       "lightbulb": "Ideas",
       "reading": "Reading",
-      "analysis": "Final Analysis"
+      "analysis": "Final Analysis",
+      "overall_analysis_desc": "Overall session analysis combining all conversations.",
+      "overall_analysis_short": "3. Overall Analysis",
+      "overall_analysis": "Overall Analysis",
+      "lightbulbs_analysis_desc": "Analysis of AI Lightbulbs conversations and generated ideas.",
+      "lightbulbs_analysis_short": "2. Lightbulbs",
+      "lightbulbs_analysis": "Lightbulbs Analysis",
+      "nuggets_analysis_desc": "Analysis of AI Nuggets conversations.",
+      "nuggets_analysis_short": "1. Nuggets",
+      "nuggets_analysis": "Nuggets Analysis"
     }
   },
   "connection": {

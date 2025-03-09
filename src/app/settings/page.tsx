@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import { useStore } from '@/lib/store';
+import { useRouter } from 'next/navigation';
 
 // Types pour les composants
 interface ImageSelectorProps {
@@ -11,6 +13,7 @@ interface ImageSelectorProps {
   selectedImageId: string | null;
   onChange: (value: string) => void;
   helpText?: string;
+  onFileUpload?: (file: File) => Promise<void>;
 }
 
 interface InputProps {
@@ -24,21 +27,92 @@ interface InputProps {
 }
 
 // Composant ImageSelector
-const ImageSelector: React.FC<ImageSelectorProps> = ({ label, selectedImageId, onChange, helpText }) => (
-  <div className="space-y-4">
-    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-    <div className="second-level-block p-6 rounded-xl text-center cursor-pointer">
-      <div className="mx-auto h-12 w-12 text-blue-500 mb-4">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-        </svg>
+const ImageSelector: React.FC<ImageSelectorProps> = ({ label, selectedImageId, onChange, helpText, onFileUpload }) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+  
+  const handleClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  };
+  
+  const handleFile = async (file: File) => {
+    // Vérifier que c'est une image
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image');
+      return;
+    }
+    
+    // Uploader le fichier si la fonction est disponible
+    if (onFileUpload) {
+      await onFileUpload(file);
+    }
+  };
+  
+  return (
+    <div className="space-y-4">
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <div 
+        className={`second-level-block p-6 rounded-xl text-center cursor-pointer ${isDragging ? 'bg-blue-50 border-blue-300' : ''}`}
+        onClick={handleClick}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+        <div className="mx-auto h-12 w-12 text-blue-500 mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+        </div>
+        <div className="font-medium text-gray-900 mb-1">Télécharger une image</div>
+        <p className="text-sm text-gray-500">Glissez-déposez ou cliquez pour sélectionner</p>
       </div>
-      <div className="font-medium text-gray-900 mb-1">Télécharger une image</div>
-      <p className="text-sm text-gray-500">Glissez-déposez ou cliquez pour sélectionner</p>
+      {selectedImageId && (
+        <div className="mt-2 flex items-center">
+          <div className="h-10 w-10 overflow-hidden rounded-full mr-2">
+            <img src={selectedImageId} alt="Selected" className="h-full w-full object-cover" />
+          </div>
+          <span className="text-sm text-gray-600">Image sélectionnée</span>
+        </div>
+      )}
+      {helpText && !selectedImageId && (
+        <p className="mt-2 text-sm text-gray-500">{helpText}</p>
+      )}
     </div>
-    {helpText && <p className="mt-2 text-sm text-gray-500">{helpText}</p>}
-  </div>
-);
+  );
+};
 
 // Composant Input réutilisable
 const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, required, icon, type = "text" }) => (
@@ -65,62 +139,143 @@ const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, requ
   </div>
 );
 
+// Après la définition du composant Input, ajouter le composant TextArea
+const TextArea: React.FC<{
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  required?: boolean;
+  rows?: number;
+}> = ({ label, value, onChange, placeholder, required, rows = 4 }) => (
+  <div className="mb-4">
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+    <textarea
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      rows={rows}
+      className="cm-input transition-all duration-200 w-full"
+      required={required}
+    />
+  </div>
+);
+
 // Interface pour les données utilisateur
 interface UserData {
-  firstName: string;
-  lastName: string;
-  displayName: string;
+  full_name: string;
   email: string;
-  company: string;
-  profileImage: string | null;
-  companyLogo: string | null;
+  institution: string;
+  title: string; 
+  bio: string;
+  avatar_url: string | null;
+  agents?: { id: string; name: string; twilio_phone_number: string }[];
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { user, userProfile, updateProfile, uploadAvatar, fetchUserProfile, logout } = useStore();
+  
   // État pour stocker les informations de l'utilisateur
-  const [user, setUser] = useState<UserData>({
-    firstName: '',
-    lastName: '',
-    displayName: '',
+  const [userData, setUserData] = useState<UserData>({
+    full_name: '',
     email: '',
-    company: '',
-    profileImage: null,
-    companyLogo: null,
+    institution: '',
+    title: '',
+    bio: '',
+    avatar_url: null,
   });
 
   // État pour les messages de succès/erreur
   const [message, setMessage] = useState<{ type: string; text: string }>({ type: '', text: '' });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   
-  // Simuler le chargement des données utilisateur
+  // Ajouter des états locaux pour gérer séparément le prénom et le nom
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+
+  // Charger les données utilisateur depuis Supabase
   useEffect(() => {
-    // Remplacer par un appel API réel
-    setTimeout(() => {
-      setUser({
-        firstName: 'Jean',
-        lastName: 'Dupont',
-        displayName: 'Jean D.',
-        email: 'jean.dupont@example.com',
-        company: 'Connected Mate',
-        profileImage: null,
-        companyLogo: null,
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    // Charger le profil depuis Supabase
+    const loadUserProfile = async () => {
+      setIsLoading(true);
+      await fetchUserProfile();
+      setIsLoading(false);
+    };
+    
+    loadUserProfile();
+  }, [user, fetchUserProfile, router]);
+
+  // Mettre à jour le formulaire quand le profil est chargé
+  useEffect(() => {
+    if (userProfile) {
+      setUserData({
+        full_name: userProfile.full_name || '',
+        email: user?.email || '',
+        institution: userProfile.institution || '',
+        title: userProfile.title || '',
+        bio: userProfile.bio || '',
+        avatar_url: userProfile.avatar_url || null,
+        agents: userProfile.agents || [],
       });
-    }, 500);
-  }, []);
+    }
+  }, [userProfile, user]);
+
+  // Mettre à jour les états firstName et lastName quand le profil est chargé
+  useEffect(() => {
+    if (userProfile && userProfile.full_name) {
+      const nameParts = userProfile.full_name.split(' ');
+      if (nameParts.length >= 2) {
+        setFirstName(nameParts[0]);
+        setLastName(nameParts.slice(1).join(' '));
+      } else {
+        setFirstName(userProfile.full_name);
+        setLastName('');
+      }
+    }
+  }, [userProfile]);
 
   // Gérer les changements dans les champs
   const handleChange = (field: keyof UserData, value: string | null) => {
-    setUser(prev => ({
+    setUserData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
+  // Gérer les changements de prénom et nom et les combiner en full_name
+  const handleNameChange = (field: 'firstName' | 'lastName', value: string) => {
+    if (field === 'firstName') {
+      setFirstName(value);
+    } else {
+      setLastName(value);
+    }
+    
+    // Mettre à jour le full_name dans userData
+    const fullName = field === 'firstName' 
+      ? `${value} ${lastName}`.trim() 
+      : `${firstName} ${value}`.trim();
+      
+    setUserData(prev => ({
+      ...prev,
+      full_name: fullName
+    }));
+  };
+
   // Gérer la soumission du formulaire
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation des champs obligatoires
-    if (!user.firstName || !user.lastName || !user.displayName) {
+    if (!userData.full_name) {
       setMessage({
         type: 'error',
         text: 'Veuillez remplir tous les champs obligatoires.'
@@ -128,28 +283,99 @@ export default function SettingsPage() {
       return;
     }
     
-    // Simuler une sauvegarde réussie
-    setMessage({
-      type: 'success',
-      text: 'Vos informations ont été mises à jour avec succès.'
-    });
+    setIsLoading(true);
     
-    // Effacer le message après 3 secondes
-    setTimeout(() => {
-      setMessage({ type: '', text: '' });
-    }, 3000);
+    try {
+      // Mapper les données du formulaire au format attendu par Supabase
+      const profileData = {
+        full_name: userData.full_name,
+        institution: userData.institution,
+        title: userData.title,
+        bio: userData.bio,
+      };
+      
+      // Envoyer les données à Supabase
+      const { data, error } = await updateProfile(profileData);
+      
+      if (error) {
+        setMessage({
+          type: 'error',
+          text: `Erreur: ${error}`
+        });
+      } else {
+        setMessage({
+          type: 'success',
+          text: 'Vos informations ont été mises à jour avec succès.'
+        });
+      }
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: 'Une erreur inattendue est survenue. Veuillez réessayer.'
+      });
+    } finally {
+      setIsLoading(false);
+      
+      // Effacer le message après 3 secondes
+      setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 3000);
+    }
+  };
+
+  // Gérer le téléchargement d'image
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await uploadAvatar(file);
+      
+      if (error) {
+        setMessage({
+          type: 'error',
+          text: `Erreur lors du téléchargement: ${error}`
+        });
+      } else {
+        // Mise à jour réussie, actualiser le profil
+        await fetchUserProfile();
+        setMessage({
+          type: 'success',
+          text: 'Image téléchargée avec succès.'
+        });
+      }
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: 'Une erreur est survenue lors du téléchargement de l\'image.'
+      });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 3000);
+    }
   };
 
   // Gérer la déconnexion
-  const handleLogout = () => {
-    // Logique de déconnexion à implémenter
-    console.log('Déconnexion...');
+  const handleLogout = async () => {
+    await logout();
+    router.push('/auth/login');
   };
+
+  if (isLoading && !userProfile) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <Header user={{ email: user.email }} logout={handleLogout} />
+      <Header user={{ email: userData.email }} logout={handleLogout} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">
@@ -236,9 +462,9 @@ export default function SettingsPage() {
                   <div className="md:col-span-2">
                     <div className="flex items-center space-x-6">
                       <div className="relative h-24 w-24 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow">
-                        {user.profileImage ? (
+                        {userData.avatar_url ? (
                           <Image 
-                            src={user.profileImage} 
+                            src={userData.avatar_url} 
                             alt="Photo de profil" 
                             fill 
                             style={{ objectFit: 'cover' }}
@@ -253,10 +479,25 @@ export default function SettingsPage() {
                       </div>
                       <div className="space-y-2">
                         <div className="text-lg font-medium text-gray-900">
-                          {user.displayName || 'Votre nom'}
+                          {userData.full_name || 'Votre nom'}
                         </div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                        <button type="button" className="cm-button-secondary text-sm px-3 py-1">
+                        <div className="text-sm text-gray-500">{userData.email}</div>
+                        <button 
+                          type="button" 
+                          className="cm-button-secondary text-sm px-3 py-1"
+                          onClick={() => {
+                            const fileInput = document.createElement('input');
+                            fileInput.type = 'file';
+                            fileInput.accept = 'image/*';
+                            fileInput.onchange = (e) => {
+                              const files = (e.target as HTMLInputElement).files;
+                              if (files && files.length > 0) {
+                                handleImageUpload(files[0]);
+                              }
+                            };
+                            fileInput.click();
+                          }}
+                        >
                           Changer la photo
                         </button>
                       </div>
@@ -265,8 +506,8 @@ export default function SettingsPage() {
                   
                   <Input
                     label="Prénom"
-                    value={user.firstName}
-                    onChange={(e) => handleChange('firstName', e.target.value)}
+                    value={firstName}
+                    onChange={(e) => handleNameChange('firstName', e.target.value)}
                     placeholder="Votre prénom"
                     required
                     icon={
@@ -278,8 +519,8 @@ export default function SettingsPage() {
                   
                   <Input
                     label="Nom"
-                    value={user.lastName}
-                    onChange={(e) => handleChange('lastName', e.target.value)}
+                    value={lastName}
+                    onChange={(e) => handleNameChange('lastName', e.target.value)}
                     placeholder="Votre nom"
                     required
                     icon={
@@ -291,8 +532,8 @@ export default function SettingsPage() {
                   
                   <Input
                     label="Nom d'usage"
-                    value={user.displayName}
-                    onChange={(e) => handleChange('displayName', e.target.value)}
+                    value={userData.full_name}
+                    onChange={(e) => handleChange('full_name', e.target.value)}
                     placeholder="Nom affiché publiquement"
                     required
                     icon={
@@ -304,7 +545,7 @@ export default function SettingsPage() {
                   
                   <Input
                     label="Email"
-                    value={user.email}
+                    value={userData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
                     placeholder="votre.email@example.com"
                     required
@@ -315,6 +556,26 @@ export default function SettingsPage() {
                         <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                       </svg>
                     }
+                  />
+
+                  <Input
+                    label="Titre / Fonction"
+                    value={userData.title}
+                    onChange={(e) => handleChange('title', e.target.value)}
+                    placeholder="Votre titre ou fonction"
+                    icon={
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
+                    }
+                  />
+
+                  <TextArea
+                    label="Biographie"
+                    value={userData.bio}
+                    onChange={(e) => handleChange('bio', e.target.value)}
+                    placeholder="Une courte description de vous-même"
+                    rows={4}
                   />
                 </div>
               </div>
@@ -331,8 +592,8 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Input
                     label="Nom de l'entreprise"
-                    value={user.company}
-                    onChange={(e) => handleChange('company', e.target.value)}
+                    value={userData.institution}
+                    onChange={(e) => handleChange('institution', e.target.value)}
                     placeholder="Nom de votre entreprise"
                     icon={
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
@@ -344,9 +605,10 @@ export default function SettingsPage() {
                   <div className="md:col-span-2">
                     <ImageSelector
                       label="Logo de l'entreprise"
-                      selectedImageId={user.companyLogo}
-                      onChange={(value) => handleChange('companyLogo', value)}
+                      selectedImageId={userData.avatar_url}
+                      onChange={(value) => handleChange('avatar_url', value)}
                       helpText="Format recommandé : PNG ou JPG, 400x400px minimum"
+                      onFileUpload={(file) => handleImageUpload(file)}
                     />
                   </div>
                 </div>
@@ -362,6 +624,45 @@ export default function SettingsPage() {
                 </h2>
                 
                 <div className="space-y-4">
+                  {/* Section Widgets */}
+                  <div className="second-level-block p-4 rounded-xl">
+                    <h3 className="font-medium text-gray-900 mb-3">Widgets Web</h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Configurez des widgets web pour vos agents et intégrez-les sur votre site.
+                    </p>
+                    
+                    {userData?.agents && userData.agents.length > 0 ? (
+                      <div className="space-y-3">
+                        {userData.agents.map((agent) => (
+                          <div key={agent.id} className="flex items-center justify-between border-b pb-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="bg-blue-100 p-2 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800">{agent.name}</p>
+                                <p className="text-xs text-gray-500">{agent.twilio_phone_number}</p>
+                              </div>
+                            </div>
+                            <Link 
+                              href={`/settings/widget/${agent.id}`}
+                              className="cm-button px-3 py-1 text-sm"
+                            >
+                              Configurer
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 bg-gray-50 rounded-lg">
+                        <p className="text-gray-500">Aucun agent disponible pour configurer un widget</p>
+                        <p className="text-sm text-gray-400 mt-1">Créez d'abord un agent pour continuer</p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="second-level-block p-4 rounded-xl">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">

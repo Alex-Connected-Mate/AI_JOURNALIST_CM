@@ -49,7 +49,16 @@
       "break": "休憩",
       "lightbulb": "アイデア",
       "reading": "読書",
-      "analysis": "最終分析"
+      "analysis": "最終分析",
+      "overall_analysis_desc": "すべての会話を組み合わせたセッション全体の分析。",
+      "overall_analysis_short": "3. 総合分析",
+      "overall_analysis": "総合分析",
+      "lightbulbs_analysis_desc": "AIライトバルブの会話とアイデアの分析。",
+      "lightbulbs_analysis_short": "2. ライトバルブ",
+      "lightbulbs_analysis": "ライトバルブ分析",
+      "nuggets_analysis_desc": "AIナゲットとの会話の分析。",
+      "nuggets_analysis_short": "1. ナゲット",
+      "nuggets_analysis": "ナゲット分析"
     }
   },
   "connection": {

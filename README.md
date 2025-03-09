@@ -114,3 +114,31 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus d'informatio
 ## 👥 Contributeurs
 
 - [Votre Nom](https://github.com/votre-nom) - Développeur principal 
+
+## Gestion des profils utilisateurs
+
+### Problème résolu: Profils utilisateurs non sauvegardés
+
+La page de paramètres de profil utilisateur a été améliorée pour sauvegarder réellement les modifications dans la base de données Supabase. Auparavant, l'interface permettait de modifier les champs, mais les données n'étaient pas persistantes.
+
+### Solution implémentée
+
+1. **Adaptation à la structure de base de données existante**: L'interface utilisateur a été mise à jour pour utiliser la table `public.users` existante avec ses champs (`full_name`, `institution`, `title`, `bio`, `avatar_url`).
+
+2. **Connexion de l'interface au store**: La page de settings a été modifiée pour utiliser le store Zustand qui interagit avec Supabase via les fonctions `updateProfile` et `uploadAvatar`.
+
+3. **Téléchargement d'images**: Le composant `ImageSelector` a été amélioré pour permettre le téléchargement réel des images de profil.
+
+### Comment vérifier les changements
+
+1. Assurez-vous que votre configuration Supabase est correcte dans les fichiers `.env.local` et `.env.development`.
+2. Redémarrez votre serveur de développement avec `npm run dev` après avoir effacé le cache de Next.js (`rm -rf .next`).
+3. Naviguez vers la page des paramètres et modifiez votre profil.
+
+### Fonctionnalités disponibles
+
+- Modification des informations personnelles (nom complet)
+- Téléchargement et affichage d'une photo de profil
+- Gestion des informations d'institution et de titre
+- Ajout d'une biographie
+- Feedback visuel lors des modifications (messages de succès/erreur) 

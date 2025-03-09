@@ -9,85 +9,161 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase URL or API key');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Maximum number of retries for authentication operations
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
-// Helper functions for authentication
+// Helper function to implement delay between retries
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to handle retries
+async function withRetry<T>(operation: () => Promise<T>, retries = MAX_RETRIES): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries > 0 && error instanceof Error && error.message.includes('Failed to fetch')) {
+      await delay(RETRY_DELAY);
+      console.warn(`Retrying operation, ${retries - 1} attempts remaining`);
+      return withRetry(operation, retries - 1);
+    }
+    throw error;
+  }
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
+
+// Helper functions for authentication with retry logic
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
+  return withRetry(async () => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error('Authentication error:', error.message);
+      throw error;
+    }
+    
+    return { data, error };
   });
-  
-  return { data, error };
 }
 
 export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
+  return withRetry(async () => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error('Sign up error:', error.message);
+      throw error;
+    }
+    
+    return { data, error };
   });
-  
-  return { data, error };
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  return withRetry(async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Sign out error:', error.message);
+      throw error;
+    }
+    
+    return { error };
+  });
 }
 
-// Profile management functions
+// Profile management functions with retry logic
 export async function getUserProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single();
-    
-  return { data, error };
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+      
+    if (error) {
+      console.error('Get user profile error:', error.message);
+      throw error;
+    }
+      
+    return { data, error };
+  });
 }
 
 export async function updateUserProfile(userId: string, profileData: any) {
-  const { data, error } = await supabase
-    .from('users')
-    .update({
-      ...profileData,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', userId)
-    .select()
-    .single();
-    
-  return { data, error };
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...profileData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Update user profile error:', error.message);
+      throw error;
+    }
+      
+    return { data, error };
+  });
 }
 
 export async function uploadProfileImage(userId: string, file: File) {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}-avatar.${fileExt}`;
-  
-  // Upload the file to Supabase Storage
-  const { data: uploadData, error: uploadError } = await supabase
-    .storage
-    .from('avatars')
-    .upload(fileName, file, {
-      upsert: true
-    });
+  return withRetry(async () => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-avatar.${fileExt}`;
     
-  if (uploadError) {
-    return { data: null, error: uploadError };
-  }
-  
-  // Get the public URL for the uploaded file
-  const { data: urlData } = await supabase
-    .storage
-    .from('avatars')
-    .getPublicUrl(fileName);
-    
-  // Update the user's profile with the new avatar URL
-  const { data, error } = await updateUserProfile(userId, {
-    avatar_url: urlData?.publicUrl
+    try {
+      // Upload the file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('avatars')
+        .upload(fileName, file, {
+          upsert: true
+        });
+        
+      if (uploadError) {
+        console.error('Upload profile image error:', uploadError);
+        return { data: null, error: uploadError };
+      }
+      
+      // Get the public URL for the uploaded file
+      const { data: urlData } = await supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+        
+      // Update the user's profile with the new avatar URL
+      const { data, error } = await updateUserProfile(userId, {
+        avatar_url: urlData?.publicUrl
+      });
+      
+      if (error) {
+        console.error('Update avatar URL error:', error);
+        throw error;
+      }
+      
+      return { data, error };
+    } catch (error) {
+      console.error('Profile image upload failed:', error);
+      throw error;
+    }
   });
-  
-  return { data, error };
 }
 
 // Helper functions for session data management
@@ -100,14 +176,92 @@ export async function getSessions(userId: string) {
   return { data, error };
 }
 
-export async function createSession(sessionData: any) {
-  const { data, error } = await supabase
-    .from('sessions')
-    .insert(sessionData)
-    .select()
-    .single();
-    
-  return { data, error };
+// Session Types
+export interface SessionData {
+  title: string;
+  description?: string;
+  status: 'draft' | 'active' | 'ended';
+  user_id: string;
+  started_at?: string;
+  ended_at?: string;
+  settings?: {
+    institution?: string;
+    professorName?: string;
+    showProfessorName?: boolean;
+    maxParticipants?: number;
+    connection?: Record<string, any>;
+    discussion?: Record<string, any>;
+    aiInteraction?: {
+      nuggets?: Record<string, any>;
+      lightbulbs?: Record<string, any>;
+      overall?: Record<string, any>;
+    };
+    visualization?: {
+      enableWordCloud?: boolean;
+      enableThemeNetwork?: boolean;
+      enableLightbulbCategorization?: boolean;
+      enableIdeaImpactMatrix?: boolean;
+      enableEngagementChart?: boolean;
+      showTopThemes?: boolean;
+    };
+  };
+}
+
+// Session validation functions
+export function validateSessionData(data: Partial<SessionData>): { isValid: boolean; error?: string } {
+  if (!data.title?.trim()) {
+    return { isValid: false, error: 'Session title is required' };
+  }
+  
+  if (!data.user_id) {
+    return { isValid: false, error: 'User ID is required' };
+  }
+  
+  if (data.status && !['draft', 'active', 'ended'].includes(data.status)) {
+    return { isValid: false, error: 'Invalid session status' };
+  }
+  
+  return { isValid: true };
+}
+
+export async function createSession(sessionData: Partial<SessionData>) {
+  return withRetry(async () => {
+    try {
+      // Validate session data
+      const validation = validateSessionData(sessionData);
+      if (!validation.isValid) {
+        throw new Error(validation.error || 'Invalid session data');
+      }
+
+      // Prepare session data with defaults
+      const data = {
+        ...sessionData,
+        status: sessionData.status || 'draft',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: result, error } = await supabase
+        .from('sessions')
+        .insert(data)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Failed to create session:', error);
+        throw error;
+      }
+      
+      console.log('Session created successfully:', result);
+      return { data: result, error: null };
+    } catch (error) {
+      console.error('Session creation failed:', error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error : new Error('Unknown error during session creation') 
+      };
+    }
+  });
 }
 
 export async function getSessionById(sessionId: string) {

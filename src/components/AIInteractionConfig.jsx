@@ -175,9 +175,26 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     ]
   };
   
-  // Local state for form values (to prevent immediate updates)
-  const [localConfig, setLocalConfig] = useState(defaultNuggetsPromptConfig);
-  const [localLightbulbsConfig, setLocalLightbulbsConfig] = useState(defaultLightbulbsPromptConfig);
+  // Local state for form values
+  const [localConfig, setLocalConfig] = useState({
+    agentName: "",
+    programName: "",
+    teacherName: "",
+    location: "",
+    venue: "",
+    agentPersonality: "",
+    // ... other fields
+  });
+
+  // Validation state
+  const [validationState, setValidationState] = useState({
+    agentName: { isValid: true, message: '' },
+    programName: { isValid: true, message: '' },
+    teacherName: { isValid: true, message: '' },
+    location: { isValid: true, message: '' },
+    venue: { isValid: true, message: '' },
+    agentPersonality: { isValid: true, message: '' }
+  });
   
   // Initialize local config once when component mounts or when sessionConfig changes
   useEffect(() => {
@@ -194,7 +211,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     
     if (sessionConfig && sessionConfig.lightbulbsPromptConfig) {
       // Ensure all required properties exist by merging with defaults
-      setLocalLightbulbsConfig({
+      setLocalConfig({
         ...defaultLightbulbsPromptConfig,
         ...sessionConfig.lightbulbsPromptConfig,
         // Ensure arrays are never undefined
@@ -278,21 +295,69 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     });
   };
 
-  // Update local state without immediately updating parent state
+  // Update local state without immediately validating
   const handleLocalChange = (field, value) => {
     setLocalConfig(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    // Don't clear validation state immediately, let the Input component handle it
+    handleChange(field, value);
   };
-  
+
+  // Validate a single field
+  const validateField = async (field, value) => {
+    // Ne pas valider les champs vides pendant la saisie
+    if (!value || value.trim() === '') {
+      return { isValid: true, message: '' };
+    }
+
+    let isValid = true;
+    let message = '';
+
+    switch (field) {
+      case 'agentName':
+        isValid = value.length >= 2;
+        message = isValid ? '' : 'Le nom de l\'agent doit contenir au moins 2 caractères';
+        break;
+      case 'programName':
+        isValid = value.length >= 3;
+        message = isValid ? '' : 'Le nom du programme doit contenir au moins 3 caractères';
+        break;
+      // Les autres champs ne nécessitent pas de validation pendant la saisie
+      default:
+        return { isValid: true, message: '' };
+    }
+
+    return { isValid, message };
+  };
+
   // Apply all local changes to the parent state
-  const applyChanges = () => {
-    updateSessionConfig({
-      ...sessionConfig,
-      nuggetsPromptConfig: localConfig,
-      lightbulbsPromptConfig: localLightbulbsConfig
-    });
+  const applyChanges = async () => {
+    const fields = ['agentName', 'programName', 'teacherName', 'location', 'venue', 'agentPersonality'];
+    let isValid = true;
+    const newValidationState = {};
+
+    // Valider tous les champs lors de la soumission
+    await Promise.all(
+      fields.map(async (field) => {
+        const result = await validateField(field, localConfig[field]);
+        newValidationState[field] = result;
+        if (!result.isValid) isValid = false;
+      })
+    );
+
+    setValidationState(newValidationState);
+
+    if (isValid) {
+      updateSessionConfig({
+        ...sessionConfig,
+        ...localConfig
+      });
+      return true;
+    }
+    return false;
   };
 
   // Generate the complete prompt based on the template and configuration
@@ -344,9 +409,9 @@ ${questionsSection}
     // Ensure we always have a valid config with required properties
     const config = {
       ...defaultLightbulbsPromptConfig,
-      ...(localLightbulbsConfig || {}),
-      rules: (localLightbulbsConfig && localLightbulbsConfig.rules) || defaultLightbulbsPromptConfig.rules,
-      questions: (localLightbulbsConfig && localLightbulbsConfig.questions) || defaultLightbulbsPromptConfig.questions
+      ...(localConfig || {}),
+      rules: (localConfig && localConfig.rules) || defaultLightbulbsPromptConfig.rules,
+      questions: (localConfig && localConfig.questions) || defaultLightbulbsPromptConfig.questions
     };
     
     // Build the prompt using the configuration
@@ -369,7 +434,7 @@ Begin by introducing yourself and asking the first question.`;
 
   // Update local lightbulbs state without immediately updating parent state
   const handleLocalLightbulbsChange = (field, value) => {
-    setLocalLightbulbsConfig(prev => ({
+    setLocalConfig(prev => ({
       ...prev,
       [field]: value
     }));
@@ -1044,8 +1109,10 @@ Begin by introducing yourself and asking the first question.`;
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
                   <Input
                     label="Agent Name"
-                    value={localConfig.agentName || ""}
+                    value={localConfig.agentName}
                     onChange={(e) => handleLocalChange('agentName', e.target.value)}
+                    onValidate={(value) => validateField('agentName', value)}
+                    error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-purple-400"
                   />
@@ -1057,8 +1124,10 @@ Begin by introducing yourself and asking the first question.`;
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
                   <Input
                     label="Program Name"
-                    value={localConfig.programName || ""}
+                    value={localConfig.programName}
                     onChange={(e) => handleLocalChange('programName', e.target.value)}
+                    onValidate={(value) => validateField('programName', value)}
+                    error={validationState.programName?.message}
                     placeholder="Enter your program or event name (e.g., Nuggets Workshop)"
                     className="focus:ring-2 focus:ring-purple-400"
                   />
@@ -1529,164 +1598,13 @@ Begin by introducing yourself and asking the first question.`;
             Configure the AI Lightbulbs agent that will interact with participants who choose to discuss their ideas.
             This is optional and can be turned off if not needed.
           </p>
-            </div>
+        </div>
 
-        {/* AI Lightbulbs Analysis Configuration with enhanced visual indicators */}
-        <div className="relative bg-white p-6 rounded-xl shadow-md mb-6 border border-amber-200">
-          <div className="absolute -top-4 -right-4 flex items-center justify-center bg-amber-500 text-white w-10 h-10 rounded-full shadow-md">
-            <span className="text-xl" role="img" aria-label="Analysis">💡</span>
-          </div>
-          <h3 className="text-lg font-semibold text-amber-800 mb-4 flex items-center">
-            <span className="mr-2">Lightbulbs Analysis Configuration</span>
-            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">AI Analysis</span>
-          </h3>
-          
-          <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-lg mb-6">
-            <p className="text-sm text-amber-800">
-              Configure how the AI will analyze Lightbulbs interactions. These settings determine what's included in 
-              the analysis and how it's presented to you at the end of the session.
-            </p>
-          </div>
-          
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="flex items-center space-x-2">
-                <Checkbox
-                  checked={analysisConfiguration?.includeParticipantNames ?? true}
-                  onChange={(value) => updateSessionConfig({
-                    ...sessionConfig,
-                    analysisConfiguration: {
-                      ...analysisConfiguration,
-                      includeParticipantNames: value
-                    }
-                  })}
-                />
-                <span className="text-gray-700">Include participant names in analysis</span>
-              </label>
-              <p className="text-xs text-gray-500 ml-6 mt-1">
-                When enabled, participant names will be mentioned in the analysis.
-              </p>
-            </div>
-            
-            <div>
-              <label className="flex items-center space-x-2">
-                <Checkbox
-                  checked={analysisConfiguration?.includeQuotesInAnalysis ?? true}
-                  onChange={(value) => updateSessionConfig({
-                    ...sessionConfig,
-                    analysisConfiguration: {
-                      ...analysisConfiguration,
-                      includeQuotesInAnalysis: value
-                    }
-                  })}
-                />
-                <span className="text-gray-700">Include direct quotes in analysis</span>
-              </label>
-              <p className="text-xs text-gray-500 ml-6 mt-1">
-                When enabled, the analysis will include direct quotes from the conversations.
-              </p>
-            </div>
-            
-            <div>
-              <label className="flex items-center space-x-2">
-                <Checkbox
-                  checked={analysisConfiguration?.generateKeyInsights ?? true}
-                  onChange={(value) => updateSessionConfig({
-                    ...sessionConfig,
-                    analysisConfiguration: {
-                      ...analysisConfiguration,
-                      generateKeyInsights: value
-                    }
-                  })}
-                />
-                <span className="text-gray-700">Generate key insights section</span>
-              </label>
-              <p className="text-xs text-gray-500 ml-6 mt-1">
-                When enabled, the analysis will include a section highlighting key insights.
-              </p>
-          </div>
-
-            <div>
-              <label className="flex items-center space-x-2">
-                <Checkbox
-                  checked={analysisConfiguration?.enableLightbulbCategorization ?? true}
-                  onChange={(value) => updateSessionConfig({
-                    ...sessionConfig,
-                    analysisConfiguration: {
-                      ...analysisConfiguration,
-                      enableLightbulbCategorization: value
-                    }
-                  })}
-                />
-                <span className="text-gray-700">Enable ideas categorization</span>
-              </label>
-              <p className="text-xs text-gray-500 ml-6 mt-1">
-                Groups similar ideas together for better insight generation.
-              </p>
-            </div>
-            
-            <div>
-              <label className="flex items-center space-x-2">
-              <Checkbox
-                  checked={analysisConfiguration?.enableIdeaImpactMatrix ?? true}
-                  onChange={(value) => updateSessionConfig({
-                    ...sessionConfig,
-                    analysisConfiguration: {
-                      ...analysisConfiguration,
-                      enableIdeaImpactMatrix: value
-                    }
-                  })}
-                />
-                <span className="text-gray-700">Enable idea impact visualization</span>
-              </label>
-              <p className="text-xs text-gray-500 ml-6 mt-1">
-                Creates a matrix showing potential impact vs. feasibility of ideas.
-              </p>
-            </div>
-          </div>
-          
-          <div className="bg-amber-50 rounded-lg p-4 mb-4">
-            <h4 className="font-medium text-amber-800 mb-2">Analysis Rules</h4>
-            <div className="space-y-2">
-              <div className="flex items-start">
-                <span className="text-amber-500 mr-2">•</span>
-                <p className="text-sm text-gray-700">Highlight innovative thinking from non-selected participants</p>
-              </div>
-              <div className="flex items-start">
-                <span className="text-amber-500 mr-2">•</span>
-                <p className="text-sm text-gray-700">Identify cross-pollination of ideas from Nuggets conversations</p>
-              </div>
-              <div className="flex items-start">
-                <span className="text-amber-500 mr-2">•</span>
-                <p className="text-sm text-gray-700">Evaluate practical applications of proposed ideas</p>
-              </div>
-            </div>
-          </div>
-          
-          <NumberInput
-            label="Analysis Generation Time (seconds)"
-            value={analysisConfiguration?.analysisGenerationTime ?? 60}
-            onChange={(value) => updateSessionConfig({
-              ...sessionConfig,
-              analysisConfiguration: {
-                ...analysisConfiguration,
-                analysisGenerationTime: value
-              }
-            })}
-            min={30}
-            max={300}
-            step={10}
-          />
-          <p className="text-sm text-gray-600 mt-2 mb-6">
-            Time needed for the AI to generate the Lightbulbs analysis.
-          </p>
-          </div>
-        
         {/* AI Lightbulbs Configuration */}
         <div className="bg-white p-6 rounded-xl shadow-md mb-6 border border-amber-200">
           <Checkbox
             label="Enable AI Lightbulbs"
-            checked={enableIdeaSharingInteraction}
+            checked={enableIdeaSharingInteraction !== false}
             onChange={(value) => handleChange('enableIdeaSharingInteraction', value)}
           />
           <p className="text-sm text-gray-600 ml-6 mt-2">
@@ -1694,9 +1612,8 @@ Begin by introducing yourself and asking the first question.`;
           </p>
         </div>
 
-        {enableIdeaSharingInteraction && (
+        {enableIdeaSharingInteraction !== false && (
           <>
-            {/* AI Lightbulbs Configuration */}
             <CollapsibleSection 
               title="Configure your AI" 
               isOpen={showAIConfig}
@@ -1704,10 +1621,78 @@ Begin by introducing yourself and asking the first question.`;
               icon="💡"
               color="amber"
             >
-              {/* Rest of the Lightbulbs configuration */}
-              {/* ... existing code ... */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
+                  <Input
+                    label="Agent Name"
+                    value={localConfig.agentName || ""}
+                    onChange={(e) => handleLocalChange('agentName', e.target.value)}
+                    onValidate={(value) => validateField('agentName', value)}
+                    error={validationState.agentName?.message}
+                    placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
+                    className="focus:ring-2 focus:ring-amber-400"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    The name your AI agent will use when interacting with participants.
+                  </p>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
+                  <Input
+                    label="Program Name"
+                    value={localConfig.programName || ""}
+                    onChange={(e) => handleLocalChange('programName', e.target.value)}
+                    onValidate={(value) => validateField('programName', value)}
+                    error={validationState.programName?.message}
+                    placeholder="Enter your program or event name"
+                    className="focus:ring-2 focus:ring-amber-400"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    The name of the program or event this session is for.
+                  </p>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
+                  <Input
+                    label="Location"
+                    value={localConfig.location || ""}
+                    onChange={(e) => handleLocalChange('location', e.target.value)}
+                    placeholder="Enter the city or location"
+                    className="focus:ring-2 focus:ring-amber-400"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    The city or location where the event is taking place.
+                  </p>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
+                  <Input
+                    label="Venue"
+                    value={localConfig.venue || ""}
+                    onChange={(e) => handleLocalChange('venue', e.target.value)}
+                    placeholder="Enter the specific venue"
+                    className="focus:ring-2 focus:ring-amber-400"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    The specific venue or building where the event is being held.
+                  </p>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
+                  <Input
+                    label="Agent Personality"
+                    value={localConfig.agentPersonality || ""}
+                    onChange={(e) => handleLocalChange('agentPersonality', e.target.value)}
+                    placeholder="Enter personality traits"
+                    className="focus:ring-2 focus:ring-amber-400"
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    Personality traits that define how the AI agent communicates.
+                  </p>
+                </div>
+              </div>
             </CollapsibleSection>
-            
+
             <CollapsibleSection 
               title="Book Generation Settings" 
               isOpen={showBookConfig}
@@ -1715,7 +1700,64 @@ Begin by introducing yourself and asking the first question.`;
               icon="📚"
               color="amber"
             >
-              {/* ... existing code ... */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <Input
+                      label="Book Title"
+                      value={lightBulbsBookTitle}
+                      onChange={(e) => handleChange('lightBulbsBookTitle', e.target.value)}
+                      placeholder="Enter the book title"
+                      className="focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Book Color Theme
+                    </label>
+                    <div className="flex space-x-4">
+                      <button
+                        onClick={() => handleChange('lightBulbsBookColor', '#F59E0B')}
+                        className={`w-8 h-8 rounded-full bg-amber-500 ${lightBulbsBookColor === '#F59E0B' ? 'ring-2 ring-offset-2 ring-amber-500' : ''}`}
+                      />
+                      <button
+                        onClick={() => handleChange('lightBulbsBookColor', '#EF4444')}
+                        className={`w-8 h-8 rounded-full bg-red-500 ${lightBulbsBookColor === '#EF4444' ? 'ring-2 ring-offset-2 ring-red-500' : ''}`}
+                      />
+                      <button
+                        onClick={() => handleChange('lightBulbsBookColor', '#10B981')}
+                        className={`w-8 h-8 rounded-full bg-emerald-500 ${lightBulbsBookColor === '#10B981' ? 'ring-2 ring-offset-2 ring-emerald-500' : ''}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                  <NumberInput
+                    label="Book Generation Time (seconds)"
+                    value={bookGenerationTime}
+                    onChange={(value) => handleChange('bookGenerationTime', value)}
+                    min={30}
+                    max={300}
+                    step={10}
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    Time needed for the AI to generate the ideas book.
+                  </p>
+                </div>
+
+                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+                  <Checkbox
+                    label="Show books to all participants"
+                    checked={showGeneratedBooksToAll}
+                    onChange={(value) => handleChange('showGeneratedBooksToAll', value)}
+                  />
+                  <p className="text-sm text-gray-600 ml-6 mt-2">
+                    If enabled, all participants will be able to see the generated books.
+                  </p>
+                </div>
+              </div>
             </CollapsibleSection>
           </>
         )}

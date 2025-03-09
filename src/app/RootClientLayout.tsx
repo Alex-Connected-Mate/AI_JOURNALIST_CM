@@ -4,6 +4,8 @@ import React, { useEffect } from 'react';
 import Header from '@/components/Header';
 import AuthChecker from '@/components/AuthChecker';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import LogViewer from '@/components/LogViewer';
+import EventTrackerInitializer from '@/components/EventTrackerInitializer';
 import { useStore } from '@/lib/store';
 import { usePathname } from 'next/navigation';
 import { LocaleProvider } from '@/components/LocaleProvider';
@@ -30,8 +32,8 @@ function ErrorFallback({ error }: { error: Error }) {
   );
 }
 
-export default function RootClientLayout({ children }: RootClientLayoutProps) {
-  const { user, logout } = useStore();
+const RootClientLayout = ({ children }: RootClientLayoutProps) => {
+  const { user } = useStore();
   const pathname = usePathname();
   
   // Liste des chemins qui ne nécessitent pas d'authentification
@@ -42,26 +44,30 @@ export default function RootClientLayout({ children }: RootClientLayoutProps) {
     pathname === path || 
     pathname?.startsWith('/auth/')
   );
-
-  // Préparer les props pour le Header
-  const headerUser = user ? {
-    email: user.email
-  } : undefined;
-
+  
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <LocaleProvider>
+    <LocaleProvider>
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        {/* Initialisateur du système de suivi d'événements */}
+        <EventTrackerInitializer />
+        
         {/* Vérification de l'authentification */}
         <AuthChecker />
         
-        {/* Afficher le Header uniquement sur les pages protégées (non-auth) */}
-        {!isAuthPage && <Header user={headerUser} logout={logout} />}
+        {/* En-tête */}
+        {!isAuthPage && user && <Header />}
         
         {/* Protection des routes qui nécessitent une authentification */}
         <ProtectedRoute excludedPaths={publicPaths}>
+          {/* Contenu principal */}
           {children}
         </ProtectedRoute>
-      </LocaleProvider>
-    </ErrorBoundary>
+        
+        {/* Afficheur de logs (disponible sur toutes les pages) */}
+        <LogViewer />
+      </ErrorBoundary>
+    </LocaleProvider>
   );
-} 
+};
+
+export default RootClientLayout; 

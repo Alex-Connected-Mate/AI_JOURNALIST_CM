@@ -49,7 +49,16 @@
       "break": "Pause",
       "lightbulb": "Idées",
       "reading": "Lecture",
-      "analysis": "Analyse Finale"
+      "analysis": "Analyse Finale",
+      "overall_analysis_desc": "Analyse globale combinant toutes les conversations de la session.",
+      "overall_analysis_short": "3. Analyse Globale",
+      "overall_analysis": "Analyse Globale",
+      "lightbulbs_analysis_desc": "Analyse des conversations et des idées générées par l'IA Lightbulbs.",
+      "lightbulbs_analysis_short": "2. Lightbulbs",
+      "lightbulbs_analysis": "Analyse des Lightbulbs",
+      "nuggets_analysis_desc": "Analyse des conversations avec l'IA Nuggets.",
+      "nuggets_analysis_short": "1. Nuggets",
+      "nuggets_analysis": "Analyse des Nuggets"
     }
   },
   "connection": {
