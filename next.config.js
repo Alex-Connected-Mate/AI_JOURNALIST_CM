@@ -31,28 +31,40 @@ const nextConfig = {
   
   // Options expérimentales
   experimental: {
-    // Ces options sont compatibles avec Next.js 15.2.0
+    // Ces options sont compatibles avec Next.js 15.2.1
     ppr: false,
     optimizePackageImports: ['next/navigation'],
+    // Activer le mode streaming pour les composants serveur
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+    // Améliorer la gestion des erreurs
+    serverComponentsExternalPackages: [],
   },
   
-  // Packages externes pour les composants serveur
-  serverExternalPackages: ['pdf-lib'],
-  
-  // Optimisations supplémentaires
-      
-  // Instruct Next.js to skip the static generation of the 404 page
-  // This should prevent the error with useSearchParams
-  excludeDefaultMomentLocales: true,
+  // Configuration des pages
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   
   // Variables d'environnement
   env: {
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || 'development',
-    BUILD_TIME: new Date().toISOString()
+    BUILD_TIME: new Date().toISOString(),
+    NEXT_PUBLIC_APP_URL: process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000'
   },
   
   // Configuration webpack pour résoudre les problèmes courants
-  webpack: (config) => {
+  webpack: (config, { dev, isServer }) => {
+    // Optimisations pour le build
+    if (!dev && !isServer) {
+      Object.assign(config.resolve.alias, {
+        'react/jsx-runtime': 'react/jsx-runtime.js',
+        'react/jsx-dev-runtime': 'react/jsx-dev-runtime.js',
+      });
+    }
+    
+    // Fallbacks pour les modules Node
     config.resolve.fallback = { 
       fs: false,
       path: false,
