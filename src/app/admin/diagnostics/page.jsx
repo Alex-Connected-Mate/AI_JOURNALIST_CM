@@ -1,5 +1,6 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -13,7 +14,15 @@ import { useRouter } from 'next/navigation';
  * - Déclencher des corrections via des API routes
  */
 
-export default function DiagnosticsPage() {
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+    </div>
+  );
+}
+
+function DiagnosticsContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [systemInfo, setSystemInfo] = useState({});
@@ -203,11 +212,7 @@ export default function DiagnosticsPage() {
   };
   
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-      </div>
-    );
+    return <LoadingFallback />;
   }
   
   return (
@@ -486,5 +491,13 @@ export default function DiagnosticsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DiagnosticsPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <DiagnosticsContent />
+    </Suspense>
   );
 } 

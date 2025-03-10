@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '@/components/LocaleProvider';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
@@ -8,7 +9,15 @@ import { useSearchParams } from 'next/navigation';
 import { getSessions } from '@/lib/supabase';
 import logger from '@/lib/logger';
 
-export default function DashboardPage() {
+function LoadingFallback() {
+  return (
+    <div className="flex justify-center py-8">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
+    </div>
+  );
+}
+
+function DashboardContent() {
   const { t, locale } = useTranslation();
   const { user } = useStore();
   const [sessions, setSessions] = useState([]);
@@ -111,9 +120,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold mb-4">{t('dashboard.yourSessions', 'Vos sessions')}</h2>
           
           {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
-            </div>
+            <LoadingFallback />
           ) : sessions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sessions.map((session) => (
@@ -215,5 +222,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <DashboardContent />
+    </Suspense>
   );
 } 
