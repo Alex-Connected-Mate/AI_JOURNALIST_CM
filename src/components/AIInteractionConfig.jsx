@@ -1111,7 +1111,7 @@ Begin by introducing yourself and asking the first question.`;
                     label="Agent Name"
                     value={localConfig.agentName}
                     onChange={(e) => handleLocalChange('agentName', e.target.value)}
-                    onValidate={(value) => validateField('agentName', value)}
+                    validate={(value) => validateField('agentName', value)}
                     error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-purple-400"
@@ -1126,7 +1126,7 @@ Begin by introducing yourself and asking the first question.`;
                     label="Program Name"
                     value={localConfig.programName}
                     onChange={(e) => handleLocalChange('programName', e.target.value)}
-                    onValidate={(value) => validateField('programName', value)}
+                    validate={(value) => validateField('programName', value)}
                     error={validationState.programName?.message}
                     placeholder="Enter your program or event name (e.g., Nuggets Workshop)"
                     className="focus:ring-2 focus:ring-purple-400"
@@ -1627,7 +1627,7 @@ Begin by introducing yourself and asking the first question.`;
                     label="Agent Name"
                     value={localConfig.agentName || ""}
                     onChange={(e) => handleLocalChange('agentName', e.target.value)}
-                    onValidate={(value) => validateField('agentName', value)}
+                    validate={(value) => validateField('agentName', value)}
                     error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-amber-400"
@@ -1642,7 +1642,7 @@ Begin by introducing yourself and asking the first question.`;
                     label="Program Name"
                     value={localConfig.programName || ""}
                     onChange={(e) => handleLocalChange('programName', e.target.value)}
-                    onValidate={(value) => validateField('programName', value)}
+                    validate={(value) => validateField('programName', value)}
                     error={validationState.programName?.message}
                     placeholder="Enter your program or event name"
                     className="focus:ring-2 focus:ring-amber-400"

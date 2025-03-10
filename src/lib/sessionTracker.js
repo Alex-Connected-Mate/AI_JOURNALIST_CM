@@ -6,13 +6,14 @@
  */
 
 import eventTracker, { EVENT_TYPES } from '@/lib/eventTracker';
+import logger from '@/lib/logger';
 
 /**
  * Enregistre un événement lié à la création de session
  * 
  * @param {string} action - Action spécifique (ex: "session_create_start", "session_validation_error")
- * @param {object} data - Données de la session
- * @param {object} error - Erreur éventuelle
+ * @param {any} data - Données de la session
+ * @param {any} error - Erreur éventuelle
  */
 export const trackSessionEvent = (action, data = {}, error = null) => {
   // Filtrer les données sensibles ou volumineuses
@@ -36,7 +37,18 @@ export const trackSessionEvent = (action, data = {}, error = null) => {
       message: error.message || String(error),
       code: error.code,
       stack: error.stack,
+      name: error.name,
+      // For database errors
+      hint: error.hint,
+      detail: error.detail,
+      constraint: error.constraint
     };
+    
+    // Log full error to console for easier debugging
+    logger.error(`Session event error: ${action}`, error);
+  } else {
+    // Log successful events
+    logger.session(`Session event: ${action}`, details);
   }
   
   // Enregistrer l'événement
@@ -49,6 +61,7 @@ export const trackSessionEvent = (action, data = {}, error = null) => {
 export const trackSessionCreation = {
   // Début de création
   start: (sessionConfig) => {
+    logger.session('Starting session creation', sessionConfig);
     return trackSessionEvent('session_create_start', sessionConfig);
   },
   
@@ -58,12 +71,22 @@ export const trackSessionCreation = {
       'session_validation_success' : 
       'session_validation_error';
     
+    if (validationResult.isValid) {
+      logger.session('Session validation passed', validationResult);
+    } else {
+      logger.error('Session validation failed', validationResult.error);
+    }
+      
     return trackSessionEvent(action, sessionConfig, 
       validationResult.isValid ? null : { message: validationResult.error });
   },
   
   // Transformation des données
   transform: (sessionConfig, transformedData) => {
+    logger.session('Session data transformed', {
+      original: sessionConfig,
+      transformed: transformedData
+    });
     return trackSessionEvent('session_data_transform', {
       original: sessionConfig,
       transformed: transformedData
@@ -72,11 +95,13 @@ export const trackSessionCreation = {
   
   // Soumission à l'API
   submit: (sessionData) => {
+    logger.session('Submitting session to API', sessionData);
     return trackSessionEvent('session_submit', sessionData);
   },
   
   // Succès
   success: (sessionData, response) => {
+    logger.session('Session created successfully', response);
     return trackSessionEvent('session_create_success', {
       request: sessionData,
       response
@@ -85,6 +110,7 @@ export const trackSessionCreation = {
   
   // Échec
   error: (sessionData, error) => {
+    logger.error('Session creation failed', error);
     return trackSessionEvent('session_create_error', sessionData, error);
   }
 };
@@ -94,10 +120,15 @@ export const trackSessionCreation = {
  */
 export const trackSessionLoading = {
   start: (sessionId) => {
+    logger.session('Loading session', { sessionId });
     return trackSessionEvent('session_load_start', { sessionId });
   },
   
   success: (sessionId, sessionData) => {
+    logger.session('Session loaded successfully', { 
+      sessionId, 
+      sessionData
+    });
     return trackSessionEvent('session_load_success', { 
       sessionId, 
       sessionData
@@ -105,6 +136,7 @@ export const trackSessionLoading = {
   },
   
   error: (sessionId, error) => {
+    logger.error('Failed to load session', { sessionId, error });
     return trackSessionEvent('session_load_error', { sessionId }, error);
   }
 };

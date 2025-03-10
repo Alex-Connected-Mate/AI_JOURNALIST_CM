@@ -5,12 +5,15 @@ import { useTranslation } from '@/components/LocaleProvider';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { useSearchParams } from 'next/navigation';
+import { getSessions } from '@/lib/supabase';
+import logger from '@/lib/logger';
 
 export default function DashboardPage() {
   const { t, locale } = useTranslation();
   const { user } = useStore();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const searchParams = useSearchParams();
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -24,10 +27,10 @@ export default function DashboardPage() {
           setSuccessMessage('Nexus questionnaire configuration saved successfully.');
           break;
         case 'session-created':
-          setSuccessMessage('Session created successfully.');
+          setSuccessMessage('Session créée avec succès. Vous pouvez maintenant la configurer ou la partager avec vos participants.');
           break;
         default:
-          setSuccessMessage('Operation completed successfully.');
+          setSuccessMessage('Opération complétée avec succès.');
       }
     }
   }, [searchParams]);
@@ -42,16 +45,24 @@ export default function DashboardPage() {
       
       try {
         setLoading(true);
+        logger.info('Fetching sessions for user:', user.id);
         
-        // In production, this would be an API call to your database
-        // For example:
-        // const { data } = await supabase.from('sessions').select('*').eq('user_id', user.id);
+        // Fetch real session data from Supabase
+        const { data, error } = await getSessions(user.id);
         
-        // For development, we'll just use an empty array for now
-        setSessions([]);
+        if (error) {
+          logger.error('Error fetching sessions:', error);
+          setError('Unable to load sessions. Please try again later.');
+          setLoading(false);
+          return;
+        }
+        
+        logger.info(`Fetched ${data?.length || 0} sessions`);
+        setSessions(data || []);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching sessions:', error);
+        logger.error('Error fetching sessions:', error);
+        setError('An unexpected error occurred. Please try again later.');
         setLoading(false);
       }
     };
@@ -64,14 +75,14 @@ export default function DashboardPage() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">
-            {t('dashboard.title', 'Dashboard')}
+            {t('dashboard.title', 'Tableau de bord')}
           </h1>
           <Link 
             href="/sessions/new" 
             className="cm-button flex items-center gap-2"
           >
             <span role="img" aria-label="rocket">🚀</span>
-            {t('dashboard.createSession', 'Create Session')}
+            {t('dashboard.createSession', 'Créer une session')}
           </Link>
         </div>
         
@@ -81,17 +92,23 @@ export default function DashboardPage() {
           </div>
         )}
         
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
+        
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
           <h2 className="font-medium text-blue-800 mb-2">
-            {t('dashboard.welcomeMessage', 'Welcome to AI Journalist')}
+            {t('dashboard.welcomeMessage', 'Bienvenue sur AI Journalist')}
           </h2>
           <p className="text-gray-600">
-            Create and manage your interactive sessions with AI assistance
+            Créez et gérez vos sessions interactives avec l'assistance IA
           </p>
         </div>
 
         <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">{t('dashboard.yourSessions', 'Your Sessions')}</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('dashboard.yourSessions', 'Vos sessions')}</h2>
           
           {loading ? (
             <div className="flex justify-center py-8">
@@ -103,34 +120,36 @@ export default function DashboardPage() {
                 <div key={session.id} className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
                   <div className="p-4">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-lg">{session.name || 'Untitled Session'}</h3>
+                      <h3 className="font-medium text-lg">{session.name || 'Session sans titre'}</h3>
                       <span className={`text-xs px-2 py-1 rounded-full ${
                         session.status === 'draft' ? 'bg-gray-100 text-gray-700' : 
                         session.status === 'active' ? 'bg-green-100 text-green-700' : 
                         'bg-blue-100 text-blue-700'
                       }`}>
-                        {session.status === 'draft' ? 'Draft' : 
+                        {session.status === 'draft' ? 'Brouillon' : 
                          session.status === 'active' ? 'Active' : 
-                         'Completed'}
+                         'Terminée'}
                       </span>
                     </div>
                     
                     <p className="text-sm text-gray-600 mt-1">
-                      {session.institution}
+                      {session.institution || 'Aucune institution'}
                     </p>
+                    
+                    {session.access_code && (
+                      <div className="flex items-center mt-2 text-sm text-violet-700 font-medium">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        Code d'accès: {session.access_code}
+                      </div>
+                    )}
                     
                     <div className="flex items-center mt-2 text-sm text-gray-500">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                       </svg>
-                      {session.created_at ? new Date(session.created_at).toLocaleDateString() : 'No date'}
-                    </div>
-                    
-                    <div className="flex items-center mt-1 text-sm text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                      </svg>
-                      {session.participants_count || 0} participants
+                      {session.created_at ? new Date(session.created_at).toLocaleDateString() : 'Pas de date'}
                     </div>
                   </div>
                   
@@ -139,7 +158,7 @@ export default function DashboardPage() {
                       href={`/sessions/${session.id}`}
                       className="text-blue-600 hover:text-blue-800 text-sm px-3 py-1 rounded-md hover:bg-blue-50 flex-1 text-center"
                     >
-                      View Details
+                      Voir les détails
                     </Link>
                     
                     {/* Ajouter un bouton "Launch Session" pour toutes les sessions actives */}
@@ -148,17 +167,17 @@ export default function DashboardPage() {
                         href={`/sessions/${session.id}/run`}
                         className="text-green-600 hover:text-green-800 text-sm px-3 py-1 rounded-md hover:bg-green-50 flex-1 text-center font-medium"
                       >
-                        Launch Session
+                        Lancer la session
                       </Link>
                     )}
                     
                     {/* Bouton d'édition pour les sessions en mode brouillon */}
                     {session.status === 'draft' && (
                       <Link 
-                        href={`/sessions/${session.id}`}
+                        href={`/sessions/${session.id}/edit`}
                         className="text-indigo-600 hover:text-indigo-800 text-sm px-3 py-1 rounded-md hover:bg-indigo-50 flex-1 text-center"
                       >
-                        Edit Session
+                        Éditer
                       </Link>
                     )}
                     
@@ -168,7 +187,7 @@ export default function DashboardPage() {
                         href={`/sessions/${session.id}/results`}
                         className="text-amber-600 hover:text-amber-800 text-sm px-3 py-1 rounded-md hover:bg-amber-50 flex-1 text-center"
                       >
-                        View Results
+                        Voir les résultats
                       </Link>
                     )}
                   </div>
@@ -179,17 +198,17 @@ export default function DashboardPage() {
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <div className="text-4xl mb-4">✨</div>
               <h3 className="text-lg font-medium text-gray-800 mb-2">
-                {t('dashboard.noSessions', 'No sessions yet')}
+                {t('dashboard.noSessions', 'Pas encore de sessions')}
               </h3>
               <p className="text-gray-600 mb-6">
-                {t('dashboard.createYourFirst', 'Create your first session to get started')}
+                {t('dashboard.createYourFirst', 'Créez votre première session pour commencer')}
               </p>
               <Link 
                 href="/sessions/new" 
                 className="cm-button flex items-center gap-2"
               >
                 <span role="img" aria-label="rocket">🚀</span>
-                {t('dashboard.createSession', 'Create Session')}
+                {t('dashboard.createSession', 'Créer une session')}
               </Link>
             </div>
           )}

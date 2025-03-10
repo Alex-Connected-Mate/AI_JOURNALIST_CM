@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Input from './Input';
 import Checkbox from './Checkbox';
 import NumberInput from './NumberInput';
@@ -15,9 +15,10 @@ import ImageSelector from './ImageSelector';
  * - Company logo/images
  * - Visibility settings for each information element
  */
-const BasicInfoStep = ({ sessionConfig, updateSessionConfig }) => {
+const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
   const {
     sessionName = '',
+    title = '',
     institution = '',
     professorName = '',
     maxParticipants = 50,
@@ -26,11 +27,48 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig }) => {
     selectedImage = 'university',
   } = sessionConfig;
 
+  // Use the proper title value (prefer title or fall back to sessionName)
+  const displayName = title || sessionName;
+
+  // Synchronize title and sessionName whenever either changes
+  useEffect(() => {
+    // Only run this effect if there is a mismatch between the two fields
+    if ((title && !sessionName) || (sessionName && !title) || (title !== sessionName && title && sessionName)) {
+      // Keep both fields in sync
+      const valueToUse = title || sessionName;
+      updateSessionConfig({
+        ...sessionConfig,
+        title: valueToUse,
+        sessionName: valueToUse
+      });
+    }
+  }, [title, sessionName]);
+
   const handleChange = (field, value) => {
-    updateSessionConfig({
+    const updates = {
       ...sessionConfig,
       [field]: value
-    });
+    };
+    
+    // If we're updating the session name, also update the title for compatibility
+    if (field === 'sessionName') {
+      updates.title = value;
+      
+      // Also update the title in the basicInfo object if it exists
+      if (sessionConfig.basicInfo) {
+        updates.basicInfo = {
+          ...sessionConfig.basicInfo,
+          title: value
+        };
+      }
+    }
+    
+    // If we're somehow updating the title directly, also update sessionName
+    if (field === 'title') {
+      updates.sessionName = value;
+    }
+    
+    updateSessionConfig(updates);
   };
 
   return (
@@ -65,10 +103,11 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig }) => {
           <div className="space-y-5">
             <Input
               label="Nom de la Session"
-              value={sessionName}
+              value={displayName}
               onChange={(e) => handleChange('sessionName', e.target.value)}
               placeholder="Ex: Workshop Innovation Q1 2023"
               required
+              error={errors.sessionName || errors.title}
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727 1.213L9.53 6h2.94l.56-2.243a1 1 0 111.94.486L14.53 6H17a1 1 0 110 2h-2.97l-1 4H15a1 1 0 110 2h-2.47l-.56 2.242a1 1 0 11-1.94-.485L10.47 14H7.53l-.56 2.242a1 1 0 11-1.94-.485L5.47 14H3a1 1 0 110-2h2.97l1-4H5a1 1 0 110-2h2.47l.56-2.243a1 1 0 011.213-.727zM9.03 8l-1 4h2.938l1-4H9.031z" clipRule="evenodd" />
@@ -83,6 +122,7 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig }) => {
                 onChange={(e) => handleChange('institution', e.target.value)}
                 placeholder="Ex: Connected Mate SAS"
                 required
+                error={errors.institution}
                 icon={
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2a1 1 0 00-1-1H7a1 1 0 00-1 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
@@ -105,6 +145,7 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig }) => {
                 value={professorName}
                 onChange={(e) => handleChange('professorName', e.target.value)}
                 placeholder="Ex: Jean Dupont"
+                error={errors.professorName}
                 icon={
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
@@ -127,6 +168,7 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig }) => {
               onChange={(value) => handleChange('maxParticipants', value)}
               min={2}
               max={1000}
+              error={errors.maxParticipants}
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />

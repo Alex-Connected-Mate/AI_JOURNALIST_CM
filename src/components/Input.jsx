@@ -17,7 +17,7 @@ const Input = ({
   error = null,
   icon = null,
   className = '',
-  onValidate,
+  validate,
   ...domProps
 }) => {
   const [localValue, setLocalValue] = useState(value);
@@ -43,7 +43,7 @@ const Input = ({
   }, [validationTimeout]);
 
   const handleValidation = async (newValue) => {
-    if (!onValidate) return;
+    if (!validate) return;
 
     if (validationTimeout) {
       clearTimeout(validationTimeout);
@@ -52,7 +52,7 @@ const Input = ({
     const timeoutId = setTimeout(async () => {
       setIsValidating(true);
       try {
-        const result = await onValidate(newValue);
+        const result = await validate(newValue);
         setInternalError(result.isValid ? null : result.message);
       } catch (err) {
         console.error('Validation error:', err);
@@ -71,7 +71,7 @@ const Input = ({
     setInternalError(null);
     onChange(e);
     
-    if (onValidate) {
+    if (validate) {
       handleValidation(newValue);
     }
   };
@@ -90,9 +90,6 @@ const Input = ({
     }
   };
 
-  const inputProps = { ...domProps };
-  delete inputProps.onValidate;
-
   return (
     <div className="space-y-1">
       {label && (
@@ -110,7 +107,7 @@ const Input = ({
         )}
         
         <input
-          {...inputProps}
+          {...domProps}
           type={type}
           value={localValue}
           onChange={handleChange}

@@ -6,26 +6,10 @@ import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import SessionCreationFlow from '@/components/SessionCreationFlow';
 import LogViewer from '@/components/LogViewer';
-import { createSession } from '@/lib/supabase';
+import { createSession, validateSessionData } from '@/lib/supabase';
 import type { SessionData } from '@/lib/supabase';
 import sessionTracker from '@/lib/sessionTracker';
-
-// Import validateSessionData localement
-function validateSessionData(data: Partial<SessionData>): { isValid: boolean; error?: string } {
-  if (!data.title?.trim()) {
-    return { isValid: false, error: 'Session title is required' };
-  }
-  
-  if (!data.user_id) {
-    return { isValid: false, error: 'User ID is required' };
-  }
-  
-  if (data.status && !['draft', 'active', 'ended'].includes(data.status)) {
-    return { isValid: false, error: 'Invalid session status' };
-  }
-  
-  return { isValid: true };
-}
+import logger from '@/lib/logger';
 
 export default function NewSessionPage() {
   const router = useRouter();
@@ -34,6 +18,7 @@ export default function NewSessionPage() {
   // Session creation states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   // Handle the session creation process when the form is submitted
   const handleCreateSession = async (sessionConfig: any) => {
@@ -46,23 +31,33 @@ export default function NewSessionPage() {
     
     setLoading(true);
     setError(null);
+    setSuccess(null);
     
-    // Suivre le début de la création
+    // Track creation start
     sessionTracker.trackSessionCreation.start(sessionConfig);
+    logger.session('Starting session creation process', sessionConfig);
     
     try {
+      logger.session('Processing session configuration', sessionConfig);
+      
       // Transform the session config into the expected format
       const sessionData: Partial<SessionData> = {
-        title: sessionConfig.basicInfo?.title || sessionConfig.name || '',
-        description: sessionConfig.basicInfo?.description || sessionConfig.description || '',
+        title: sessionConfig.sessionName || sessionConfig.basicInfo?.title || '',
+        description: sessionConfig.basicInfo?.description || '',
         status: 'draft' as const,
         user_id: user.id,
         settings: {
           institution: sessionConfig.basicInfo?.institution || sessionConfig.institution || '',
-          professorName: sessionConfig.basicInfo?.professorName || sessionConfig.professorName || '',
+          professorName: sessionConfig.basicInfo?.professorName || sessionConfig.professorName || user.full_name || '',
           showProfessorName: sessionConfig.basicInfo?.showProfessorName ?? sessionConfig.showProfessorName ?? true,
           maxParticipants: sessionConfig.basicInfo?.maxParticipants || sessionConfig.maxParticipants || 30,
-          connection: sessionConfig.connection || {},
+          connection: {
+            anonymityLevel: sessionConfig.connection?.anonymityLevel || 'semi-anonymous',
+            loginMethod: sessionConfig.connection?.loginMethod || 'email',
+            approvalRequired: sessionConfig.connection?.approvalRequired || false,
+            color: sessionConfig.connection?.color || '#3490dc',
+            emoji: sessionConfig.connection?.emoji || '🎓'
+          },
           discussion: sessionConfig.discussion || {},
           aiInteraction: {
             nuggets: sessionConfig.nuggetsRules || {},
@@ -80,40 +75,66 @@ export default function NewSessionPage() {
         }
       };
 
-      // Valider les données de session
+      // Ensure title is provided - this is a required field
+      if (!sessionData.title) {
+        if (sessionConfig.title) {
+          sessionData.title = sessionConfig.title;
+        } else if (sessionConfig.name) {
+          sessionData.title = sessionConfig.name;
+        } else {
+          throw new Error('Le titre de la session est requis');
+        }
+      }
+
+      logger.session('Transformed session data', sessionData);
+
+      // Validate the session data
       const validation = validateSessionData(sessionData);
       if (!validation.isValid) {
+        logger.error('Session data validation failed', validation.error);
         throw new Error(validation.error || 'Données de session invalides');
       }
       
       sessionTracker.trackSessionCreation.validation(sessionConfig, validation);
       
-      // Suivre la transformation
+      // Track the transformation
       sessionTracker.trackSessionCreation.transform(sessionConfig, sessionData);
 
-      console.log('Creating session with data:', sessionData);
+      logger.session('Creating session in database...', sessionData);
       
-      // Suivre la soumission à l'API
+      // Track API submission
       sessionTracker.trackSessionCreation.submit(sessionData);
       
       const { data, error: createError } = await createSession(sessionData);
       
       if (createError) {
-        console.error('Error creating session:', createError);
+        logger.error('Failed to create session', createError);
         sessionTracker.trackSessionCreation.error(sessionData, createError);
         throw createError;
       }
       
-      // Suivre le succès
+      if (!data) {
+        throw new Error('Aucune donnée retournée lors de la création de la session');
+      }
+      
+      // Track success
       sessionTracker.trackSessionCreation.success(sessionData, data);
       
-      // Redirect to dashboard with success message
-      router.push('/dashboard?success=session-created');
+      logger.session('Session created successfully', data);
+      
+      // Show success message and delay redirect
+      setSuccess(`Session "${data.name}" créée avec succès! Code d'accès: ${data.access_code}`);
+      setLoading(false);
+      
+      // Redirect after 3 seconds
+      setTimeout(() => {
+        router.push('/dashboard?success=session-created');
+      }, 3000);
     } catch (err: any) {
-      console.error('Error creating session:', err);
+      logger.error('Session creation failed', err);
       setError(`Une erreur s'est produite lors de la création de la session: ${err.message || JSON.stringify(err)}`);
       
-      // Suivre l'erreur
+      // Track error
       sessionTracker.trackSessionCreation.error(sessionConfig, err);
       
       setLoading(false);
@@ -134,6 +155,15 @@ export default function NewSessionPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
           {error}
+        </div>
+      )}
+      
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
+          {success}
+          <div className="mt-2 text-sm">
+            Redirection vers le tableau de bord dans quelques secondes...
+          </div>
         </div>
       )}
       

@@ -23,9 +23,9 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
   const [activeStep, setActiveStep] = useState('basic-info');
   const [sessionConfig, setSessionConfig] = useState({
     basicInfo: {
-      title: '',
-      description: '',
-      institution: '',
+      title: initialConfig.title || initialConfig.sessionName || '',
+      description: initialConfig.description || '',
+      institution: initialConfig.institution || '',
       date: new Date().toISOString().split('T')[0]
     },
     connection: {
@@ -68,12 +68,13 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     enablePresentationMode: true,
     autoExportSessionData: false,
     // other default sections...
-    sessionName: '',
-    professorName: '',
-    showInstitution: true,
-    showProfessorName: true,
-    maxParticipants: 30,
-    companyLogos: [],
+    sessionName: initialConfig.title || initialConfig.sessionName || '',
+    title: initialConfig.title || initialConfig.sessionName || '',
+    professorName: initialConfig.professorName || '',
+    showInstitution: initialConfig.showInstitution ?? true,
+    showProfessorName: initialConfig.showProfessorName ?? true,
+    maxParticipants: initialConfig.maxParticipants || 30,
+    companyLogos: initialConfig.companyLogos || [],
     
     // Will be populated with defaults from each step component
     ...initialConfig
@@ -83,54 +84,66 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
 
   // Log component initialization
   useEffect(() => {
-    logger.component('SessionCreationFlow', 'mounted', { initialStep: activeStep });
-    
-    return () => {
-      logger.component('SessionCreationFlow', 'unmounted');
-    };
+    logger.info('SessionCreationFlow initialized', { config: sessionConfig });
   }, []);
 
-  const updateSessionConfig = (updatedConfig) => {
-    logger.debug('Updating session config', {
-      changedFields: Object.keys(updatedConfig).filter(
-        key => updatedConfig[key] !== sessionConfig[key]
-      )
+  const updateSessionConfig = (newConfig) => {
+    logger.debug('Updating session config', { 
+      oldConfig: sessionConfig, 
+      newConfig: newConfig
     });
     
-    setSessionConfig(updatedConfig);
-    
-    // Clear any errors for fields that have been updated
-    const updatedFields = Object.keys(updatedConfig).filter(
-      key => updatedConfig[key] !== sessionConfig[key]
-    );
-    
-    if (updatedFields.length > 0) {
-      const newErrors = { ...errors };
-      updatedFields.forEach(field => {
-        if (newErrors[field]) {
-          delete newErrors[field];
-        }
-      });
-      setErrors(newErrors);
+    // Keep title and sessionName in sync
+    if (newConfig.sessionName && newConfig.sessionName !== newConfig.title) {
+      newConfig.title = newConfig.sessionName;
+      // Also update in basicInfo if it exists
+      if (newConfig.basicInfo) {
+        newConfig.basicInfo = {
+          ...newConfig.basicInfo,
+          title: newConfig.sessionName
+        };
+      }
+    } else if (newConfig.title && newConfig.title !== newConfig.sessionName) {
+      newConfig.sessionName = newConfig.title;
     }
+    
+    // Always ensure title is set in both the root and basicInfo
+    if (newConfig.basicInfo?.title && newConfig.basicInfo.title !== newConfig.title) {
+      newConfig.title = newConfig.basicInfo.title;
+      newConfig.sessionName = newConfig.basicInfo.title;
+    }
+    
+    setSessionConfig(newConfig);
+    validateStep(activeStep, newConfig);
   };
 
-  const validateStep = (step) => {
-    logger.debug(`Validating step: ${step}`);
-    const newErrors = {};
+  const validateStep = (step, config = sessionConfig) => {
+    const newErrors = { ...errors };
+    let isValid = true;
     
     if (step === 'basic-info') {
-      if (!sessionConfig.sessionName?.trim()) {
-        newErrors.sessionName = 'Le nom de la session est requis';
+      // Validate title (either in title, sessionName, or basicInfo.title)
+      if (!config.title && !config.sessionName && !config.basicInfo?.title) {
+        newErrors.title = 'Le titre de la session est requis';
+        newErrors.sessionName = 'Le titre de la session est requis';
+        isValid = false;
+      } else {
+        delete newErrors.title;
+        delete newErrors.sessionName;
       }
-      if (!sessionConfig.professorName?.trim()) {
-        newErrors.professorName = 'Le nom du professeur est requis';
+      
+      // Validate institution
+      if (!config.institution && !config.basicInfo?.institution) {
+        newErrors.institution = "Le nom de l'institution est requis";
+        isValid = false;
+      } else {
+        delete newErrors.institution;
       }
     }
     
     // Validate nuggets analysis step
     if (step === 'nuggets-analysis') {
-      const nuggetsRules = sessionConfig.nuggetsRules || {};
+      const nuggetsRules = config.nuggetsRules || {};
       const hasSelectedRules = nuggetsRules.focusOnKeyInsights || 
                               nuggetsRules.discoverPatterns || 
                               nuggetsRules.quoteRelevantExamples;
@@ -138,12 +151,13 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       
       if (!hasSelectedRules && !hasCustomRules) {
         newErrors.nuggetsRules = 'At least one analysis rule is required for Nuggets analysis';
+        isValid = false;
       }
     }
     
     // Validate lightbulbs analysis step
     if (step === 'lightbulbs-analysis') {
-      const lightbulbsRules = sessionConfig.lightbulbsRules || {};
+      const lightbulbsRules = config.lightbulbsRules || {};
       const hasSelectedRules = lightbulbsRules.captureInnovativeThinking || 
                               lightbulbsRules.identifyCrossPollination || 
                               lightbulbsRules.evaluatePracticalApplications;
@@ -151,12 +165,13 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       
       if (!hasSelectedRules && !hasCustomRules) {
         newErrors.lightbulbsRules = 'At least one analysis rule is required for Lightbulbs analysis';
+        isValid = false;
       }
     }
     
     // Validate overall analysis step
     if (step === 'overall-analysis') {
-      const overallRules = sessionConfig.overallRules || {};
+      const overallRules = config.overallRules || {};
       const hasSelectedRules = overallRules.synthesizeAllInsights || 
                               overallRules.extractActionableRecommendations || 
                               overallRules.provideSessionSummary;
@@ -164,6 +179,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       
       if (!hasSelectedRules && !hasCustomRules) {
         newErrors.overallRules = 'At least one analysis rule is required for Overall analysis';
+        isValid = false;
       }
     }
     
@@ -172,11 +188,6 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     // etc.
     
     setErrors(newErrors);
-    
-    const isValid = Object.keys(newErrors).length === 0;
-    if (!isValid) {
-      logger.warning('Step validation failed', { step, errors: newErrors });
-    }
     
     return isValid;
   };
@@ -264,22 +275,82 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
   const handleSubmit = () => {
     logger.info('Attempting to submit session configuration');
     
-    // Final validation of all steps
-    if (validateAllSteps()) {
-      logger.info('Session validation successful, submitting data');
-      onSubmit(sessionConfig);
+    // Check if title/sessionName is set
+    if (!sessionConfig.title && !sessionConfig.sessionName) {
+      setErrors({
+        ...errors,
+        title: 'Le titre de la session est requis',
+        sessionName: 'Le titre de la session est requis'
+      });
+      logger.warning('Session submission prevented: missing title');
+      return;
+    }
+    
+    // Ensure basicInfo.title is set from sessionName/title
+    if (sessionConfig.sessionName || sessionConfig.title) {
+      const titleValue = sessionConfig.title || sessionConfig.sessionName;
+      
+      // Update session config with title in all places
+      const updatedConfig = {
+        ...sessionConfig,
+        title: titleValue,
+        sessionName: titleValue,
+        basicInfo: {
+          ...sessionConfig.basicInfo,
+          title: titleValue
+        }
+      };
+      
+      setSessionConfig(updatedConfig);
+      
+      // Final validation of all steps
+      if (validateAllSteps()) {
+        logger.info('Session validation successful, submitting data', updatedConfig);
+        onSubmit(updatedConfig);
+      } else {
+        logger.warning('Session submission prevented due to validation errors');
+      }
     } else {
-      logger.warning('Session submission prevented due to validation errors');
+      // Final validation of all steps
+      if (validateAllSteps()) {
+        logger.info('Session validation successful, submitting data');
+        
+        // Ensure title is properly set before submitting
+        const finalConfig = { ...sessionConfig };
+        
+        if (finalConfig.basicInfo?.title && !finalConfig.title) {
+          finalConfig.title = finalConfig.basicInfo.title;
+        }
+        
+        if (finalConfig.sessionName && !finalConfig.title) {
+          finalConfig.title = finalConfig.sessionName;
+        }
+        
+        onSubmit(finalConfig);
+      } else {
+        logger.warning('Session submission prevented due to validation errors');
+      }
     }
   };
 
   const validateAllSteps = () => {
-    logger.debug('Validating all steps before submission');
+    const newErrors = {};
+    let isValid = true;
+    
+    // Validate basic info
+    if (!sessionConfig.title && !sessionConfig.sessionName && !sessionConfig.basicInfo?.title) {
+      newErrors.title = 'Le titre de la session est requis';
+      newErrors.sessionName = 'Le titre de la session est requis';
+      isValid = false;
+    }
+    
+    if (!sessionConfig.institution && !sessionConfig.basicInfo?.institution) {
+      newErrors.institution = "Le nom de l'institution est requis";
+      isValid = false;
+    }
     
     // Validate all steps and collect all errors
     const allSteps = ['basic-info', 'connection', 'discussion', 'ai-interaction', 'analysis'];
-    let isValid = true;
-    
     for (const step of allSteps) {
       if (!validateStep(step)) {
         isValid = false;
@@ -289,6 +360,15 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
           setActiveStep(step);
           break;
         }
+      }
+    }
+    
+    setErrors(newErrors);
+    
+    if (!isValid) {
+      // If basic info validation fails, go to that step
+      if (newErrors.title || newErrors.sessionName || newErrors.institution) {
+        setActiveStep('basic-info');
       }
     }
     

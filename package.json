@@ -8,7 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "NEXT_MINIMAL_ERROR_HANDLING=true next build"
+    "vercel-build": "NEXT_MINIMAL_ERROR_HANDLING=true next build",
+    "fix-next-config": "node scripts/fix-next-config.js",
+    "validate-fixes": "node scripts/validate-fixes.js",
+    "dev:safe": "node scripts/start.js",
+    "predev:safe": "node scripts/fix-next-config.js",
+    "prevercel-build": "node scripts/vercel-prepare.js"
   },
   "keywords": [],
   "author": "",

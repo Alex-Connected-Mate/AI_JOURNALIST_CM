@@ -178,18 +178,26 @@ export async function getSessions(userId: string) {
 
 // Session Types
 export interface SessionData {
+  id?: string;
   title: string;
   description?: string;
   status: 'draft' | 'active' | 'ended';
   user_id: string;
   started_at?: string;
   ended_at?: string;
+  access_code?: string;
   settings?: {
     institution?: string;
     professorName?: string;
     showProfessorName?: boolean;
     maxParticipants?: number;
-    connection?: Record<string, any>;
+    connection?: {
+      anonymityLevel?: 'anonymous' | 'semi-anonymous' | 'non-anonymous';
+      loginMethod?: string;
+      approvalRequired?: boolean;
+      color?: string;
+      emoji?: string;
+    };
     discussion?: Record<string, any>;
     aiInteraction?: {
       nuggets?: Record<string, any>;
@@ -209,41 +217,87 @@ export interface SessionData {
 
 // Session validation functions
 export function validateSessionData(data: Partial<SessionData>): { isValid: boolean; error?: string } {
+  console.log('Validating session data:', JSON.stringify(data, null, 2));
+  
+  // Check required fields
   if (!data.title?.trim()) {
+    console.error('Session validation failed: title is required');
     return { isValid: false, error: 'Session title is required' };
   }
   
   if (!data.user_id) {
+    console.error('Session validation failed: user_id is required');
     return { isValid: false, error: 'User ID is required' };
   }
   
+  // Check valid status if provided
   if (data.status && !['draft', 'active', 'ended'].includes(data.status)) {
+    console.error('Session validation failed: invalid status', data.status);
     return { isValid: false, error: 'Invalid session status' };
   }
   
+  // Check connection settings if provided
+  if (data.settings?.connection?.anonymityLevel && 
+      !['anonymous', 'semi-anonymous', 'non-anonymous'].includes(data.settings.connection.anonymityLevel)) {
+    console.error('Session validation failed: invalid anonymity level', data.settings.connection.anonymityLevel);
+    return { isValid: false, error: 'Invalid anonymity level' };
+  }
+  
+  // Validate max participants if provided
+  if (data.settings?.maxParticipants !== undefined) {
+    if (isNaN(data.settings.maxParticipants) || data.settings.maxParticipants < 1) {
+      console.error('Session validation failed: invalid max participants count', data.settings.maxParticipants);
+      return { isValid: false, error: 'Max participants must be a positive number' };
+    }
+  }
+  
+  console.log('Session data validation passed');
   return { isValid: true };
 }
 
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
     try {
+      console.log('Creating session with data:', sessionData);
+      
       // Validate session data
       const validation = validateSessionData(sessionData);
       if (!validation.isValid) {
+        console.error('Session validation failed:', validation.error);
         throw new Error(validation.error || 'Invalid session data');
       }
-
-      // Prepare session data with defaults
-      const data = {
-        ...sessionData,
-        status: sessionData.status || 'draft',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      
+      // Generate a random access code (6 characters, uppercase letters and numbers)
+      const generateAccessCode = () => {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        return Array.from({length: 6}, () => 
+          characters.charAt(Math.floor(Math.random() * characters.length))
+        ).join('');
       };
 
+      // Map the application SessionData to the database schema fields
+      const dbSessionData = {
+        user_id: sessionData.user_id,
+        name: sessionData.title, // Map title to name in DB
+        institution: sessionData.settings?.institution || null,
+        professor_name: sessionData.settings?.professorName || null,
+        show_professor_name: sessionData.settings?.showProfessorName !== undefined ? 
+          sessionData.settings.showProfessorName : true,
+        max_participants: sessionData.settings?.maxParticipants || 100,
+        status: sessionData.status || 'draft',
+        access_code: generateAccessCode(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        started_at: sessionData.started_at || null,
+        ended_at: sessionData.ended_at || null
+      };
+
+      console.log('Mapped session data for DB:', dbSessionData);
+
+      // Insert the session
       const { data: result, error } = await supabase
         .from('sessions')
-        .insert(data)
+        .insert(dbSessionData)
         .select()
         .single();
         
@@ -253,6 +307,67 @@ export async function createSession(sessionData: Partial<SessionData>) {
       }
       
       console.log('Session created successfully:', result);
+      
+      // Create session profile if anonymity level is specified
+      if (sessionData.settings?.connection?.anonymityLevel) {
+        try {
+          console.log('Creating session profile with anonymity level:', 
+            sessionData.settings.connection.anonymityLevel);
+            
+          const profileData = {
+            session_id: result.id,
+            profile_mode: sessionData.settings.connection.anonymityLevel,
+            color: sessionData.settings.connection.color || null,
+            emoji: sessionData.settings.connection.emoji || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          const { error: profileError } = await supabase
+            .from('session_profiles')
+            .insert(profileData);
+            
+          if (profileError) {
+            console.warn('Failed to create session profile:', profileError);
+            // Continue execution, don't throw error for profile creation failure
+          } else {
+            console.log('Session profile created successfully');
+          }
+        } catch (profileErr) {
+          console.warn('Error creating session profile:', profileErr);
+          // Continue execution, don't throw error for profile creation failure
+        }
+      } else {
+        console.log('No anonymity level specified, skipping profile creation');
+      }
+      
+      // Create vote settings with defaults
+      try {
+        const voteSettingsData = {
+          session_id: result.id,
+          max_votes_per_participant: 3,
+          require_reason: false,
+          voting_duration: 1200, // 20 minutes in seconds
+          top_voted_count: 3,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const { error: voteSettingsError } = await supabase
+          .from('vote_settings')
+          .insert(voteSettingsData);
+          
+        if (voteSettingsError) {
+          console.warn('Failed to create vote settings:', voteSettingsError);
+          // Continue execution, don't throw error for vote settings creation failure
+        } else {
+          console.log('Vote settings created successfully');
+        }
+      } catch (voteSettingsErr) {
+        console.warn('Error creating vote settings:', voteSettingsErr);
+        // Continue execution, don't throw error for vote settings creation failure
+      }
+      
       return { data: result, error: null };
     } catch (error) {
       console.error('Session creation failed:', error);

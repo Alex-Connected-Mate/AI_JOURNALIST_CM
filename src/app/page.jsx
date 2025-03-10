@@ -10,63 +10,67 @@ export default function HomePage() {
   const { user } = useStore();
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 fade-in">
-      {/* Motif de points en arrière-plan */}
-      <DotPattern />
-      
-      {/* Logo en haut à gauche */}
-      <div className="absolute top-8 left-8 z-10 flex items-center gap-3">
-        <Image
-          src="/logo.png"
-          alt="AI Journalist"
-          width={40}
-          height={40}
-          className="h-10 w-auto"
-        />
-        <span className="font-bricolage text-lg font-semibold text-gray-800 hidden sm:inline-block">
-          AI Journalist
-        </span>
-      </div>
-
-      {/* Carte avec contenu */}
-      <div className="bento-card w-full max-w-md fade-in">
-        <div className="space-y-6">
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <Image
-                src="/logo.png"
-                alt="Logo"
-                width={80}
-                height={80}
-                className="h-20 w-auto"
-              />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 font-bricolage">
-              AI Journalist
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Welcome to the AI Journalist platform
-            </p>
-          </div>
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-grow flex items-center justify-center">
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-4xl font-bold mb-6">
+            Plateforme d'IA Journaliste
+          </h1>
+          <p className="text-xl mb-12 max-w-3xl mx-auto">
+            Une plateforme interactive permettant aux professeurs de créer des sessions d'analyse de discussions avec des agents IA.
+          </p>
           
-          <div className="pt-4">
-            <Link 
-              href={user ? "/dashboard" : "/auth/login"} 
-              className="cm-button w-full py-3 block text-center"
-            >
-              {user ? "Go to Dashboard" : "Login"}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
+            <Link href="/sessions" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+              <h2 className="text-xl font-semibold mb-3">Sessions</h2>
+              <p className="text-gray-600">Créez et gérez vos sessions d'analyse interactive</p>
+            </Link>
+            
+            <Link href="/dashboard" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+              <h2 className="text-xl font-semibold mb-3">Tableau de bord</h2>
+              <p className="text-gray-600">Consultez vos statistiques et résultats d'analyses</p>
+            </Link>
+            
+            <Link href="/admin/diagnostics" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-2 border-purple-100">
+              <h2 className="text-xl font-semibold mb-3 text-purple-700">Diagnostics système</h2>
+              <p className="text-gray-600">Vérifiez l'état du système et résolvez les problèmes</p>
+              <span className="inline-block mt-3 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded">
+                Administrateur
+              </span>
             </Link>
           </div>
+          
+          <div className="max-w-2xl mx-auto p-6 bg-gray-50 rounded-lg">
+            <h2 className="text-xl font-semibold mb-4">Déploiement Vercel</h2>
+            <p className="mb-4">
+              Cette application est déployée sur Vercel à l'adresse suivante :
+            </p>
+            <a 
+              href="https://ai-journalist-connectedmate.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 font-medium hover:underline"
+            >
+              ai-journalist-connectedmate.vercel.app
+            </a>
+            
+            <div className="mt-6 text-left">
+              <h3 className="text-lg font-medium mb-2">Notes importantes :</h3>
+              <ul className="list-disc pl-5 space-y-2 text-sm">
+                <li>En cas de problème lors du démarrage de l'application locale, utilisez la commande <code className="bg-gray-200 px-2 py-1 rounded">npm run dev:safe</code></li>
+                <li>Pour corriger le conflit Git dans next.config.js, utilisez <code className="bg-gray-200 px-2 py-1 rounded">npm run fix-next-config</code></li>
+                <li>L'application utilise un système de diagnostics accessible à <code className="bg-gray-200 px-2 py-1 rounded">/admin/diagnostics</code></li>
+              </ul>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
       
-      {/* Powered by */}
-      <div className="absolute bottom-6 right-6 z-10">
-        <div className="powered-by">
-          <span>Powered by</span>
-          <span className="font-bricolage font-semibold">Connected Mate</span>
+      <footer className="py-6 bg-gray-100">
+        <div className="container mx-auto px-4 text-center text-gray-600">
+          <p>&copy; {new Date().getFullYear()} Connected Mate - Plateforme d'IA Journaliste</p>
         </div>
-      </div>
+      </footer>
     </div>
   );
 } 
