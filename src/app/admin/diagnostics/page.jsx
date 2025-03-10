@@ -32,6 +32,7 @@ function DiagnosticsContent() {
   const [activeTab, setActiveTab] = useState('system');
   const [logs, setLogs] = useState([]);
   const [deployInfo, setDeployInfo] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   
   // Chargement des informations système au montage
   useEffect(() => {
@@ -211,6 +212,34 @@ function DiagnosticsContent() {
     }
   };
   
+  // Fonction pour copier les logs dans le presse-papiers
+  const handleCopyLogs = async () => {
+    try {
+      // Formater les logs en JSON avec indentation
+      const formattedLogs = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        environment: systemInfo.environment,
+        vercelEnv: systemInfo.vercelEnv,
+        nextVersion: systemInfo.nextVersion,
+        logs: logs.map(log => ({
+          timestamp: log.timestamp,
+          level: log.level,
+          message: log.message
+        }))
+      }, null, 2);
+
+      // Copier dans le presse-papiers
+      await navigator.clipboard.writeText(formattedLogs);
+      
+      // Afficher le feedback de succès
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Erreur lors de la copie des logs:', error);
+      alert('Erreur lors de la copie des logs dans le presse-papiers.');
+    }
+  };
+  
   if (loading) {
     return <LoadingFallback />;
   }
@@ -384,7 +413,48 @@ function DiagnosticsContent() {
       
       {activeTab === 'logs' && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">Logs système</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-medium">Logs système</h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleCopyLogs}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  copySuccess 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                {copySuccess ? (
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Copié !
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                    </svg>
+                    Copier les logs
+                  </span>
+                )}
+              </button>
+              <button 
+                onClick={handleDownloadLogs}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 text-sm font-medium"
+              >
+                Télécharger
+              </button>
+              <button 
+                onClick={handleClearLogs}
+                className="px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md text-red-700 text-sm font-medium"
+              >
+                Vider
+              </button>
+            </div>
+          </div>
           
           <div className="bg-gray-900 text-gray-300 p-4 rounded-md font-mono text-sm h-80 overflow-auto">
             {logs.length > 0 ? (
@@ -401,21 +471,6 @@ function DiagnosticsContent() {
             ) : (
               <p className="text-gray-500 italic">Aucun log disponible</p>
             )}
-          </div>
-          
-          <div className="mt-4 flex space-x-4">
-            <button 
-              onClick={handleDownloadLogs}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700"
-            >
-              Télécharger les logs
-            </button>
-            <button 
-              onClick={handleClearLogs}
-              className="px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md text-red-700"
-            >
-              Vider les logs
-            </button>
           </div>
         </div>
       )}
