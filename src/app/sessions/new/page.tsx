@@ -29,17 +29,7 @@ export default function NewSessionPage() {
   
   // Vérifier les limites d'utilisation selon l'abonnement
   const canCreateSession = () => {
-    if (!userProfile) return false;
-    switch (userProfile.subscription_status) {
-      case 'free':
-        return true; // Limité à 3 sessions dans la base de données
-      case 'premium':
-        return true; // Limité à 50 sessions dans la base de données
-      case 'enterprise':
-        return true; // Illimité
-      default:
-        return false;
-    }
+    return true; // Toujours permettre la création de sessions, indépendamment de l'abonnement
   };
 
   // Handle the session creation process when the form is submitted
@@ -125,13 +115,10 @@ export default function NewSessionPage() {
       const { data: session, error } = await createSession(sessionData);
       
       if (error) {
-        if (error.message?.includes('sessions_user_id_fkey')) {
-          // Handle foreign key constraint error
-          setError('Erreur de création du profil utilisateur. Veuillez vous reconnecter.');
-          router.push('/auth/login?redirect=/sessions/new');
-          return;
-        }
-        throw error;
+        // Gestion simplifiée des erreurs
+        setError('Une erreur est survenue lors de la création de la session. Veuillez réessayer.');
+        console.error('Session creation error:', error);
+        return;
       }
       
       if (session) {
@@ -181,17 +168,16 @@ export default function NewSessionPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="first-level-block p-6 rounded-xl text-center">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Limite de sessions atteinte
+            Une erreur est survenue
           </h2>
           <p className="text-gray-600 mb-6">
-            Vous avez atteint la limite de sessions pour votre abonnement actuel.
-            Passez à un abonnement supérieur pour créer plus de sessions.
+            Impossible de créer une session pour le moment. Veuillez réessayer ultérieurement.
           </p>
           <button
-            onClick={() => router.push('/settings/subscription')}
+            onClick={() => router.push('/dashboard')}
             className="cm-button"
           >
-            Voir les abonnements
+            Retour au tableau de bord
           </button>
         </div>
       </div>
@@ -286,7 +272,7 @@ export default function NewSessionPage() {
                     value={sessionData.max_participants}
                     onChange={(e) => setSessionData({ ...sessionData, max_participants: parseInt(e.target.value) })}
                     min="1"
-                    max={userProfile?.subscription_status === 'enterprise' ? 999 : 100}
+                    max="9999"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>

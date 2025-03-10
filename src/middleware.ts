@@ -27,7 +27,6 @@ export async function middleware(request: NextRequest) {
     // Check rate limit using forwarded IP or remote address
     const ip = request.headers.get('x-forwarded-for') || 
                request.headers.get('x-real-ip') || 
-               request.socket?.remoteAddress ||
                '127.0.0.1';
 
     const { success, limit, reset, remaining } = await ratelimit.limit(
@@ -57,19 +56,6 @@ export async function middleware(request: NextRequest) {
     if (request.nextUrl.pathname.startsWith('/api/')) {
       if (!session) {
         return new NextResponse('Unauthorized', { status: 401 });
-      }
-
-      // Validate subscription status for premium endpoints
-      if (request.nextUrl.pathname.startsWith('/api/premium/')) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('subscription_status')
-          .eq('id', session.user.id)
-          .single();
-
-        if (!profile || profile.subscription_status !== 'premium') {
-          return new NextResponse('Subscription Required', { status: 402 });
-        }
       }
     }
 

@@ -6,6 +6,7 @@ export interface UserProfile {
   title: string | null;
   bio: string | null;
   avatar_url: string | null;
+  subscription_status?: string;
   created_at: string;
   updated_at: string;
 }
@@ -78,32 +79,6 @@ export interface UserMetrics {
     ai_interactions: number;
     exports: number;
   };
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Subscription {
-  id: string;
-  user_id: string;
-  plan_id: string;
-  status: 'active' | 'canceled' | 'expired';
-  current_period_start: string;
-  current_period_end: string;
-  cancel_at_period_end: boolean;
-  stripe_subscription_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  description: string;
-  price_monthly: number;
-  price_yearly: number;
-  features: Record<string, any>;
-  stripe_price_id_monthly: string;
-  stripe_price_id_yearly: string;
   created_at: string;
   updated_at: string;
 }
