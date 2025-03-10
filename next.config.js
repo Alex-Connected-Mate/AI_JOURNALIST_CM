@@ -31,11 +31,13 @@ const nextConfig = {
   
   // Options expérimentales
   experimental: {
-    // These are compatible with Next.js 15.2.0
+    // Ces options sont compatibles avec Next.js 15.2.0
     ppr: false,
     optimizePackageImports: ['next/navigation'],
-    serverComponentsExternalPackages: ['pdf-lib'],
   },
+  
+  // Packages externes pour les composants serveur
+  serverExternalPackages: ['pdf-lib'],
   
   // Optimisations supplémentaires
   swcMinify: true,

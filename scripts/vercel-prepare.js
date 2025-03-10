@@ -442,6 +442,191 @@ function checkApiRoutes() {
   console.log(`${colors.green}✅ Vérification des API routes terminée.${colors.reset}`);
 }
 
+// Fonction pour vérifier et corriger les problèmes d'apostrophes françaises
+function checkAndFixFrenchApostrophes() {
+  console.log(`${colors.blue}🔍 Vérification des apostrophes françaises dans les fichiers JavaScript...${colors.reset}`);
+  
+  const dirsToCheck = [
+    path.join(process.cwd(), 'src', 'lib'),
+    path.join(process.cwd(), 'src', 'components'),
+    path.join(process.cwd(), 'src', 'app'),
+    path.join(process.cwd(), 'src', 'pages')
+  ];
+  
+  const checkDir = (dir) => {
+    if (!fs.existsSync(dir)) return;
+    
+    const files = fs.readdirSync(dir);
+    
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      
+      if (stat.isDirectory()) {
+        checkDir(filePath);
+      } else if (file.endsWith('.js') || file.endsWith('.jsx') || file.endsWith('.ts') || file.endsWith('.tsx')) {
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          
+          // Rechercher les apostrophes françaises dans les templates strings
+          if (content.includes('`') && (content.includes(''') || content.includes('''))) {
+            console.log(`${colors.yellow}⚠️ Apostrophes françaises détectées dans ${filePath}${colors.reset}`);
+            
+            // Créer une sauvegarde
+            const backupPath = filePath + '.backup.' + Date.now();
+            fs.writeFileSync(backupPath, content);
+            
+            // Remplacer les apostrophes françaises par des apostrophes droites
+            const correctedContent = content
+              .replace(/([''])(?=[^`]*`[^`]*$)/g, '\\\'') // Remplacer les apostrophes françaises dans les templates strings
+              .replace(/([''])/g, '\''); // Remplacer les autres apostrophes françaises
+            
+            fs.writeFileSync(filePath, correctedContent);
+            console.log(`${colors.green}✅ ${filePath} corrigé avec succès.${colors.reset}`);
+          }
+        } catch (error) {
+          console.error(`${colors.red}❌ Erreur lors de la vérification de ${filePath}: ${error.message}${colors.reset}`);
+        }
+      }
+    }
+  };
+  
+  for (const dir of dirsToCheck) {
+    checkDir(dir);
+  }
+  
+  console.log(`${colors.green}✅ Vérification des apostrophes françaises terminée.${colors.reset}`);
+}
+
+// Fonction pour vérifier les dépendances essentielles
+function checkEssentialDependencies() {
+  console.log(`${colors.blue}🔍 Vérification des dépendances essentielles...${colors.reset}`);
+  
+  const essentialDependencies = {
+    'uuid': '^9.0.1',
+    '@types/uuid': '^9.0.8'
+  };
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    let needsUpdate = false;
+    
+    // Vérifier les dépendances essentielles
+    for (const [dep, version] of Object.entries(essentialDependencies)) {
+      if (dep.startsWith('@types/')) {
+        // Vérifier les devDependencies pour les types
+        if (!packageJson.devDependencies[dep]) {
+          console.log(`${colors.yellow}⚠️ Dépendance essentielle manquante: ${dep}${colors.reset}`);
+          packageJson.devDependencies[dep] = version;
+          needsUpdate = true;
+        }
+      } else {
+        // Vérifier les dependencies pour les packages normaux
+        if (!packageJson.dependencies[dep]) {
+          console.log(`${colors.yellow}⚠️ Dépendance essentielle manquante: ${dep}${colors.reset}`);
+          packageJson.dependencies[dep] = version;
+          needsUpdate = true;
+        }
+      }
+    }
+    
+    if (needsUpdate) {
+      // Créer une sauvegarde
+      const backupPath = packageJsonPath + '.backup.' + Date.now();
+      fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
+      
+      // Mettre à jour package.json
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      console.log(`${colors.green}✅ package.json mis à jour avec les dépendances essentielles.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Toutes les dépendances essentielles sont présentes.${colors.reset}`);
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification des dépendances essentielles: ${error.message}${colors.reset}`);
+  }
+}
+
+// Fonction pour corriger les options obsolètes dans next.config.js
+function fixNextConfigOptions() {
+  console.log(`${colors.blue}🔍 Vérification des options obsolètes dans next.config.js...${colors.reset}`);
+  
+  const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+  
+  if (!fs.existsSync(nextConfigPath)) {
+    console.error(`${colors.red}❌ next.config.js introuvable.${colors.reset}`);
+    return;
+  }
+  
+  try {
+    const content = fs.readFileSync(nextConfigPath, 'utf8');
+    
+    // Vérifier les options obsolètes
+    let needsUpdate = false;
+    let updatedContent = content;
+    
+    // Vérifier serverComponentsExternalPackages
+    if (content.includes('serverComponentsExternalPackages') && !content.includes('serverExternalPackages')) {
+      console.log(`${colors.yellow}⚠️ Option obsolète détectée: serverComponentsExternalPackages${colors.reset}`);
+      updatedContent = updatedContent.replace(
+        /serverComponentsExternalPackages\s*:\s*\[(.*?)\]/s,
+        (match, packages) => {
+          needsUpdate = true;
+          // Supprimer l'option de experimental
+          return '';
+        }
+      );
+      
+      // Ajouter serverExternalPackages au niveau racine
+      if (!updatedContent.includes('serverExternalPackages')) {
+        const packagesMatch = content.match(/serverComponentsExternalPackages\s*:\s*\[(.*?)\]/s);
+        if (packagesMatch && packagesMatch[1]) {
+          const packages = packagesMatch[1];
+          updatedContent = updatedContent.replace(
+            /(experimental\s*:\s*{[^}]*})/s,
+            `$1,\n\n  // Packages externes pour les composants serveur\n  serverExternalPackages: [${packages}]`
+          );
+        }
+      }
+    }
+    
+    // Vérifier swcMinify (déplacé dans Next.js 15)
+    if (content.includes('swcMinify') && content.includes('Next.js 15')) {
+      console.log(`${colors.yellow}⚠️ Option obsolète détectée: swcMinify${colors.reset}`);
+      updatedContent = updatedContent.replace(
+        /swcMinify\s*:\s*true,?\n/,
+        ''
+      );
+      needsUpdate = true;
+    }
+    
+    // Vérifier compress (déplacé dans Next.js 15)
+    if (content.includes('compress') && content.includes('Next.js 15')) {
+      console.log(`${colors.yellow}⚠️ Option obsolète détectée: compress${colors.reset}`);
+      updatedContent = updatedContent.replace(
+        /compress\s*:\s*true,?\n/,
+        ''
+      );
+      needsUpdate = true;
+    }
+    
+    if (needsUpdate) {
+      // Créer une sauvegarde
+      const backupPath = nextConfigPath + '.backup.' + Date.now();
+      fs.writeFileSync(backupPath, content);
+      
+      // Mettre à jour next.config.js
+      fs.writeFileSync(nextConfigPath, updatedContent);
+      console.log(`${colors.green}✅ next.config.js mis à jour avec les options correctes.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Aucune option obsolète détectée dans next.config.js.${colors.reset}`);
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification des options obsolètes: ${error.message}${colors.reset}`);
+  }
+}
+
 // Exécuter les fonctions
 try {
   console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
@@ -451,6 +636,9 @@ try {
   
   // Correction de next.config.js
   fixNextConfig();
+  
+  // Vérifier et corriger les options obsolètes dans next.config.js
+  fixNextConfigOptions();
   
   // Vérification des variables d'environnement
   checkEnvironmentVariables();
@@ -464,8 +652,14 @@ try {
   // Installation des dépendances manquantes
   installMissingDependencies();
   
+  // Vérification des dépendances essentielles
+  checkEssentialDependencies();
+  
   // Vérification des API routes
   checkApiRoutes();
+  
+  // Vérification et correction des apostrophes françaises
+  checkAndFixFrenchApostrophes();
   
   console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
 } catch (error) {

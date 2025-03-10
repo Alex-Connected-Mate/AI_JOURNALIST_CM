@@ -91,7 +91,7 @@ function buildGlobalAnalysisPrompt(individualAnalyses, analysisType, rules) {
     Tu es un expert en synthèse d'information. Ton rôle est de créer une synthèse globale à partir de multiples analyses individuelles de discussions.
     
     Règles d'analyse globale:
-    ${rules.synthesizeAllInsights ? '- Synthétise l'ensemble des insights\n' : ''}
+    ${rules.synthesizeAllInsights ? '- Synthétise l\'ensemble des insights\n' : ''}
     ${rules.extractActionableRecommendations ? '- Extrait des recommandations actionnables\n' : ''}
     ${rules.provideSessionSummary ? '- Fournit un résumé global de la session\n' : ''}
     ${rules.customRules ? `- Règles personnalisées: ${rules.customRules}\n` : ''}
