@@ -297,28 +297,35 @@ async function ensureUserRecord(userId: string, email: string) {
 
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
+    // Configurer max_participants à une valeur élevée par défaut si non spécifié
+    const settings = {
+      ...sessionData.settings,
+      maxParticipants: sessionData.settings?.maxParticipants || 999,
+      ai_configuration: {
+        model: 'gpt-4',
+        temperature: 0.7,
+        max_tokens: 2000,
+        presence_penalty: 0,
+        frequency_penalty: 0,
+        custom_instructions: null,
+        ...sessionData.settings?.ai_configuration
+      },
+      participant_settings: {
+        anonymity_level: 'semi-anonymous',
+        require_approval: false,
+        allow_chat: true,
+        allow_reactions: true,
+        ...sessionData.settings?.participant_settings
+      }
+    };
+
     const { data, error } = await supabase
       .from('sessions')
       .insert({
         ...sessionData,
         status: 'draft',
-        settings: {
-          ai_configuration: {
-            model: 'gpt-4',
-            temperature: 0.7,
-            max_tokens: 2000,
-            presence_penalty: 0,
-            frequency_penalty: 0,
-            custom_instructions: null
-          },
-          participant_settings: {
-            anonymity_level: 'semi-anonymous',
-            require_approval: false,
-            allow_chat: true,
-            allow_reactions: true
-          },
-          ...sessionData.settings
-        }
+        max_participants: 999, // Garantir une valeur élevée pour les participants
+        settings
       })
       .select()
       .single();

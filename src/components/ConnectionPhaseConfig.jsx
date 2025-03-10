@@ -89,7 +89,7 @@ const ConnectionPhaseConfig = ({ sessionConfig, updateSessionConfig }) => {
             value={maxParticipants}
             onChange={(value) => handleChange('maxParticipants', value)}
             min={5}
-            max={200}
+            max={1000}
           />
           
           <div className="mt-4">
