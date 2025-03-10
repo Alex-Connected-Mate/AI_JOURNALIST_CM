@@ -6,14 +6,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Tab } from '@headlessui/react';
+import { TabGroup, TabList, Tab, TabPanels, TabPanel, classNames } from '@/components/Tabs';
 import { motion } from 'framer-motion';
 import { ANALYSIS_TYPES } from '@/lib/services/analysisService';
 import logger from '@/lib/logger';
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 /**
  * Card générique pour afficher les informations d'analyse
@@ -335,11 +331,12 @@ export default function AnalysisResults({ sessionId, analysisData = {} }) {
     <div className="bg-gray-50 rounded-lg p-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Résultats d'analyse</h2>
       
-      <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
-        <Tab.List className="flex space-x-1 rounded-xl bg-blue-900/10 p-1 mb-6">
-          {tabCategories.map((category) => (
+      <TabGroup selectedIndex={selectedTab} onChange={setSelectedTab}>
+        <TabList className="flex space-x-1 rounded-xl bg-blue-900/10 p-1 mb-6">
+          {tabCategories.map((category, index) => (
             <Tab
               key={category.type}
+              index={index}
               className={({ selected }) =>
                 classNames(
                   'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
@@ -353,12 +350,13 @@ export default function AnalysisResults({ sessionId, analysisData = {} }) {
               {category.name}
             </Tab>
           ))}
-        </Tab.List>
+        </TabList>
         
-        <Tab.Panels className="mt-2">
+        <TabPanels className="mt-2">
           {tabCategories.map((category, idx) => (
-            <Tab.Panel
+            <TabPanel
               key={idx}
+              index={idx}
               className={classNames(
                 'rounded-xl p-3',
                 'ring-white/60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2'
@@ -395,10 +393,10 @@ export default function AnalysisResults({ sessionId, analysisData = {} }) {
                   </div>
                 )}
               </motion.div>
-            </Tab.Panel>
+            </TabPanel>
           ))}
-        </Tab.Panels>
-      </Tab.Group>
+        </TabPanels>
+      </TabGroup>
     </div>
   );
 } 

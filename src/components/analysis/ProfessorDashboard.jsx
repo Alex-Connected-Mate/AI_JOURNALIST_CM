@@ -6,18 +6,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Tab } from '@headlessui/react';
+import { TabGroup, TabList, Tab, TabPanels, TabPanel, classNames } from '@/components/Tabs';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { ANALYSIS_TYPES } from '@/lib/services/analysisService';
 import AnalysisProgress from './AnalysisProgress';
 import AnalysisResults from './AnalysisResults';
 import logger from '@/lib/logger';
-
-// Utilitaire pour les classes conditionnelles des onglets
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 /**
  * Carte statistique
@@ -749,11 +744,12 @@ export default function ProfessorDashboard({ sessionId, sessionConfig }) {
   
   return (
     <div className="bg-gray-100 rounded-lg shadow-md overflow-hidden">
-      <Tab.Group selectedIndex={activeTab} onChange={handleTabChange}>
-        <Tab.List className="flex bg-white border-b border-gray-200">
+      <TabGroup selectedIndex={activeTab} onChange={handleTabChange}>
+        <TabList className="flex bg-white border-b border-gray-200">
           {tabCategories.map((category, index) => (
             <Tab
               key={category.id}
+              index={index}
               className={({ selected }) => classNames(
                 'py-4 px-6 text-sm font-medium flex items-center gap-2 focus:outline-none',
                 selected 
@@ -765,17 +761,17 @@ export default function ProfessorDashboard({ sessionId, sessionConfig }) {
               {category.name}
             </Tab>
           ))}
-        </Tab.List>
+        </TabList>
         
-        <Tab.Panels className="p-6">
-          {/* Onglet Participants */}
-          <Tab.Panel>
+        <TabPanels>
+          {/* Participants Tab */}
+          <TabPanel index={0}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-2">
                   <ChatActivitySummary sessionId={sessionId} />
                 </div>
@@ -806,10 +802,42 @@ export default function ProfessorDashboard({ sessionId, sessionConfig }) {
                 <ParticipantsList sessionId={sessionId} />
               </div>
             </motion.div>
-          </Tab.Panel>
+          </TabPanel>
           
-          {/* Onglet Analyses */}
-          <Tab.Panel>
+          {/* Chat Activity Tab */}
+          <TabPanel index={1}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                <StatusCard
+                  title="Total Messages"
+                  value={chatStats?.totalMessages || 0}
+                  icon="💬"
+                />
+                <StatusCard
+                  title="Active Discussions"
+                  value={chatStats?.activeDiscussions || 0}
+                  icon="🗣️"
+                  highlight
+                />
+                <StatusCard
+                  title="Response Rate"
+                  value={`${chatStats?.responseRate || 0}%`}
+                  icon="⚡"
+                />
+              </div>
+              
+              <div className="p-6">
+                <ChatActivitySummary sessionId={sessionId} />
+              </div>
+            </motion.div>
+          </TabPanel>
+          
+          {/* Analysis Tab */}
+          <TabPanel index={2}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -865,10 +893,10 @@ export default function ProfessorDashboard({ sessionId, sessionConfig }) {
                 </div>
               </div>
             </motion.div>
-          </Tab.Panel>
+          </TabPanel>
           
-          {/* Onglet Résultats */}
-          <Tab.Panel>
+          {/* Results Tab */}
+          <TabPanel index={3}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -890,9 +918,9 @@ export default function ProfessorDashboard({ sessionId, sessionConfig }) {
                 />
               )}
             </motion.div>
-          </Tab.Panel>
-        </Tab.Panels>
-      </Tab.Group>
+          </TabPanel>
+        </TabPanels>
+      </TabGroup>
     </div>
   );
 } 
