@@ -27,32 +27,39 @@ function ProtectedRouteContent({ children, excludedPaths = [] }: ProtectedRouteP
   const logger = useLogger('ProtectedRoute');
   
   useEffect(() => {
-    // Si la vérification d'authentification n'est pas terminée, attendre
-    if (!authChecked) return;
-    
     // Vérifier si le chemin actuel est exclu de la protection
     const isExcluded = excludedPaths.some(path => 
       pathname === path || 
       pathname?.startsWith(`${path}/`)
     );
     
+    // Si le chemin est exclu, autoriser immédiatement
     if (isExcluded) {
       logger.auth('Path is excluded from protection', { path: pathname });
       setIsReady(true);
       return;
     }
     
+    // Si la vérification d'authentification n'est pas terminée, attendre
+    if (!authChecked) {
+      logger.auth('Waiting for authentication check to complete');
+      return;
+    }
+    
     // Vérifier l'authentification
     if (!user) {
       const currentPath = pathname || '/';
-      const redirectUrl = `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
-      
-      logger.auth('User not authenticated, redirecting', { 
-        from: currentPath,
-        to: redirectUrl
-      });
-      
-      router.push(redirectUrl);
+      // Ne pas rediriger si nous sommes déjà sur la page de connexion
+      if (!currentPath.startsWith('/auth/')) {
+        const redirectUrl = `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
+        logger.auth('User not authenticated, redirecting', { 
+          from: currentPath,
+          to: redirectUrl
+        });
+        router.push(redirectUrl);
+      } else {
+        setIsReady(true);
+      }
     } else {
       logger.auth('User is authenticated, allowing access', { 
         path: pathname,
@@ -68,7 +75,7 @@ function ProtectedRouteContent({ children, excludedPaths = [] }: ProtectedRouteP
     pathname?.startsWith(`${path}/`)
   );
   
-  if (!isReady && !isExcluded) {
+  if (!isReady && !isExcluded && !pathname?.startsWith('/auth/')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>

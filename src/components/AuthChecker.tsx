@@ -17,15 +17,6 @@ function AuthCheckerContent() {
   const previousPathRef = useRef('');
   const setupDoneRef = useRef(false);
   
-  // State management helpers - these functions are missing from the store type
-  const setUser = (userData: any) => {
-    useStore.setState({ user: userData });
-  };
-  
-  const setAuthChecked = (value: boolean) => {
-    useStore.setState({ authChecked: value });
-  };
-  
   // Enregistrer uniquement les changements de route significatifs
   useEffect(() => {
     if (pathname !== previousPathRef.current) {
@@ -49,8 +40,7 @@ function AuthCheckerContent() {
         
         if (error) {
           logger.error('Error checking session', { error: error.message });
-          setUser(null);
-          setAuthChecked(true);
+          useStore.setState({ user: null, authChecked: true });
           return;
         }
         
@@ -58,43 +48,44 @@ function AuthCheckerContent() {
           logger.auth('User found in Supabase session', { userId: data.session.user.id });
           
           // Définir l'utilisateur dans le store
-          setUser({
-            id: data.session.user.id,
-            email: data.session.user.email || '',
+          useStore.setState({ 
+            user: data.session.user,
+            authChecked: true
           });
           
-          // Essayer de récupérer le profil utilisateur, mais ne pas bloquer la suite du processus
+          // Récupérer le profil utilisateur en arrière-plan
           try {
-            // Rendre asynchrone pour ne pas bloquer
-            setTimeout(() => {
-              fetchUserProfile().catch(profileError => {
-                logger.error('Error fetching user profile, but continuing', profileError);
-              });
-            }, 0);
+            await fetchUserProfile();
           } catch (profileError) {
-            logger.error('Error initiating profile fetch, but continuing', profileError);
+            logger.error('Error fetching user profile, but continuing', profileError);
           }
           
           // Vérifier si nous sommes sur une page d'authentification qui nécessite une redirection
           const isAuthPage = pathname?.startsWith('/auth/');
           const redirectParam = searchParams?.get('redirect');
           
-          if (isAuthPage && redirectParam) {
+          if (isAuthPage) {
             const redirectTo = redirectParam || '/dashboard';
             logger.navigation(`Redirecting authenticated user from auth page to: ${redirectTo}`);
             router.push(redirectTo);
           }
         } else {
           logger.auth('No authenticated user found in Supabase session');
-          setUser(null);
+          useStore.setState({ user: null, authChecked: true });
+          
+          // Si nous ne sommes pas sur une page publique, rediriger vers la connexion
+          const publicPaths = ['/', '/auth/login', '/auth/register', '/auth/reset-password'];
+          const isPublicPath = publicPaths.some(path => pathname === path || pathname?.startsWith('/auth/'));
+          
+          if (!isPublicPath) {
+            const redirectTo = `/auth/login?redirect=${encodeURIComponent(pathname || '/')}`;
+            logger.navigation('Redirecting to login page', { from: pathname, to: redirectTo });
+            router.push(redirectTo);
+          }
         }
-        
-        // Indiquer que la vérification d'authentification est terminée
-        setAuthChecked(true);
       } catch (err) {
         logger.error('Unexpected error checking session', err);
-        setUser(null);
-        setAuthChecked(true);
+        useStore.setState({ user: null, authChecked: true });
       }
     };
 
@@ -103,16 +94,23 @@ function AuthCheckerContent() {
       logger.auth('Setting up Supabase auth listener');
       
       const { data: authListener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
+        async (event, session) => {
           logger.auth(`Auth state changed: ${event}`);
           
           if (event === 'SIGNED_IN' && session?.user) {
             logger.auth('User signed in via listener', { userId: session.user.id });
             
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
+            useStore.setState({ 
+              user: session.user,
+              authChecked: true
             });
+            
+            // Récupérer le profil utilisateur en arrière-plan
+            try {
+              await fetchUserProfile();
+            } catch (profileError) {
+              logger.error('Error fetching user profile after sign in, but continuing', profileError);
+            }
             
             // Si on est sur une page d'authentification, rediriger vers le tableau de bord
             if (pathname?.startsWith('/auth/')) {
@@ -123,7 +121,7 @@ function AuthCheckerContent() {
             }
           } else if (event === 'SIGNED_OUT') {
             logger.auth('User signed out via listener');
-            setUser(null);
+            useStore.setState({ user: null, authChecked: true });
             
             // Rediriger vers la page de connexion si nécessaire
             if (!pathname?.startsWith('/auth/') && pathname !== '/') {
@@ -131,9 +129,6 @@ function AuthCheckerContent() {
               router.push('/auth/login');
             }
           }
-          
-          // Indiquer que la vérification d'authentification est terminée
-          setAuthChecked(true);
         }
       );
       
@@ -150,7 +145,7 @@ function AuthCheckerContent() {
         authListener.subscription.unsubscribe();
       }
     };
-  }, [fetchUserProfile, router, pathname, searchParams, logger]);
+  }, [router, pathname, searchParams, logger, fetchUserProfile]);
 
   return null;
 }
