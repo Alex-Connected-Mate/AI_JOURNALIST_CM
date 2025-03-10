@@ -505,7 +505,8 @@ function checkEssentialDependencies() {
   
   const essentialDependencies = {
     'uuid': '^9.0.1',
-    '@types/uuid': '^9.0.8'
+    '@types/uuid': '^9.0.8',
+    'openai': '^4.28.0'
   };
   
   try {
