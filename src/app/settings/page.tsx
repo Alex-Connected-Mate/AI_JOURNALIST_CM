@@ -12,12 +12,8 @@ import TextArea from '@/components/TextArea';
 import ImageSelector from '@/components/ImageSelector';
 
 // Types pour les composants
-interface ImageSelectorProps {
-  label: string;
-  selectedImageId: string | null;
-  onChange: (value: string | null) => void;
-  helpText?: string;
-  onFileUpload: (file: File) => void;
+interface UserFormData extends Partial<UserProfile> {
+  email?: string;
 }
 
 interface InputProps {
@@ -38,93 +34,13 @@ interface TextAreaProps {
   rows?: number;
 }
 
-// Composant ImageSelector
-const ImageSelector: React.FC<ImageSelectorProps> = ({ label, selectedImageId, onChange, helpText, onFileUpload }) => {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = React.useState(false);
-  
-  const handleClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
-    }
-  };
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
-    }
-  };
-  
-  const handleFile = async (file: File) => {
-    // Vérifier que c'est une image
-    if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image');
-      return;
-    }
-    
-    // Uploader le fichier si la fonction est disponible
-    if (onFileUpload) {
-      await onFileUpload(file);
-    }
-  };
-  
-  return (
-    <div className="space-y-4">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <div 
-        className={`second-level-block p-6 rounded-xl text-center cursor-pointer ${isDragging ? 'bg-blue-50 border-blue-300' : ''}`}
-        onClick={handleClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          className="hidden" 
-          accept="image/*"
-          onChange={handleFileChange}
-        />
-        <div className="mx-auto h-12 w-12 text-blue-500 mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-        </div>
-        <div className="font-medium text-gray-900 mb-1">Télécharger une image</div>
-        <p className="text-sm text-gray-500">Glissez-déposez ou cliquez pour sélectionner</p>
-      </div>
-      {selectedImageId && (
-        <div className="mt-2 flex items-center">
-          <div className="h-10 w-10 overflow-hidden rounded-full mr-2">
-            <img src={selectedImageId} alt="Selected" className="h-full w-full object-cover" />
-          </div>
-          <span className="text-sm text-gray-600">Image sélectionnée</span>
-        </div>
-      )}
-      {helpText && !selectedImageId && (
-        <p className="mt-2 text-sm text-gray-500">{helpText}</p>
-      )}
-    </div>
-  );
-};
+interface ImageSelectorProps {
+  label: string;
+  selectedImageId: string | null;
+  onChange: (value: string | null) => void;
+  helpText?: string;
+  onFileUpload: (file: File) => Promise<void>;
+}
 
 // Composant Input réutilisable
 const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, required, icon, type = "text" }) => (
@@ -167,18 +83,82 @@ const TextArea: React.FC<TextAreaProps> = ({ label, value, onChange, placeholder
   </div>
 );
 
-interface UserFormData extends Partial<UserProfile> {
-  email: string;
-  full_name: string;
-  institution: string;
-  title: string;
-  bio: string;
-  avatar_url: string | null;
-}
+// Composant ImageSelector
+const ImageSelector: React.FC<ImageSelectorProps> = ({ label, selectedImageId, onChange, helpText, onFileUpload }) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [isUploading, setIsUploading] = React.useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await onFileUpload(file);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Erreur lors du téléchargement');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <div 
+        className={`second-level-block p-6 rounded-xl text-center cursor-pointer ${isDragging ? 'bg-blue-50 border-blue-300' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files[0];
+          if (file) handleFile(file);
+        }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
+        <div className="mx-auto h-12 w-12 text-blue-500 mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+        </div>
+        <div className="font-medium text-gray-900 mb-1">
+          {isUploading ? 'Téléchargement...' : 'Télécharger une image'}
+        </div>
+        <p className="text-sm text-gray-500">Glissez-déposez ou cliquez pour sélectionner</p>
+      </div>
+      {selectedImageId && (
+        <div className="mt-2 flex items-center">
+          <div className="h-10 w-10 overflow-hidden rounded-full mr-2">
+            <img src={selectedImageId} alt="Selected" className="h-full w-full object-cover" />
+          </div>
+          <span className="text-sm text-gray-600">Image sélectionnée</span>
+        </div>
+      )}
+      {helpText && !selectedImageId && (
+        <p className="mt-2 text-sm text-gray-500">{helpText}</p>
+      )}
+    </div>
+  );
+};
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, userProfile, updateProfile, uploadAvatar, fetchUserProfile, logout } = useStore();
+  const { user, userProfile, updateProfile, fetchUserProfile, logout } = useStore();
   
   // État pour stocker les informations de l'utilisateur
   const [userData, setUserData] = useState<UserFormData>({
@@ -280,28 +260,11 @@ export default function SettingsPage() {
     setIsLoading(true);
     
     try {
-      // Mapper les données du formulaire au format attendu par Supabase
-      const profileData: Partial<UserProfile> = {
-        full_name: userData.full_name,
-        institution: userData.institution,
-        title: userData.title,
-        bio: userData.bio,
-      };
-      
-      // Envoyer les données à Supabase
-      const { data, error } = await updateProfile(profileData);
-      
-      if (error) {
-        setMessage({
-          type: 'error',
-          text: `Erreur: ${error.message}`
-        });
-      } else {
-        setMessage({
-          type: 'success',
-          text: 'Vos informations ont été mises à jour avec succès.'
-        });
-      }
+      await updateProfile(userData);
+      setMessage({
+        type: 'success',
+        text: 'Vos informations ont été mises à jour avec succès.'
+      });
     } catch (err) {
       setMessage({
         type: 'error',

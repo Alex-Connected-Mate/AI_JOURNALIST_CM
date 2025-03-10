@@ -22,7 +22,7 @@ export default function NewSessionPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [step, setStep] = useState<'basic' | 'ai' | 'review'>('basic');
   const [sessionData, setSessionData] = useState({
-    name: '',
+    title: '',
     description: '',
     max_participants: 100,
   });
@@ -58,10 +58,10 @@ export default function NewSessionPage() {
     
     // Track creation start
     sessionTracker.trackSessionCreation.start(sessionConfig);
-    logger.session('Starting session creation process', sessionConfig);
+    logger.session('Starting session creation process');
     
     try {
-      logger.session('Processing session configuration', sessionConfig);
+      logger.session('Processing session configuration');
       
       // Transform the session config into the expected format
       const sessionData: Partial<SessionData> = {
@@ -114,14 +114,14 @@ export default function NewSessionPage() {
       };
 
       // Validate the transformed data
-      logger.session('Validating session data', sessionData);
+      logger.session('Validating session data');
       const validation = validateSessionData(sessionData);
       if (!validation.isValid) {
         throw new Error(validation.error || 'Invalid session data');
       }
       
       // Create the session
-      logger.session('Creating session in database...', sessionData);
+      logger.session('Creating session in database...');
       const { data: session, error } = await createSession(sessionData);
       
       if (error) {
@@ -135,13 +135,13 @@ export default function NewSessionPage() {
       }
       
       if (session) {
-        logger.session('Session created successfully', session);
+        logger.session('Session created successfully');
         setSuccess('Session créée avec succès !');
         router.push(`/sessions/${session.id}`);
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Une erreur est survenue lors de la création de la session';
-      logger.error('Session creation failed', err);
+      logger.error('Session creation failed');
       setError(errorMsg);
       sessionTracker.trackSessionCreation.error(sessionConfig, err);
     } finally {
@@ -164,7 +164,11 @@ export default function NewSessionPage() {
     try {
       const { data, error } = await storeCreateSession(sessionData);
       if (error) throw error;
-      router.push(`/sessions/${data.id}`);
+      if (data?.id) {
+        router.push(`/sessions/${data.id}`);
+      } else {
+        throw new Error('No session data returned');
+      }
     } catch (error) {
       console.error('Error creating session:', error);
     } finally {
@@ -234,12 +238,12 @@ export default function NewSessionPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
             {step === 'basic' && 'Créer une nouvelle session'}
-            {step === 'ai' && 'Configuration de l'IA'}
+            {step === 'ai' && "Configuration de l'IA"}
             {step === 'review' && 'Vérification finale'}
           </h1>
           <p className="mt-2 text-gray-600">
             {step === 'basic' && 'Commencez par définir les informations de base de votre session.'}
-            {step === 'ai' && 'Configurez les paramètres de l'IA pour votre session.'}
+            {step === 'ai' && "Configurez les paramètres de l'IA pour votre session."}
             {step === 'review' && 'Vérifiez les informations avant de créer la session.'}
           </p>
         </div>
@@ -254,8 +258,8 @@ export default function NewSessionPage() {
                   </label>
                   <input
                     type="text"
-                    value={sessionData.name}
-                    onChange={(e) => setSessionData({ ...sessionData, name: e.target.value })}
+                    value={sessionData.title}
+                    onChange={(e) => setSessionData({ ...sessionData, title: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
@@ -307,7 +311,7 @@ export default function NewSessionPage() {
                   <dl className="mt-4 space-y-4">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Nom</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{sessionData.name}</dd>
+                      <dd className="mt-1 text-sm text-gray-900">{sessionData.title}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Description</dt>

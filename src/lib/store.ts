@@ -1,10 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User as SupabaseUser, AuthError, AuthResponse } from '@supabase/supabase-js';
-import { PostgrestError } from '@supabase/supabase-js';
+import { User as SupabaseUser, AuthError, AuthResponse, PostgrestError } from '@supabase/supabase-js';
 import { supabase, signIn, signOut, getSessions, createSession as createSessionApi, getUserProfile, updateUserProfile, uploadProfileImage, SessionData } from './supabase';
 import { UserProfile, AIConfiguration, SessionAnalytics, UserMetrics, Subscription, SubscriptionPlan, Notification } from './types';
-import { loadStripe } from 'stripe';
+import { loadStripe } from '@stripe/stripe-js';
 
 // Function to log store actions if not in production
 const logAction = (action: string, data?: any) => {
@@ -115,7 +114,8 @@ interface AppState {
   // Profile actions
   fetchUserProfile: () => Promise<void>;
   fetchUserMetrics: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<{ data: UserProfile | null; error: PostgrestError | null }>;
+  uploadAvatar: (file: File) => Promise<{ url: string | null; error: PostgrestError | null }>;
   
   // Subscription management
   fetchSubscription: () => Promise<void>;
@@ -137,7 +137,7 @@ interface AppState {
   
   // Session actions
   fetchSessions: () => Promise<void>;
-  createSession: (sessionData: Partial<SessionData>) => Promise<{ data: Session | null, error: PostgrestError | null }>;
+  createSession: (sessionData: Partial<SessionData>) => Promise<{ data: Session | null; error: PostgrestError | null }>;
   setError: (error: string | null) => void;
   setAuthChecked: (checked: boolean) => void;
 }
@@ -268,7 +268,7 @@ export const useStore = create<AppState>()(
       updateProfile: async (data) => {
         const { user } = get();
         if (!user) {
-          return;
+          return { data: null, error: null };
         }
         
         logAction('updateProfile attempt', { userId: user.id, profileData: data });
@@ -280,16 +280,47 @@ export const useStore = create<AppState>()(
           if (error) {
             logAction('updateProfile failed', { error: error.message });
             set({ error: error.message, loading: false });
-            return;
+            return { data: null, error };
           }
           
           logAction('updateProfile successful');
           set({ loading: false });
           await get().fetchUserProfile();
+          return { data: userProfile, error: null };
         } catch (err) {
           const error = err as PostgrestError;
           logAction('updateProfile unexpected error', { error: error.message });
           set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return { data: null, error };
+        }
+      },
+      
+      uploadAvatar: async (file: File) => {
+        const { user } = get();
+        if (!user) {
+          return { url: null, error: null };
+        }
+        
+        logAction('uploadAvatar attempt', { userId: user.id });
+        set({ loading: true });
+        
+        try {
+          const { data, error } = await uploadProfileImage(user.id, file);
+          
+          if (error) {
+            logAction('uploadAvatar failed', { error: error.message });
+            set({ error: error.message, loading: false });
+            return { url: null, error };
+          }
+          
+          logAction('uploadAvatar successful', { url: data });
+          set({ loading: false });
+          return { url: data, error: null };
+        } catch (err) {
+          const error = err as PostgrestError;
+          logAction('uploadAvatar unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return { url: null, error };
         }
       },
       

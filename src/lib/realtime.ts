@@ -22,11 +22,14 @@ class RealtimeManager {
 
   async connect() {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const presenceKey = user?.id || 'anonymous';
+
       // Subscribe to the session channel
       this.channel = supabase.channel(`session:${this.config.sessionId}`, {
         config: {
           presence: {
-            key: supabase.auth.getUser().then(({ data }) => data.user?.id || 'anonymous'),
+            key: presenceKey,
           },
         },
       });
@@ -35,7 +38,7 @@ class RealtimeManager {
       if (this.config.onPresenceChange) {
         this.presence = this.channel.presence;
         this.channel.on('presence', { event: 'sync' }, () => {
-          const state = this.presence?.getState() || {};
+          const state = this.presence?.state || {};
           this.config.onPresenceChange?.(state);
         });
       }
@@ -61,15 +64,16 @@ class RealtimeManager {
       });
 
       // Subscribe to the channel
-      const status = await this.channel.subscribe();
-      if (status !== 'SUBSCRIBED') {
-        throw new Error(`Failed to subscribe to channel: ${status}`);
+      const { error } = await this.channel.subscribe();
+      if (error) {
+        throw new Error(`Failed to subscribe to channel: ${error.message}`);
       }
 
-      // Enter presence state if available
+      // Track presence
       if (this.presence) {
-        await this.presence.enter({
+        await this.channel.track({
           online_at: new Date().toISOString(),
+          user_id: presenceKey,
         });
       }
     } catch (error) {

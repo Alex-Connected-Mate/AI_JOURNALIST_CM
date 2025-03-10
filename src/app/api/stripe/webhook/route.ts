@@ -9,7 +9,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   const body = await req.text();
-  const signature = headers().get('stripe-signature')!;
+  const headersList = await headers();
+  const signature = headersList.get('stripe-signature');
+
+  if (!signature) {
+    return new NextResponse('No signature found', { status: 400 });
+  }
 
   let event: Stripe.Event;
 
@@ -19,8 +24,9 @@ export async function POST(req: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-  } catch (err) {
-    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new NextResponse(`Webhook Error: ${errorMessage}`, { status: 400 });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;

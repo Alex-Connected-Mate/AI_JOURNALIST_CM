@@ -24,8 +24,12 @@ export async function middleware(request: NextRequest) {
       data: { session },
     } = await supabase.auth.getSession();
 
-    // Check rate limit
-    const ip = request.ip ?? '127.0.0.1';
+    // Check rate limit using forwarded IP or remote address
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               request.socket?.remoteAddress ||
+               '127.0.0.1';
+
     const { success, limit, reset, remaining } = await ratelimit.limit(
       `ratelimit_middleware_${ip}`
     );
