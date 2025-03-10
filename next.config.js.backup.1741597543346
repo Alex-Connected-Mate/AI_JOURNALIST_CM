@@ -40,7 +40,9 @@ const nextConfig = {
   serverExternalPackages: ['pdf-lib'],
   
   // Optimisations supplémentaires
-      
+  swcMinify: true,
+  compress: true,
+  
   // Instruct Next.js to skip the static generation of the 404 page
   // This should prevent the error with useSearchParams
   excludeDefaultMomentLocales: true,

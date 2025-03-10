@@ -629,14 +629,69 @@ function fixNextConfigOptions() {
   }
 }
 
-// Fonction pour vérifier la compatibilité des versions des dépendances
+// Fonction pour vérifier et corriger spécifiquement @headlessui/react
+function fixHeadlessUIReact() {
+  console.log(`${colors.blue}🔍 Vérification spécifique de @headlessui/react...${colors.reset}`);
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    if (packageJson.dependencies['@headlessui/react']) {
+      const currentVersion = packageJson.dependencies['@headlessui/react'];
+      const targetVersion = '1.7.15'; // Version spécifique connue pour être compatible
+      
+      if (currentVersion !== targetVersion) {
+        console.log(`${colors.yellow}⚠️ Version de @headlessui/react (${currentVersion}) potentiellement problématique${colors.reset}`);
+        console.log(`${colors.yellow}⚠️ Fixation à la version exacte ${targetVersion}${colors.reset}`);
+        
+        // Créer une sauvegarde
+        const backupPath = packageJsonPath + '.backup.' + Date.now();
+        fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
+        
+        // Mettre à jour la version
+        packageJson.dependencies['@headlessui/react'] = targetVersion;
+        
+        // Écrire le package.json mis à jour
+        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+        
+        // Supprimer le dossier node_modules/@headlessui
+        const headlessUIPath = path.join(process.cwd(), 'node_modules', '@headlessui');
+        if (fs.existsSync(headlessUIPath)) {
+          try {
+            execSync(`rm -rf "${headlessUIPath}"`, { stdio: 'inherit' });
+            console.log(`${colors.green}✅ Cache de @headlessui nettoyé${colors.reset}`);
+          } catch (error) {
+            console.error(`${colors.red}❌ Erreur lors du nettoyage du cache: ${error.message}${colors.reset}`);
+          }
+        }
+        
+        // Réinstaller spécifiquement @headlessui/react
+        try {
+          execSync('npm install @headlessui/react@1.7.15 --save-exact', { stdio: 'inherit' });
+          console.log(`${colors.green}✅ @headlessui/react@${targetVersion} installé avec succès${colors.reset}`);
+        } catch (error) {
+          console.error(`${colors.red}❌ Erreur lors de l'installation: ${error.message}${colors.reset}`);
+        }
+      } else {
+        console.log(`${colors.green}✅ @headlessui/react est déjà en version ${targetVersion}${colors.reset}`);
+      }
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification de @headlessui/react: ${error.message}${colors.reset}`);
+  }
+}
+
+// Modifier la fonction checkDependencyCompatibility pour être plus stricte
 function checkDependencyCompatibility() {
   console.log(`${colors.blue}🔍 Vérification de la compatibilité des versions des dépendances...${colors.reset}`);
   
-  // Définir les versions compatibles pour React 18
+  // Définir les versions exactes requises pour la compatibilité
   const reactCompatibilityMap = {
-    '@headlessui/react': '1.7.15', // Version spécifique compatible avec React 18
-    'framer-motion': '^10.16.4', // Version compatible avec React 18
+    '@headlessui/react': '1.7.15', // Version exacte requise
+    'framer-motion': '^10.16.4',
+    'react': '^18.2.0',
+    'react-dom': '^18.2.0'
   };
   
   try {
@@ -645,40 +700,50 @@ function checkDependencyCompatibility() {
     
     let needsUpdate = false;
     
-    // Vérifier si React 18 est utilisé
-    if (packageJson.dependencies.react && packageJson.dependencies.react.includes('18')) {
-      console.log(`${colors.blue}📦 React 18 détecté, vérification des dépendances compatibles...${colors.reset}`);
-      
-      // Vérifier les dépendances qui pourraient avoir des problèmes de compatibilité
-      for (const [dep, version] of Object.entries(reactCompatibilityMap)) {
-        if (packageJson.dependencies[dep]) {
-          const currentVersion = packageJson.dependencies[dep];
-          
-          // Si la version actuelle n'est pas la version compatible
-          if (currentVersion !== version) {
-            console.log(`${colors.yellow}⚠️ Version potentiellement incompatible détectée: ${dep}@${currentVersion}${colors.reset}`);
-            console.log(`${colors.yellow}⚠️ Rétrogradation à la version compatible: ${dep}@${version}${colors.reset}`);
-            
-            packageJson.dependencies[dep] = version;
-            needsUpdate = true;
-          }
+    // Vérifier toutes les dépendances critiques
+    for (const [dep, version] of Object.entries(reactCompatibilityMap)) {
+      if (packageJson.dependencies[dep]) {
+        const currentVersion = packageJson.dependencies[dep];
+        
+        // Pour @headlessui/react, exiger la version exacte
+        if (dep === '@headlessui/react' && currentVersion !== version) {
+          console.log(`${colors.yellow}⚠️ Version incompatible détectée: ${dep}@${currentVersion}${colors.reset}`);
+          console.log(`${colors.yellow}⚠️ Mise à jour vers la version exacte: ${version}${colors.reset}`);
+          packageJson.dependencies[dep] = version;
+          needsUpdate = true;
+        }
+        // Pour les autres dépendances, vérifier la compatibilité générale
+        else if (dep !== '@headlessui/react' && currentVersion !== version) {
+          console.log(`${colors.yellow}⚠️ Version potentiellement incompatible: ${dep}@${currentVersion}${colors.reset}`);
+          console.log(`${colors.yellow}⚠️ Mise à jour vers: ${version}${colors.reset}`);
+          packageJson.dependencies[dep] = version;
+          needsUpdate = true;
         }
       }
+    }
+    
+    if (needsUpdate) {
+      // Créer une sauvegarde
+      const backupPath = packageJsonPath + '.backup.' + Date.now();
+      fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
       
-      if (needsUpdate) {
-        // Créer une sauvegarde
-        const backupPath = packageJsonPath + '.backup.' + Date.now();
-        fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
-        
-        // Mettre à jour package.json
-        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-        console.log(`${colors.green}✅ package.json mis à jour avec des versions compatibles.${colors.reset}`);
-      } else {
-        console.log(`${colors.green}✅ Toutes les dépendances sont compatibles avec React 18.${colors.reset}`);
+      // Mettre à jour package.json
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      console.log(`${colors.green}✅ package.json mis à jour avec des versions compatibles${colors.reset}`);
+      
+      // Nettoyer et réinstaller les dépendances si nécessaire
+      try {
+        console.log(`${colors.blue}📦 Réinstallation des dépendances mises à jour...${colors.reset}`);
+        execSync('npm install', { stdio: 'inherit' });
+        console.log(`${colors.green}✅ Dépendances réinstallées avec succès${colors.reset}`);
+      } catch (error) {
+        console.error(`${colors.red}❌ Erreur lors de la réinstallation: ${error.message}${colors.reset}`);
       }
+    } else {
+      console.log(`${colors.green}✅ Toutes les dépendances sont compatibles${colors.reset}`);
     }
   } catch (error) {
-    console.error(`${colors.red}❌ Erreur lors de la vérification de la compatibilité des dépendances: ${error.message}${colors.reset}`);
+    console.error(`${colors.red}❌ Erreur lors de la vérification de la compatibilité: ${error.message}${colors.reset}`);
   }
 }
 
@@ -688,6 +753,9 @@ try {
   
   // Vérifier et corriger la version de React
   checkReactVersion();
+  
+  // Vérifier spécifiquement @headlessui/react
+  fixHeadlessUIReact();
   
   // Vérifier la compatibilité des dépendances
   checkDependencyCompatibility();
