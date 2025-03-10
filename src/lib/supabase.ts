@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { UserProfile } from './types';
 
 // These environment variables will need to be set in a .env.local file
 // or in Vercel's deployment settings
@@ -102,7 +103,7 @@ export async function getUserProfile(userId: string) {
   });
 }
 
-export async function updateUserProfile(userId: string, profileData: any) {
+export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
   return withRetry(async () => {
     const { data, error } = await supabase
       .from('users')
@@ -181,14 +182,12 @@ export interface SessionData {
   id?: string;
   title: string;
   description?: string;
-  status: 'draft' | 'ready' | 'active' | 'paused' | 'ended';
-  creation_step: 'basic_info' | 'connection' | 'discussion' | 'ai_interaction' | 'lightbulb' | 'analysis' | 'ready';
+  status: 'draft' | 'active' | 'ended';
   user_id: string;
   started_at?: string;
   ended_at?: string;
   access_code?: string;
-  version?: number;
-  settings: {
+  settings?: {
     institution?: string;
     professorName?: string;
     showProfessorName?: boolean;
@@ -202,24 +201,9 @@ export interface SessionData {
     };
     discussion?: Record<string, any>;
     aiInteraction?: {
-      nuggets?: {
-        focusOnKeyInsights?: boolean;
-        discoverPatterns?: boolean;
-        quoteRelevantExamples?: boolean;
-        customRules?: string;
-      };
-      lightbulbs?: {
-        captureInnovativeThinking?: boolean;
-        identifyCrossPollination?: boolean;
-        evaluatePracticalApplications?: boolean;
-        customRules?: string;
-      };
-      overall?: {
-        synthesizeAllInsights?: boolean;
-        extractActionableRecommendations?: boolean;
-        provideSessionSummary?: boolean;
-        customRules?: string;
-      };
+      nuggets?: Record<string, any>;
+      lightbulbs?: Record<string, any>;
+      overall?: Record<string, any>;
     };
     visualization?: {
       enableWordCloud?: boolean;
@@ -248,7 +232,7 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
   }
   
   // Check valid status if provided
-  if (data.status && !['draft', 'ready', 'active', 'paused', 'ended'].includes(data.status)) {
+  if (data.status && !['draft', 'active', 'ended'].includes(data.status)) {
     console.error('Session validation failed: invalid status', data.status);
     return { isValid: false, error: 'Invalid session status' };
   }
@@ -297,53 +281,18 @@ async function ensureUserRecord(userId: string, email: string) {
   }
 }
 
-// Function to validate and advance session step
-export async function advanceSessionStep(
-  sessionId: string,
-  currentStep: string,
-  settings: any
-) {
-  const { data, error } = await supabase
-    .rpc('advance_session_step', {
-      p_session_id: sessionId,
-      p_current_step: currentStep,
-      p_settings: settings
-    });
-
-  if (error) {
-    console.error('Failed to advance session step:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-// Function to validate session step
-export async function validateSessionStep(
-  sessionId: string,
-  step: string,
-  settings: any
-) {
-  const { data, error } = await supabase
-    .rpc('validate_session_step', {
-      p_session_id: sessionId,
-      p_step: step,
-      p_settings: settings
-    });
-
-  if (error) {
-    console.error('Failed to validate session step:', error);
-    throw error;
-  }
-
-  return data;
-}
-
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
     try {
       console.log('Creating session with data:', sessionData);
       
+      // Validate session data
+      const validation = validateSessionData(sessionData);
+      if (!validation.isValid) {
+        console.error('Session validation failed:', validation.error);
+        throw new Error(validation.error || 'Invalid session data');
+      }
+
       // Ensure user record exists
       const { data: authUser } = await supabase.auth.getUser();
       if (!authUser?.user) {
@@ -352,7 +301,7 @@ export async function createSession(sessionData: Partial<SessionData>) {
       
       await ensureUserRecord(authUser.user.id, authUser.user.email || '');
 
-      // Generate access code
+      // Generate a random access code (6 characters, uppercase letters and numbers)
       const generateAccessCode = () => {
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         return Array.from({length: 6}, () => 
@@ -360,37 +309,47 @@ export async function createSession(sessionData: Partial<SessionData>) {
         ).join('');
       };
 
-      // Prepare initial session data
-      const initialSessionData = {
+      // Map the application SessionData to the database schema fields
+      const dbSessionData = {
         user_id: sessionData.user_id,
-        name: sessionData.title,
-        description: sessionData.description || '',
-        status: 'draft',
-        creation_step: 'basic_info',
+        name: sessionData.title, // Map title to name in DB
+        institution: sessionData.settings?.institution || null,
+        professor_name: sessionData.settings?.professorName || null,
+        show_professor_name: sessionData.settings?.showProfessorName !== undefined ? 
+          sessionData.settings.showProfessorName : true,
+        max_participants: sessionData.settings?.maxParticipants || 100,
+        status: sessionData.status || 'draft',
         access_code: generateAccessCode(),
-        settings: sessionData.settings || {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        version: 1
+        started_at: sessionData.started_at || null,
+        ended_at: sessionData.ended_at || null
       };
 
-      // Create the session
-      const { data: session, error: sessionError } = await supabase
+      console.log('Mapped session data for DB:', dbSessionData);
+
+      // Insert the session
+      const { data: result, error } = await supabase
         .from('sessions')
-        .insert(initialSessionData)
+        .insert(dbSessionData)
         .select()
         .single();
-
-      if (sessionError) {
-        console.error('Failed to create session:', sessionError);
-        throw sessionError;
+        
+      if (error) {
+        console.error('Failed to create session:', error);
+        throw error;
       }
-
+      
+      console.log('Session created successfully:', result);
+      
       // Create session profile if anonymity level is specified
       if (sessionData.settings?.connection?.anonymityLevel) {
         try {
+          console.log('Creating session profile with anonymity level:', 
+            sessionData.settings.connection.anonymityLevel);
+            
           const profileData = {
-            session_id: session.id,
+            session_id: result.id,
             profile_mode: sessionData.settings.connection.anonymityLevel,
             color: sessionData.settings.connection.color || null,
             emoji: sessionData.settings.connection.emoji || null,
@@ -404,13 +363,46 @@ export async function createSession(sessionData: Partial<SessionData>) {
             
           if (profileError) {
             console.warn('Failed to create session profile:', profileError);
+            // Continue execution, don't throw error for profile creation failure
+          } else {
+            console.log('Session profile created successfully');
           }
         } catch (profileErr) {
           console.warn('Error creating session profile:', profileErr);
+          // Continue execution, don't throw error for profile creation failure
         }
+      } else {
+        console.log('No anonymity level specified, skipping profile creation');
       }
-
-      return { data: session, error: null };
+      
+      // Create vote settings with defaults
+      try {
+        const voteSettingsData = {
+          session_id: result.id,
+          max_votes_per_participant: 3,
+          require_reason: false,
+          voting_duration: 1200, // 20 minutes in seconds
+          top_voted_count: 3,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        const { error: voteSettingsError } = await supabase
+          .from('vote_settings')
+          .insert(voteSettingsData);
+          
+        if (voteSettingsError) {
+          console.warn('Failed to create vote settings:', voteSettingsError);
+          // Continue execution, don't throw error for vote settings creation failure
+        } else {
+          console.log('Vote settings created successfully');
+        }
+      } catch (voteSettingsErr) {
+        console.warn('Error creating vote settings:', voteSettingsErr);
+        // Continue execution, don't throw error for vote settings creation failure
+      }
+      
+      return { data: result, error: null };
     } catch (error) {
       console.error('Session creation failed:', error);
       return { 
@@ -590,51 +582,4 @@ export async function endSession(sessionId: string) {
     .single();
     
   return { data, error };
-}
-
-// Function to get session history
-export async function getSessionHistory(sessionId: string) {
-  const { data, error } = await supabase
-    .from('session_history')
-    .select(`
-      *,
-      user:user_id (
-        id,
-        email,
-        full_name
-      )
-    `)
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Failed to get session history:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-// Function to get session with current step data
-export async function getSessionWithStep(sessionId: string) {
-  const { data, error } = await supabase
-    .from('sessions')
-    .select(`
-      *,
-      profiles:session_profiles (
-        id,
-        profile_mode,
-        color,
-        emoji
-      )
-    `)
-    .eq('id', sessionId)
-    .single();
-
-  if (error) {
-    console.error('Failed to get session:', error);
-    throw error;
-  }
-
-  return data;
 } 

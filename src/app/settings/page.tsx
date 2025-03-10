@@ -6,14 +6,18 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import { useStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
+import { UserProfile } from '@/lib/types';
+import Input from '@/components/Input';
+import TextArea from '@/components/TextArea';
+import ImageSelector from '@/components/ImageSelector';
 
 // Types pour les composants
 interface ImageSelectorProps {
   label: string;
   selectedImageId: string | null;
-  onChange: (value: string) => void;
+  onChange: (value: string | null) => void;
   helpText?: string;
-  onFileUpload?: (file: File) => Promise<void>;
+  onFileUpload: (file: File) => void;
 }
 
 interface InputProps {
@@ -24,6 +28,14 @@ interface InputProps {
   required?: boolean;
   icon?: React.ReactNode;
   type?: string;
+}
+
+interface TextAreaProps {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  rows?: number;
 }
 
 // Composant ImageSelector
@@ -140,18 +152,10 @@ const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, requ
 );
 
 // Après la définition du composant Input, ajouter le composant TextArea
-const TextArea: React.FC<{
-  label: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  placeholder?: string;
-  required?: boolean;
-  rows?: number;
-}> = ({ label, value, onChange, placeholder, required, rows = 4 }) => (
+const TextArea: React.FC<TextAreaProps> = ({ label, value, onChange, placeholder, rows = 4 }) => (
   <div className="mb-4">
     <label className="block text-sm font-medium text-gray-700 mb-1">
       {label}
-      {required && <span className="text-red-500 ml-1">*</span>}
     </label>
     <textarea
       value={value}
@@ -159,17 +163,15 @@ const TextArea: React.FC<{
       placeholder={placeholder}
       rows={rows}
       className="cm-input transition-all duration-200 w-full"
-      required={required}
     />
   </div>
 );
 
-// Interface pour les données utilisateur
-interface UserData {
-  full_name: string;
+interface UserFormData extends Partial<UserProfile> {
   email: string;
+  full_name: string;
   institution: string;
-  title: string; 
+  title: string;
   bio: string;
   avatar_url: string | null;
 }
@@ -179,7 +181,7 @@ export default function SettingsPage() {
   const { user, userProfile, updateProfile, uploadAvatar, fetchUserProfile, logout } = useStore();
   
   // État pour stocker les informations de l'utilisateur
-  const [userData, setUserData] = useState<UserData>({
+  const [userData, setUserData] = useState<UserFormData>({
     full_name: '',
     email: '',
     institution: '',
@@ -222,7 +224,7 @@ export default function SettingsPage() {
         institution: userProfile.institution || '',
         title: userProfile.title || '',
         bio: userProfile.bio || '',
-        avatar_url: userProfile.avatar_url || null,
+        avatar_url: userProfile.avatar_url,
       });
     }
   }, [userProfile, user]);
@@ -241,34 +243,28 @@ export default function SettingsPage() {
     }
   }, [userProfile]);
 
-  // Gérer les changements dans les champs
-  const handleChange = (field: keyof UserData, value: string | null) => {
+  const handleChange = (field: keyof UserFormData, value: string | null) => {
     setUserData(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
-  // Gérer les changements de prénom et nom et les combiner en full_name
-  const handleNameChange = (field: 'firstName' | 'lastName', value: string) => {
-    if (field === 'firstName') {
+  const handleNameChange = (type: 'firstName' | 'lastName', value: string) => {
+    if (type === 'firstName') {
       setFirstName(value);
     } else {
       setLastName(value);
     }
     
-    // Mettre à jour le full_name dans userData
-    const fullName = field === 'firstName' 
-      ? `${value} ${lastName}`.trim() 
+    // Mettre à jour le nom complet
+    const fullName = type === 'firstName' 
+      ? `${value} ${lastName}`.trim()
       : `${firstName} ${value}`.trim();
       
-    setUserData(prev => ({
-      ...prev,
-      full_name: fullName
-    }));
+    handleChange('full_name', fullName);
   };
 
-  // Gérer la soumission du formulaire
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -285,7 +281,7 @@ export default function SettingsPage() {
     
     try {
       // Mapper les données du formulaire au format attendu par Supabase
-      const profileData = {
+      const profileData: Partial<UserProfile> = {
         full_name: userData.full_name,
         institution: userData.institution,
         title: userData.title,
@@ -298,7 +294,7 @@ export default function SettingsPage() {
       if (error) {
         setMessage({
           type: 'error',
-          text: `Erreur: ${error}`
+          text: `Erreur: ${error.message}`
         });
       } else {
         setMessage({
@@ -333,7 +329,7 @@ export default function SettingsPage() {
       if (error) {
         setMessage({
           type: 'error',
-          text: `Erreur lors du téléchargement: ${error}`
+          text: `Erreur lors du téléchargement: ${error.message}`
         });
       } else {
         // Mise à jour réussie, actualiser le profil

@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User as SupabaseUser } from '@supabase/supabase-js';
-import { supabase, signIn, signOut, getSessions, createSession as createSessionApi, getUserProfile, updateUserProfile, uploadProfileImage } from './supabase';
+import { User as SupabaseUser, AuthError, AuthResponse } from '@supabase/supabase-js';
+import { PostgrestError } from '@supabase/supabase-js';
+import { supabase, signIn, signOut, getSessions, createSession as createSessionApi, getUserProfile, updateUserProfile, uploadProfileImage, SessionData } from './supabase';
+import { UserProfile, AIConfiguration, SessionAnalytics, UserMetrics, Subscription, SubscriptionPlan, Notification } from './types';
+import { loadStripe } from 'stripe';
 
 // Function to log store actions if not in production
 const logAction = (action: string, data?: any) => {
@@ -94,8 +97,11 @@ const mockSessions: Session[] = [
 ];
 
 interface AppState {
-  user: User | null;
-  userProfile: any | null;
+  user: SupabaseUser | null;
+  userProfile: UserProfile | null;
+  userMetrics: UserMetrics | null;
+  subscription: Subscription | null;
+  notifications: Notification[];
   sessions: Session[];
   loading: boolean;
   error: string | null;
@@ -104,16 +110,34 @@ interface AppState {
   // Authentication actions
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  setUser: (user: User | null) => void;
+  setUser: (user: SupabaseUser | null) => void;
   
   // Profile actions
   fetchUserProfile: () => Promise<void>;
-  updateProfile: (profileData: any) => Promise<{data: any | null, error: any}>;
-  uploadAvatar: (file: File) => Promise<{data: any | null, error: any}>;
+  fetchUserMetrics: () => Promise<void>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  
+  // Subscription management
+  fetchSubscription: () => Promise<void>;
+  updateSubscription: (planId: string) => Promise<void>;
+  cancelSubscription: () => Promise<void>;
+  
+  // AI Configuration
+  saveAIConfiguration: (config: Partial<AIConfiguration>) => Promise<void>;
+  getAIConfiguration: (sessionId: string) => Promise<AIConfiguration | null>;
+  
+  // Analytics
+  saveSessionAnalytics: (analytics: Partial<SessionAnalytics>) => Promise<void>;
+  getSessionAnalytics: (sessionId: string) => Promise<SessionAnalytics[]>;
+  
+  // Notifications
+  fetchNotifications: () => Promise<void>;
+  markNotificationAsRead: (notificationId: string) => Promise<void>;
+  clearNotifications: () => Promise<void>;
   
   // Session actions
   fetchSessions: () => Promise<void>;
-  createSession: (sessionData: Partial<Session>) => Promise<{ data: Session | null, error: any }>;
+  createSession: (sessionData: Partial<SessionData>) => Promise<{ data: Session | null, error: PostgrestError | null }>;
   setError: (error: string | null) => void;
   setAuthChecked: (checked: boolean) => void;
 }
@@ -124,6 +148,9 @@ export const useStore = create<AppState>()(
     (set, get) => ({
       user: null,
       userProfile: null,
+      userMetrics: null,
+      subscription: null,
+      notifications: [],
       sessions: [],
       loading: false,
       error: null,
@@ -133,7 +160,7 @@ export const useStore = create<AppState>()(
         logAction('login attempt', { email });
         set({ loading: true, error: null });
         try {
-          const { data, error } = await signIn(email, password);
+          const { data, error } = await signIn(email, password) as AuthResponse;
           
           if (error) {
             logAction('login failed', { error: error.message });
@@ -156,10 +183,14 @@ export const useStore = create<AppState>()(
             
             // Fetch user profile after login
             get().fetchUserProfile();
+            get().fetchUserMetrics();
+            get().fetchSubscription();
+            get().fetchNotifications();
           }
-        } catch (err: any) {
-          logAction('login unexpected error', { error: err?.message });
-          set({ error: err?.message || 'An unexpected error occurred', loading: false });
+        } catch (err) {
+          const error = err as AuthError;
+          logAction('login unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
         }
       },
       
@@ -167,7 +198,7 @@ export const useStore = create<AppState>()(
         logAction('logout attempt');
         set({ loading: true, error: null });
         try {
-          const { error } = await signOut();
+          const { error } = await signOut() as AuthResponse;
           
           if (error) {
             logAction('logout failed', { error: error.message });
@@ -176,14 +207,15 @@ export const useStore = create<AppState>()(
           }
           
           logAction('logout successful');
-          set({ user: null, userProfile: null, sessions: [], loading: false });
-        } catch (err: any) {
-          logAction('logout unexpected error', { error: err?.message });
-          set({ error: err?.message || 'An unexpected error occurred', loading: false });
+          set({ user: null, userProfile: null, sessions: [], loading: false, userMetrics: null, subscription: null, notifications: [] });
+        } catch (err) {
+          const error = err as AuthError;
+          logAction('logout unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
         }
       },
       
-      setUser: (user: User | null) => {
+      setUser: (user: SupabaseUser | null) => {
         logAction('setUser', { userId: user?.id });
         set({ user });
       },
@@ -206,65 +238,240 @@ export const useStore = create<AppState>()(
           
           logAction('fetchUserProfile successful', { profileData: data });
           set({ userProfile: data, loading: false });
-        } catch (err: any) {
-          logAction('fetchUserProfile unexpected error', { error: err?.message });
-          set({ error: err?.message || 'An unexpected error occurred', loading: false });
+        } catch (err) {
+          const error = err as PostgrestError;
+          logAction('fetchUserProfile unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
         }
       },
       
-      updateProfile: async (profileData: any) => {
+      fetchUserMetrics: async () => {
+        const { user } = get();
+        if (!user) return;
+        
+        try {
+          const { data, error } = await supabase
+            .from('user_metrics')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (error) throw error;
+          set({ userMetrics: data });
+        } catch (err) {
+          const error = err as PostgrestError;
+          logAction('fetchUserMetrics unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      updateProfile: async (data) => {
         const { user } = get();
         if (!user) {
-          return { data: null, error: 'User not authenticated' };
+          return;
         }
         
-        logAction('updateProfile attempt', { userId: user.id, profileData });
+        logAction('updateProfile attempt', { userId: user.id, profileData: data });
         set({ loading: true });
         
         try {
-          const { data, error } = await updateUserProfile(user.id, profileData);
+          const { error } = await updateUserProfile(user.id, data);
           
           if (error) {
             logAction('updateProfile failed', { error: error.message });
             set({ error: error.message, loading: false });
-            return { data: null, error: error.message };
+            return;
           }
           
-          logAction('updateProfile successful', { profileData: data });
-          set({ userProfile: data, loading: false });
-          return { data, error: null };
-        } catch (err: any) {
-          logAction('updateProfile unexpected error', { error: err?.message });
-          set({ error: err?.message || 'An unexpected error occurred', loading: false });
-          return { data: null, error: err?.message || 'An unexpected error occurred' };
+          logAction('updateProfile successful');
+          set({ loading: false });
+          await get().fetchUserProfile();
+        } catch (err) {
+          const error = err as PostgrestError;
+          logAction('updateProfile unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
         }
       },
       
-      uploadAvatar: async (file: File) => {
+      fetchSubscription: async () => {
         const { user } = get();
-        if (!user) {
-          return { data: null, error: 'User not authenticated' };
-        }
-        
-        logAction('uploadAvatar attempt', { userId: user.id, fileName: file.name });
-        set({ loading: true });
+        if (!user) return;
         
         try {
-          const { data, error } = await uploadProfileImage(user.id, file);
+          const { data, error } = await supabase
+            .from('subscriptions')
+            .select('*, subscription_plans(*)')
+            .eq('user_id', user.id)
+            .single();
           
-          if (error) {
-            logAction('uploadAvatar failed', { error: error.message });
-            set({ error: error.message, loading: false });
-            return { data: null, error: error.message };
-          }
+          if (error) throw error;
+          set({ subscription: data });
+        } catch (err) {
+          const error = err as PostgrestError;
+          logAction('fetchSubscription unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      updateSubscription: async (planId) => {
+        const { user } = get();
+        if (!user) return;
+        
+        try {
+          const response = await fetch('/api/stripe/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId, userId: user.id }),
+          });
+
+          const { sessionId } = await response.json();
+          const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+          await stripe?.redirectToCheckout({ sessionId });
+        } catch (err) {
+          const error = err as Error;
+          logAction('updateSubscription unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      cancelSubscription: async () => {
+        const { user, subscription } = get();
+        if (!user || !subscription) return;
+        
+        try {
+          const response = await fetch('/api/stripe/cancel-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscriptionId: subscription.stripe_subscription_id }),
+          });
+
+          if (!response.ok) throw new Error('Failed to cancel subscription');
+          await get().fetchSubscription();
+        } catch (err) {
+          const error = err as Error;
+          logAction('cancelSubscription unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      saveAIConfiguration: async (config) => {
+        try {
+          const { error } = await supabase
+            .from('ai_configurations')
+            .upsert(config);
           
-          logAction('uploadAvatar successful', { profileData: data });
-          set({ userProfile: data, loading: false });
-          return { data, error: null };
-        } catch (err: any) {
-          logAction('uploadAvatar unexpected error', { error: err?.message });
-          set({ error: err?.message || 'An unexpected error occurred', loading: false });
-          return { data: null, error: err?.message || 'An unexpected error occurred' };
+          if (error) throw error;
+        } catch (err) {
+          const error = err as Error;
+          logAction('saveAIConfiguration unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      getAIConfiguration: async (sessionId) => {
+        try {
+          const { data, error } = await supabase
+            .from('ai_configurations')
+            .select('*')
+            .eq('session_id', sessionId)
+            .single();
+          
+          if (error) throw error;
+          return data;
+        } catch (err) {
+          const error = err as Error;
+          logAction('getAIConfiguration unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return null;
+        }
+      },
+      
+      saveSessionAnalytics: async (analytics) => {
+        try {
+          const { error } = await supabase
+            .from('session_analytics')
+            .insert(analytics);
+          
+          if (error) throw error;
+        } catch (err) {
+          const error = err as Error;
+          logAction('saveSessionAnalytics unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      getSessionAnalytics: async (sessionId) => {
+        try {
+          const { data, error } = await supabase
+            .from('session_analytics')
+            .select('*')
+            .eq('session_id', sessionId);
+          
+          if (error) throw error;
+          return data;
+        } catch (err) {
+          const error = err as Error;
+          logAction('getSessionAnalytics unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return [];
+        }
+      },
+      
+      fetchNotifications: async () => {
+        const { user } = get();
+        if (!user) return;
+        
+        try {
+          const { data, error } = await supabase
+            .from('notifications')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          set({ notifications: data });
+        } catch (err) {
+          const error = err as Error;
+          logAction('fetchNotifications unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      markNotificationAsRead: async (notificationId) => {
+        const { user } = get();
+        if (!user) return;
+        
+        try {
+          const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', notificationId);
+          
+          if (error) throw error;
+          await get().fetchNotifications();
+        } catch (err) {
+          const error = err as Error;
+          logAction('markNotificationAsRead unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+        }
+      },
+      
+      clearNotifications: async () => {
+        const { user } = get();
+        if (!user) return;
+        
+        try {
+          const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('user_id', user.id);
+          
+          if (error) throw error;
+          await get().fetchNotifications();
+        } catch (err) {
+          const error = err as Error;
+          logAction('clearNotifications unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
         }
       },
       
@@ -291,7 +498,7 @@ export const useStore = create<AppState>()(
         }
       },
       
-      createSession: async (sessionData: Partial<Session>) => {
+      createSession: async (sessionData: Partial<SessionData>) => {
         const { user } = get();
         if (!user) {
           logAction('createSession failed', { reason: 'User not authenticated' });

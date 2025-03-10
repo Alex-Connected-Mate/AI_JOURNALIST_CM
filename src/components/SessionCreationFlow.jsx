@@ -18,14 +18,9 @@ import ConnectionSettings from './ConnectionSettings';
  * - Maintains session configuration state
  * - Handles submission and validation
  */
-const SessionCreationFlow = ({ 
-  initialConfig = {}, 
-  onSubmit, 
-  isSubmitting,
-  currentStep
-}) => {
+const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => {
   const router = useRouter();
-  const [activeStep, setActiveStep] = useState(currentStep || 'basic-info');
+  const [activeStep, setActiveStep] = useState('basic-info');
   const [sessionConfig, setSessionConfig] = useState({
     basicInfo: {
       title: initialConfig.title || initialConfig.sessionName || '',
@@ -91,13 +86,6 @@ const SessionCreationFlow = ({
   useEffect(() => {
     logger.info('SessionCreationFlow initialized', { config: sessionConfig });
   }, []);
-
-  // Update active step when currentStep prop changes
-  useEffect(() => {
-    if (currentStep && currentStep !== activeStep) {
-      setActiveStep(currentStep);
-    }
-  }, [currentStep]);
 
   const updateSessionConfig = (newConfig) => {
     logger.debug('Updating session config', { 
