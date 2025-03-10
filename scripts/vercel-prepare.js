@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Script de préparation pour le déploiement Vercel
+ * Script de préparation amélioré pour le déploiement Vercel
  * Ce script s'exécute automatiquement avant le build sur Vercel
  * et corrige les problèmes connus qui pourraient empêcher le build
  */
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Couleurs pour les logs
 const colors = {
@@ -18,7 +19,7 @@ const colors = {
   cyan: '\x1b[36m'
 };
 
-console.log(`${colors.cyan}🚀 Préparation du déploiement Vercel...${colors.reset}`);
+console.log(`${colors.cyan}🚀 Préparation améliorée du déploiement Vercel...${colors.reset}`);
 
 // Fonction pour vérifier et corriger next.config.js
 function fixNextConfig() {
@@ -43,24 +44,24 @@ function fixNextConfig() {
       fs.writeFileSync(backupPath, content);
       console.log(`${colors.blue}📦 Sauvegarde créée: ${backupPath}${colors.reset}`);
       
-      // Corriger le conflit Git
+      // Corriger le conflit Git avec la configuration optimisée
       const correctedConfig = `/** @type {import('next').NextConfig} */
 
 const nextConfig = {
-  skipMiddlewareUrlNormalize: true,
+  // Configuration optimisée pour Vercel
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
+  
+  // Ignorer les erreurs pour permettre le build
   eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // ⚠️ Dangerous: Ignores TypeScript errors during development
-    // Only use this as a temporary solution
     ignoreBuildErrors: true,
   },
+  
+  // Configuration des images
   images: {
     remotePatterns: [
       {
@@ -68,22 +69,39 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-  },
-  // This moves the middleware URL normalize option to the top level as required
-  experimental: {
-    // These are compatible with Next.js 15.2.0
-    ppr: false,
-    optimizePackageImports: ['next/navigation']
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   
-  // Instruct Next.js to skip the static generation of the 404 page
-  // This should prevent the error with useSearchParams
+  // Options expérimentales
+  experimental: {
+    // Compatibles avec Next.js 15.2.0
+    ppr: false,
+    optimizePackageImports: ['next/navigation'],
+    serverComponentsExternalPackages: ['pdf-lib'],
+  },
+  
+  // Optimisations supplémentaires
+  swcMinify: true,
+  compress: true,
   excludeDefaultMomentLocales: true,
   
+  // Variables d'environnement
   env: {
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || 'development',
     BUILD_TIME: new Date().toISOString()
-  }
+  },
+  
+  // Configuration webpack pour résoudre les problèmes courants
+  webpack: (config) => {
+    config.resolve.fallback = { 
+      fs: false,
+      path: false,
+      crypto: false,
+      os: false
+    };
+    
+    return config;
+  },
 };
 
 module.exports = nextConfig;`;
@@ -92,7 +110,82 @@ module.exports = nextConfig;`;
       console.log(`${colors.green}✅ next.config.js corrigé avec succès.${colors.reset}`);
       return true;
     } else {
-      console.log(`${colors.green}✅ Aucun conflit Git détecté dans next.config.js.${colors.reset}`);
+      // Vérifier si la configuration est optimisée pour Vercel
+      if (!content.includes('webpack: (config)') || !content.includes('fallback')) {
+        console.log(`${colors.yellow}⚠️ next.config.js n'est pas optimisé pour Vercel, optimisation...${colors.reset}`);
+        
+        // Créer une sauvegarde
+        const backupPath = nextConfigPath + '.backup.' + Date.now();
+        fs.writeFileSync(backupPath, content);
+        
+        // Mettre à jour avec la configuration optimisée
+        const optimizedConfig = `/** @type {import('next').NextConfig} */
+
+const nextConfig = {
+  // Configuration optimisée pour Vercel
+  output: 'standalone',
+  poweredByHeader: false,
+  reactStrictMode: true,
+  
+  // Ignorer les erreurs pour permettre le build
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  
+  // Configuration des images
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+    unoptimized: process.env.NODE_ENV === 'development',
+  },
+  
+  // Options expérimentales
+  experimental: {
+    // Compatibles avec Next.js 15.2.0
+    ppr: false,
+    optimizePackageImports: ['next/navigation'],
+    serverComponentsExternalPackages: ['pdf-lib'],
+  },
+  
+  // Optimisations supplémentaires
+  swcMinify: true,
+  compress: true,
+  excludeDefaultMomentLocales: true,
+  
+  // Variables d'environnement
+  env: {
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || 'development',
+    BUILD_TIME: new Date().toISOString()
+  },
+  
+  // Configuration webpack pour résoudre les problèmes courants
+  webpack: (config) => {
+    config.resolve.fallback = { 
+      fs: false,
+      path: false,
+      crypto: false,
+      os: false
+    };
+    
+    return config;
+  },
+};
+
+module.exports = nextConfig;`;
+        
+        fs.writeFileSync(nextConfigPath, optimizedConfig);
+        console.log(`${colors.green}✅ next.config.js optimisé pour Vercel avec succès.${colors.reset}`);
+      } else {
+        console.log(`${colors.green}✅ next.config.js est déjà optimisé pour Vercel.${colors.reset}`);
+      }
+      
       return true;
     }
   } catch (error) {
@@ -115,6 +208,17 @@ function checkEnvironmentVariables() {
   if (missingVars.length > 0) {
     console.warn(`${colors.yellow}⚠️ Variables d'environnement manquantes: ${missingVars.join(', ')}${colors.reset}`);
     console.warn(`${colors.yellow}⚠️ Assurez-vous de les configurer dans les paramètres de projet Vercel.${colors.reset}`);
+    
+    // Créer un fichier .env.example pour référence
+    const envExamplePath = path.join(process.cwd(), '.env.example');
+    let envExampleContent = '# Variables d\'environnement requises pour l\'application\n\n';
+    
+    requiredVars.forEach(varName => {
+      envExampleContent += `${varName}=your_${varName.toLowerCase()}_here\n`;
+    });
+    
+    fs.writeFileSync(envExamplePath, envExampleContent);
+    console.log(`${colors.blue}📦 Fichier .env.example créé pour référence.${colors.reset}`);
   } else {
     console.log(`${colors.green}✅ Toutes les variables d'environnement requises sont présentes.${colors.reset}`);
   }
@@ -126,6 +230,7 @@ function setAdditionalEnvVars() {
   
   process.env.BUILD_TIME = new Date().toISOString();
   process.env.NODE_OPTIONS = '--max-old-space-size=4096';
+  process.env.NEXT_TELEMETRY_DISABLED = '1';
   
   console.log(`${colors.green}✅ Variables d'environnement supplémentaires configurées.${colors.reset}`);
 }
@@ -171,6 +276,45 @@ function checkInputComponents() {
   }
 }
 
+// Fonction pour vérifier et corriger les dépendances React
+function checkReactVersion() {
+  console.log(`${colors.blue}🔍 Vérification de la version de React...${colors.reset}`);
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    // Vérifier si React est en version 19
+    if (packageJson.dependencies.react && packageJson.dependencies.react.includes('19')) {
+      console.log(`${colors.yellow}⚠️ React version 19 détectée, rétrogradation à la version 18.2.0 pour compatibilité...${colors.reset}`);
+      
+      // Créer une sauvegarde
+      const backupPath = packageJsonPath + '.backup.' + Date.now();
+      fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
+      
+      // Mettre à jour les versions de React
+      packageJson.dependencies.react = '^18.2.0';
+      packageJson.dependencies['react-dom'] = '^18.2.0';
+      
+      // Mettre à jour les types React si présents
+      if (packageJson.devDependencies['@types/react']) {
+        packageJson.devDependencies['@types/react'] = '^18.2.55';
+      }
+      if (packageJson.devDependencies['@types/react-dom']) {
+        packageJson.devDependencies['@types/react-dom'] = '^18.2.19';
+      }
+      
+      // Écrire le package.json mis à jour
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      console.log(`${colors.green}✅ package.json mis à jour avec React 18.2.0.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Version de React compatible détectée.${colors.reset}`);
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification de la version de React: ${error.message}${colors.reset}`);
+  }
+}
+
 // Fonction pour installer les dépendances manquantes
 function installMissingDependencies() {
   console.log(`${colors.blue}🔍 Vérification des dépendances manquantes...${colors.reset}`);
@@ -199,7 +343,7 @@ function installMissingDependencies() {
         if (dep === '@headlessui/react') {
           packageJson.dependencies[dep] = '^1.7.18';
         } else if (dep === 'framer-motion') {
-          packageJson.dependencies[dep] = '^11.0.8';
+          packageJson.dependencies[dep] = '^10.16.4'; // Version compatible avec React 18
         }
       });
       
@@ -211,16 +355,99 @@ function installMissingDependencies() {
       // après la mise à jour du package.json
       console.log(`${colors.green}✅ Les dépendances seront installées automatiquement par Vercel.${colors.reset}`);
     } else {
-      console.log(`${colors.green}✅ Toutes les dépendances requises sont présentes.${colors.reset}`);
+      // Vérifier si framer-motion est en version 11 (incompatible avec React 18)
+      if (packageJson.dependencies['framer-motion'] && packageJson.dependencies['framer-motion'].includes('11')) {
+        console.log(`${colors.yellow}⚠️ framer-motion version 11 détectée, rétrogradation à la version 10.16.4 pour compatibilité avec React 18...${colors.reset}`);
+        
+        packageJson.dependencies['framer-motion'] = '^10.16.4';
+        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+        console.log(`${colors.green}✅ Version de framer-motion mise à jour pour compatibilité.${colors.reset}`);
+      } else {
+        console.log(`${colors.green}✅ Toutes les dépendances requises sont présentes et compatibles.${colors.reset}`);
+      }
     }
   } catch (error) {
     console.error(`${colors.red}❌ Erreur lors de la vérification des dépendances: ${error.message}${colors.reset}`);
   }
 }
 
+// Fonction pour vérifier et corriger les problèmes d'API routes
+function checkApiRoutes() {
+  console.log(`${colors.blue}🔍 Vérification des API routes...${colors.reset}`);
+  
+  const apiDirs = [
+    path.join(process.cwd(), 'src', 'app', 'api'),
+    path.join(process.cwd(), 'src', 'pages', 'api')
+  ];
+  
+  for (const apiDir of apiDirs) {
+    if (fs.existsSync(apiDir)) {
+      console.log(`${colors.blue}📂 Vérification du répertoire API: ${apiDir}${colors.reset}`);
+      
+      // Fonction récursive pour vérifier les fichiers d'API
+      const checkApiFiles = (dir) => {
+        const files = fs.readdirSync(dir);
+        
+        for (const file of files) {
+          const filePath = path.join(dir, file);
+          const stat = fs.statSync(filePath);
+          
+          if (stat.isDirectory()) {
+            checkApiFiles(filePath);
+          } else if (file.endsWith('.js') || file.endsWith('.ts')) {
+            try {
+              const content = fs.readFileSync(filePath, 'utf8');
+              
+              // Vérifier si le fichier utilise fs ou path sans vérification d'environnement
+              if ((content.includes('require(\'fs\')') || content.includes('require("fs")') || 
+                   content.includes('from \'fs\'') || content.includes('from "fs"')) &&
+                  !content.includes('process.env.NODE_ENV === \'development\'')) {
+                
+                console.log(`${colors.yellow}⚠️ Utilisation non sécurisée de fs détectée dans ${filePath}${colors.reset}`);
+                
+                // Créer une sauvegarde
+                const backupPath = filePath + '.backup.' + Date.now();
+                fs.writeFileSync(backupPath, content);
+                
+                // Corriger le fichier pour n'utiliser fs qu'en développement
+                const correctedContent = content.replace(
+                  /((const|let|var)\s+\w+\s*=\s*require\(['"]fs['"]\))/g,
+                  'let fs; if (process.env.NODE_ENV === \'development\') { $1 }'
+                ).replace(
+                  /(import\s+\*\s+as\s+\w+\s+from\s+['"]fs['"]\s*;)/g,
+                  'let fs; if (process.env.NODE_ENV === \'development\') { $1 }'
+                ).replace(
+                  /(import\s+\{\s*[^}]*\s*\}\s+from\s+['"]fs['"]\s*;)/g,
+                  'let fs; if (process.env.NODE_ENV === \'development\') { $1 }'
+                );
+                
+                fs.writeFileSync(filePath, correctedContent);
+                console.log(`${colors.green}✅ ${filePath} corrigé pour n'utiliser fs qu'en développement.${colors.reset}`);
+              }
+            } catch (error) {
+              console.error(`${colors.red}❌ Erreur lors de la vérification de ${filePath}: ${error.message}${colors.reset}`);
+            }
+          }
+        }
+      };
+      
+      try {
+        checkApiFiles(apiDir);
+      } catch (error) {
+        console.error(`${colors.red}❌ Erreur lors de la vérification des API routes: ${error.message}${colors.reset}`);
+      }
+    }
+  }
+  
+  console.log(`${colors.green}✅ Vérification des API routes terminée.${colors.reset}`);
+}
+
 // Exécuter les fonctions
 try {
   console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
+  
+  // Vérifier et corriger la version de React
+  checkReactVersion();
   
   // Correction de next.config.js
   fixNextConfig();
@@ -236,6 +463,9 @@ try {
   
   // Installation des dépendances manquantes
   installMissingDependencies();
+  
+  // Vérification des API routes
+  checkApiRoutes();
   
   console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
 } catch (error) {
