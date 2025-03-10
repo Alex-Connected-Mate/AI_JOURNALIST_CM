@@ -1,5 +1,6 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -7,7 +8,15 @@ import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 
-export default function LoginPage() {
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+    </div>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '';
@@ -157,5 +166,13 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 } 

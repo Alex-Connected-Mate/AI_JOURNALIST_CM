@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import useLogger from '@/hooks/useLogger';
@@ -10,15 +10,15 @@ interface ProtectedRouteProps {
   excludedPaths?: string[];
 }
 
-/**
- * ProtectedRoute Component
- * 
- * Ce composant vérifie si l'utilisateur est authentifié.
- * Si ce n'est pas le cas, il redirige vers la page de connexion.
- * Il peut être utilisé pour protéger n'importe quelle page ou composant.
- * Version mise à jour pour Next.js App Router.
- */
-const ProtectedRoute = ({ children, excludedPaths = [] }: ProtectedRouteProps) => {
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+}
+
+function ProtectedRouteContent({ children, excludedPaths = [] }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -78,6 +78,22 @@ const ProtectedRoute = ({ children, excludedPaths = [] }: ProtectedRouteProps) =
   
   // Afficher les enfants
   return <>{children}</>;
+}
+
+/**
+ * ProtectedRoute Component
+ * 
+ * Ce composant vérifie si l'utilisateur est authentifié.
+ * Si ce n'est pas le cas, il redirige vers la page de connexion.
+ * Il peut être utilisé pour protéger n'importe quelle page ou composant.
+ * Version mise à jour pour Next.js App Router.
+ */
+const ProtectedRoute = (props: ProtectedRouteProps) => {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ProtectedRouteContent {...props} />
+    </Suspense>
+  );
 };
 
 export default ProtectedRoute; 

@@ -1,19 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import useLogger from '@/hooks/useLogger';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-/**
- * AuthChecker Component
- * 
- * Un composant pour vérifier et mettre à jour l'état d'authentification.
- * Il s'assure que l'utilisateur est correctement synchronisé avec Supabase.
- * Version mise à jour pour Next.js App Router.
- */
-const AuthChecker = () => {
+function AuthCheckerContent() {
   const { user, setUser, setAuthChecked } = useStore();
   const logger = useLogger('AuthChecker');
   const router = useRouter();
@@ -138,7 +131,22 @@ const AuthChecker = () => {
     };
   }, [setUser, setAuthChecked, router, pathname, searchParams, logger]);
 
-  return null; // Ce composant ne rend rien visuellement
+  return null;
+}
+
+/**
+ * AuthChecker Component
+ * 
+ * Un composant pour vérifier et mettre à jour l'état d'authentification.
+ * Il s'assure que l'utilisateur est correctement synchronisé avec Supabase.
+ * Version mise à jour pour Next.js App Router.
+ */
+const AuthChecker = () => {
+  return (
+    <Suspense fallback={null}>
+      <AuthCheckerContent />
+    </Suspense>
+  );
 };
 
 export default AuthChecker; 
