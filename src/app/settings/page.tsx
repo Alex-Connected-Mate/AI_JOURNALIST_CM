@@ -14,11 +14,16 @@ import ImageSelector from '@/components/ImageSelector';
 // Types pour les composants
 interface UserFormData extends Partial<UserProfile> {
   email?: string;
+  full_name?: string;
+  institution?: string;
+  title?: string;
+  bio?: string;
+  avatar_url?: string | null;
 }
 
 interface InputProps {
   label: string;
-  value: string;
+  value: string | null | undefined;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
@@ -28,7 +33,7 @@ interface InputProps {
 
 interface TextAreaProps {
   label: string;
-  value: string;
+  value: string | null | undefined;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   rows?: number;
@@ -43,7 +48,7 @@ interface ImageSelectorProps {
 }
 
 // Composant Input réutilisable
-const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, required, icon, type = "text" }) => (
+const Input: React.FC<InputProps> = ({ label, value = '', onChange, placeholder, required, icon, type = "text" }) => (
   <div className="mb-4">
     <label className="block text-sm font-medium text-gray-700 mb-1">
       {label}
@@ -57,7 +62,7 @@ const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, requ
       )}
       <input
         type={type}
-        value={value}
+        value={value || ''}
         onChange={onChange}
         placeholder={placeholder}
         className={`cm-input transition-all duration-200 ${icon ? 'pl-10' : ''}`}
@@ -68,13 +73,13 @@ const Input: React.FC<InputProps> = ({ label, value, onChange, placeholder, requ
 );
 
 // Après la définition du composant Input, ajouter le composant TextArea
-const TextArea: React.FC<TextAreaProps> = ({ label, value, onChange, placeholder, rows = 4 }) => (
+const TextArea: React.FC<TextAreaProps> = ({ label, value = '', onChange, placeholder, rows = 4 }) => (
   <div className="mb-4">
     <label className="block text-sm font-medium text-gray-700 mb-1">
       {label}
     </label>
     <textarea
-      value={value}
+      value={value || ''}
       onChange={onChange}
       placeholder={placeholder}
       rows={rows}
@@ -158,7 +163,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({ label, selectedImageId, o
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, userProfile, updateProfile, fetchUserProfile, logout } = useStore();
+  const { user, userProfile, updateProfile, uploadAvatar: uploadAvatarToStore, fetchUserProfile, logout } = useStore();
   
   // État pour stocker les informations de l'utilisateur
   const [userData, setUserData] = useState<UserFormData>({
@@ -260,11 +265,21 @@ export default function SettingsPage() {
     setIsLoading(true);
     
     try {
-      await updateProfile(userData);
-      setMessage({
-        type: 'success',
-        text: 'Vos informations ont été mises à jour avec succès.'
-      });
+      const { error } = await updateProfile(userData);
+      
+      if (error) {
+        setMessage({
+          type: 'error',
+          text: `Erreur: ${error.message}`
+        });
+      } else {
+        // Recharger le profil après la mise à jour
+        await fetchUserProfile();
+        setMessage({
+          type: 'success',
+          text: 'Vos informations ont été mises à jour avec succès.'
+        });
+      }
     } catch (err) {
       setMessage({
         type: 'error',
@@ -287,7 +302,7 @@ export default function SettingsPage() {
     setIsLoading(true);
     
     try {
-      const { data, error } = await uploadAvatar(file);
+      const { url, error } = await uploadAvatarToStore(file);
       
       if (error) {
         setMessage({

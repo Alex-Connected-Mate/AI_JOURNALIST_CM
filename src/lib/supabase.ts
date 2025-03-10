@@ -213,6 +213,20 @@ export interface SessionData {
       enableEngagementChart?: boolean;
       showTopThemes?: boolean;
     };
+    ai_configuration?: {
+      model: string;
+      temperature: number;
+      max_tokens: number;
+      presence_penalty: number;
+      frequency_penalty: number;
+      custom_instructions: string | null;
+    };
+    participant_settings?: {
+      anonymity_level: 'anonymous' | 'semi-anonymous' | 'non-anonymous';
+      require_approval: boolean;
+      allow_chat: boolean;
+      allow_reactions: boolean;
+    };
   };
 }
 
@@ -283,133 +297,38 @@ async function ensureUserRecord(userId: string, email: string) {
 
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
-    try {
-      console.log('Creating session with data:', sessionData);
-      
-      // Validate session data
-      const validation = validateSessionData(sessionData);
-      if (!validation.isValid) {
-        console.error('Session validation failed:', validation.error);
-        throw new Error(validation.error || 'Invalid session data');
-      }
-
-      // Ensure user record exists
-      const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser?.user) {
-        throw new Error('User not authenticated');
-      }
-      
-      await ensureUserRecord(authUser.user.id, authUser.user.email || '');
-
-      // Generate a random access code (6 characters, uppercase letters and numbers)
-      const generateAccessCode = () => {
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        return Array.from({length: 6}, () => 
-          characters.charAt(Math.floor(Math.random() * characters.length))
-        ).join('');
-      };
-
-      // Map the application SessionData to the database schema fields
-      const dbSessionData = {
-        user_id: sessionData.user_id,
-        name: sessionData.title, // Map title to name in DB
-        institution: sessionData.settings?.institution || null,
-        professor_name: sessionData.settings?.professorName || null,
-        show_professor_name: sessionData.settings?.showProfessorName !== undefined ? 
-          sessionData.settings.showProfessorName : true,
-        max_participants: sessionData.settings?.maxParticipants || 100,
-        status: sessionData.status || 'draft',
-        access_code: generateAccessCode(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        started_at: sessionData.started_at || null,
-        ended_at: sessionData.ended_at || null
-      };
-
-      console.log('Mapped session data for DB:', dbSessionData);
-
-      // Insert the session
-      const { data: result, error } = await supabase
-        .from('sessions')
-        .insert(dbSessionData)
-        .select()
-        .single();
-        
-      if (error) {
-        console.error('Failed to create session:', error);
-        throw error;
-      }
-      
-      console.log('Session created successfully:', result);
-      
-      // Create session profile if anonymity level is specified
-      if (sessionData.settings?.connection?.anonymityLevel) {
-        try {
-          console.log('Creating session profile with anonymity level:', 
-            sessionData.settings.connection.anonymityLevel);
-            
-          const profileData = {
-            session_id: result.id,
-            profile_mode: sessionData.settings.connection.anonymityLevel,
-            color: sessionData.settings.connection.color || null,
-            emoji: sessionData.settings.connection.emoji || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          const { error: profileError } = await supabase
-            .from('session_profiles')
-            .insert(profileData);
-            
-          if (profileError) {
-            console.warn('Failed to create session profile:', profileError);
-            // Continue execution, don't throw error for profile creation failure
-          } else {
-            console.log('Session profile created successfully');
-          }
-        } catch (profileErr) {
-          console.warn('Error creating session profile:', profileErr);
-          // Continue execution, don't throw error for profile creation failure
+    const { data, error } = await supabase
+      .from('sessions')
+      .insert({
+        ...sessionData,
+        status: 'draft',
+        settings: {
+          ai_configuration: {
+            model: 'gpt-4',
+            temperature: 0.7,
+            max_tokens: 2000,
+            presence_penalty: 0,
+            frequency_penalty: 0,
+            custom_instructions: null
+          },
+          participant_settings: {
+            anonymity_level: 'semi-anonymous',
+            require_approval: false,
+            allow_chat: true,
+            allow_reactions: true
+          },
+          ...sessionData.settings
         }
-      } else {
-        console.log('No anonymity level specified, skipping profile creation');
-      }
-      
-      // Create vote settings with defaults
-      try {
-        const voteSettingsData = {
-          session_id: result.id,
-          max_votes_per_participant: 3,
-          require_reason: false,
-          voting_duration: 1200, // 20 minutes in seconds
-          top_voted_count: 3,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        const { error: voteSettingsError } = await supabase
-          .from('vote_settings')
-          .insert(voteSettingsData);
-          
-        if (voteSettingsError) {
-          console.warn('Failed to create vote settings:', voteSettingsError);
-          // Continue execution, don't throw error for vote settings creation failure
-        } else {
-          console.log('Vote settings created successfully');
-        }
-      } catch (voteSettingsErr) {
-        console.warn('Error creating vote settings:', voteSettingsErr);
-        // Continue execution, don't throw error for vote settings creation failure
-      }
-      
-      return { data: result, error: null };
-    } catch (error) {
-      console.error('Session creation failed:', error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error : new Error('Unknown error during session creation') 
-      };
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Create session error:', error.message);
+      throw error;
     }
+
+    return { data, error };
   });
 }
 

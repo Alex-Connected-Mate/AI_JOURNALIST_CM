@@ -6,15 +6,35 @@ export interface UserProfile {
   title: string | null;
   bio: string | null;
   avatar_url: string | null;
-  openai_api_key: string | null;
-  role: 'user' | 'admin' | 'premium' | null;
-  subscription_status: 'free' | 'basic' | 'premium' | 'enterprise' | null;
-  subscription_end_date: string | null;
-  stripe_customer_id: string | null;
-  last_login: string | null;
   created_at: string;
   updated_at: string;
-  deleted_at: string | null;
+}
+
+export interface SessionData {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  status: 'draft' | 'active' | 'completed';
+  max_participants: number;
+  created_at: string;
+  updated_at: string;
+  settings: {
+    ai_configuration?: {
+      model: string;
+      temperature: number;
+      max_tokens: number;
+      presence_penalty: number;
+      frequency_penalty: number;
+      custom_instructions: string | null;
+    };
+    participant_settings?: {
+      anonymity_level: 'anonymous' | 'semi-anonymous' | 'non-anonymous';
+      require_approval: boolean;
+      allow_chat: boolean;
+      allow_reactions: boolean;
+    };
+  };
 }
 
 export interface AIConfiguration {
