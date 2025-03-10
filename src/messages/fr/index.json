@@ -58,7 +58,17 @@
       "lightbulbs_analysis": "Analyse des Lightbulbs",
       "nuggets_analysis_desc": "Analyse des conversations avec l'IA Nuggets.",
       "nuggets_analysis_short": "1. Nuggets",
-      "nuggets_analysis": "Analyse des Nuggets"
+      "nuggets_analysis": "Analyse des Nuggets",
+      "lightbulb_desc": "Configuration des règles pour la détection des idées innovantes",
+      "lightbulb_short": "Idées innovantes",
+      "ai_interaction_desc": "Configuration de l'interaction avec l'IA",
+      "ai_nuggets_short": "Pépites d'information",
+      "discussion_desc": "Configuration des paramètres de discussion",
+      "discussion_short": "Discussion",
+      "connection_desc": "Configuration des paramètres de connexion",
+      "connection_short": "Connexion",
+      "basic_info_desc": "Informations de base de la session",
+      "basic_info_short": "Informations de base"
     }
   },
   "connection": {
