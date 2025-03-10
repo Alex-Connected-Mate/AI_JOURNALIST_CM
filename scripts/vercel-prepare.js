@@ -629,12 +629,68 @@ function fixNextConfigOptions() {
   }
 }
 
+// Fonction pour vérifier la compatibilité des versions des dépendances
+function checkDependencyCompatibility() {
+  console.log(`${colors.blue}🔍 Vérification de la compatibilité des versions des dépendances...${colors.reset}`);
+  
+  // Définir les versions compatibles pour React 18
+  const reactCompatibilityMap = {
+    '@headlessui/react': '1.7.15', // Version spécifique compatible avec React 18
+    'framer-motion': '^10.16.4', // Version compatible avec React 18
+  };
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    let needsUpdate = false;
+    
+    // Vérifier si React 18 est utilisé
+    if (packageJson.dependencies.react && packageJson.dependencies.react.includes('18')) {
+      console.log(`${colors.blue}📦 React 18 détecté, vérification des dépendances compatibles...${colors.reset}`);
+      
+      // Vérifier les dépendances qui pourraient avoir des problèmes de compatibilité
+      for (const [dep, version] of Object.entries(reactCompatibilityMap)) {
+        if (packageJson.dependencies[dep]) {
+          const currentVersion = packageJson.dependencies[dep];
+          
+          // Si la version actuelle n'est pas la version compatible
+          if (currentVersion !== version) {
+            console.log(`${colors.yellow}⚠️ Version potentiellement incompatible détectée: ${dep}@${currentVersion}${colors.reset}`);
+            console.log(`${colors.yellow}⚠️ Rétrogradation à la version compatible: ${dep}@${version}${colors.reset}`);
+            
+            packageJson.dependencies[dep] = version;
+            needsUpdate = true;
+          }
+        }
+      }
+      
+      if (needsUpdate) {
+        // Créer une sauvegarde
+        const backupPath = packageJsonPath + '.backup.' + Date.now();
+        fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
+        
+        // Mettre à jour package.json
+        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+        console.log(`${colors.green}✅ package.json mis à jour avec des versions compatibles.${colors.reset}`);
+      } else {
+        console.log(`${colors.green}✅ Toutes les dépendances sont compatibles avec React 18.${colors.reset}`);
+      }
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification de la compatibilité des dépendances: ${error.message}${colors.reset}`);
+  }
+}
+
 // Exécuter les fonctions
 try {
   console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
   
   // Vérifier et corriger la version de React
   checkReactVersion();
+  
+  // Vérifier la compatibilité des dépendances
+  checkDependencyCompatibility();
   
   // Correction de next.config.js
   fixNextConfig();

@@ -23,7 +23,7 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@headlessui/react": "^1.7.19",
+    "@headlessui/react": "1.7.15",
     "@supabase/supabase-js": "^2.39.0",
     "@tailwindcss/postcss": "^4.0.9",
     "@types/js-cookie": "^3.0.6",
