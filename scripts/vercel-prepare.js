@@ -171,6 +171,53 @@ function checkInputComponents() {
   }
 }
 
+// Fonction pour installer les dépendances manquantes
+function installMissingDependencies() {
+  console.log(`${colors.blue}🔍 Vérification des dépendances manquantes...${colors.reset}`);
+  
+  // Liste des dépendances à vérifier
+  const requiredDependencies = [
+    '@headlessui/react',
+    'framer-motion'
+  ];
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    // Vérifier si les dépendances sont déjà dans package.json
+    const missingDependencies = requiredDependencies.filter(dep => 
+      !packageJson.dependencies[dep] && !packageJson.devDependencies[dep]
+    );
+    
+    if (missingDependencies.length > 0) {
+      console.log(`${colors.yellow}⚠️ Dépendances manquantes détectées: ${missingDependencies.join(', ')}${colors.reset}`);
+      console.log(`${colors.yellow}⚠️ Ajout des dépendances manquantes au package.json...${colors.reset}`);
+      
+      // Ajouter les dépendances manquantes au package.json
+      missingDependencies.forEach(dep => {
+        if (dep === '@headlessui/react') {
+          packageJson.dependencies[dep] = '^1.7.18';
+        } else if (dep === 'framer-motion') {
+          packageJson.dependencies[dep] = '^11.0.8';
+        }
+      });
+      
+      // Écrire le package.json mis à jour
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      console.log(`${colors.green}✅ package.json mis à jour avec les dépendances manquantes.${colors.reset}`);
+      
+      // En environnement Vercel, les dépendances seront installées automatiquement
+      // après la mise à jour du package.json
+      console.log(`${colors.green}✅ Les dépendances seront installées automatiquement par Vercel.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Toutes les dépendances requises sont présentes.${colors.reset}`);
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification des dépendances: ${error.message}${colors.reset}`);
+  }
+}
+
 // Exécuter les fonctions
 try {
   console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
@@ -186,6 +233,9 @@ try {
   
   // Vérification des composants Input
   checkInputComponents();
+  
+  // Installation des dépendances manquantes
+  installMissingDependencies();
   
   console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
 } catch (error) {
