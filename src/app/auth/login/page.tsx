@@ -20,7 +20,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '';
-  const { user, setUser } = useStore();
+  const { user, login: storeLogin } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -43,11 +43,38 @@ function LoginContent() {
     console.log('Login attempt', { email });
     
     try {
-      // Connexion directe avec Supabase plutôt que par le store
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Tentative de connexion avec délai de récupération et gestion des erreurs améliorée
+      const MAX_RETRIES = 3;
+      let retryCount = 0;
+      
+      const attemptLogin = async (): Promise<any> => {
+        try {
+          // Connexion directe avec Supabase plutôt que par le store
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          return { data, error };
+        } catch (fetchError) {
+          console.error('Fetch error during login attempt', fetchError);
+          
+          // Si c'est une erreur de réseau et qu'il nous reste des tentatives
+          if (retryCount < MAX_RETRIES && fetchError instanceof Error && 
+              (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('Network'))) {
+            retryCount++;
+            console.log(`Retrying login attempt ${retryCount}/${MAX_RETRIES}...`);
+            
+            // Attente exponentielle entre les tentatives
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount - 1)));
+            return attemptLogin();
+          }
+          
+          throw fetchError;
+        }
+      };
+      
+      const { data, error } = await attemptLogin();
       
       if (error) {
         console.error('Login failed', { error: error.message });
@@ -59,20 +86,32 @@ function LoginContent() {
       if (data?.user) {
         console.log('Login successful', { userId: data.user.id });
         
-        // Mettre à jour le store manuellement
-        setUser({
-          id: data.user.id,
-          email: data.user.email || ''
-        });
-        
-        // Rediriger vers la page demandée ou le tableau de bord par défaut
-        const redirectTo = redirect || '/dashboard';
-        console.log(`Redirecting after login to: ${redirectTo}`);
-        router.push(redirectTo);
+        // Utiliser la méthode login du store pour mettre à jour l'état de l'utilisateur
+        try {
+          await storeLogin(email, password);
+          
+          // Rediriger vers la page demandée ou le tableau de bord par défaut
+          const redirectTo = redirect || '/dashboard';
+          console.log(`Redirecting after login to: ${redirectTo}`);
+          router.push(redirectTo);
+        } catch (storeError) {
+          console.error('Error updating store after login', storeError);
+          // Même si le store échoue, nous avons quand même authentifié l'utilisateur
+          // donc nous pouvons continuer avec la redirection
+          const redirectTo = redirect || '/dashboard';
+          router.push(redirectTo);
+        }
       }
     } catch (err: any) {
       console.error('Unexpected error during login', { error: err?.message });
-      setError('Une erreur s\'est produite lors de la connexion');
+      
+      // Message d'erreur plus descriptif basé sur le type d'erreur
+      if (err?.message?.includes('fetch') || err?.message?.includes('network')) {
+        setError('Problème de connexion au serveur. Vérifiez votre connexion internet et réessayez.');
+      } else {
+        setError('Une erreur s\'est produite lors de la connexion. Veuillez réessayer.');
+      }
+      
       setLoading(false);
     }
   };

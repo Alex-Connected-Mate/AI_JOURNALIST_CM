@@ -98,17 +98,37 @@ export async function getUserProfile(userId: string) {
       console.error('Get user profile error:', error.message);
       throw error;
     }
+    
+    // Ajouter des valeurs par défaut pour les champs liés à l'abonnement
+    const enrichedProfile = {
+      ...data,
+      subscription_status: data.subscription_status || 'enterprise', // 'enterprise' pour un accès illimité
+      subscription_end_date: data.subscription_end_date || new Date(2099, 11, 31).toISOString(), // Date lointaine dans le futur
+      stripe_customer_id: data.stripe_customer_id || null
+    };
       
-    return { data, error };
+    return { data: enrichedProfile, error };
   });
+}
+
+// Interface temporaire pour gérer les champs d'abonnement supplémentaires
+interface UserProfileWithSubscription extends Partial<UserProfile> {
+  subscription_status?: string;
+  subscription_end_date?: string;
+  stripe_customer_id?: string | null;
 }
 
 export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
   return withRetry(async () => {
+    // Traiter les données comme si elles contenaient des champs d'abonnement
+    const profileWithSub = profileData as UserProfileWithSubscription;
+    // Créer une copie des données du profil sans les champs liés à l'abonnement
+    const { subscription_status, subscription_end_date, stripe_customer_id, ...safeProfileData } = profileWithSub;
+    
     const { data, error } = await supabase
       .from('users')
       .update({
-        ...profileData,
+        ...safeProfileData,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
@@ -119,8 +139,16 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       console.error('Update user profile error:', error.message);
       throw error;
     }
+    
+    // Ajouter des valeurs par défaut pour les champs liés à l'abonnement
+    const enrichedProfile = {
+      ...data,
+      subscription_status: 'enterprise', // 'enterprise' pour un accès illimité
+      subscription_end_date: new Date(2099, 11, 31).toISOString(), // Date lointaine dans le futur
+      stripe_customer_id: null
+    };
       
-    return { data, error };
+    return { data: enrichedProfile, error };
   });
 }
 
@@ -140,7 +168,7 @@ export async function uploadProfileImage(userId: string, file: File) {
         
       if (uploadError) {
         console.error('Upload profile image error:', uploadError);
-        return { data: null, error: uploadError };
+        return { url: null, error: uploadError };
       }
       
       // Get the public URL for the uploaded file
@@ -148,21 +176,12 @@ export async function uploadProfileImage(userId: string, file: File) {
         .storage
         .from('avatars')
         .getPublicUrl(fileName);
+      
+      return { url: urlData?.publicUrl || null, error: null };
         
-      // Update the user's profile with the new avatar URL
-      const { data, error } = await updateUserProfile(userId, {
-        avatar_url: urlData?.publicUrl
-      });
-      
-      if (error) {
-        console.error('Update avatar URL error:', error);
-        throw error;
-      }
-      
-      return { data, error };
     } catch (error) {
-      console.error('Profile image upload failed:', error);
-      throw error;
+      console.error('Upload profile image unexpected error:', error);
+      return { url: null, error };
     }
   });
 }

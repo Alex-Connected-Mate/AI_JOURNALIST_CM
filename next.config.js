@@ -27,7 +27,9 @@ const nextConfig = {
   experimental: {
     ppr: false,
     optimizePackageImports: ['next/navigation'],
-    serverActions: true,
+    serverActions: {
+      allowedOrigins: [process.env.NEXT_PUBLIC_APP_URL || 'localhost:3000'],
+    },
   },
 
   env: {

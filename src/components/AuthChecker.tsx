@@ -7,7 +7,7 @@ import useLogger from '@/hooks/useLogger';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 function AuthCheckerContent() {
-  const { user, setUser, setAuthChecked } = useStore();
+  const { user, fetchUserProfile } = useStore();
   const logger = useLogger('AuthChecker');
   const router = useRouter();
   const pathname = usePathname();
@@ -16,6 +16,15 @@ function AuthCheckerContent() {
   // Référence pour suivre les changements de route
   const previousPathRef = useRef('');
   const setupDoneRef = useRef(false);
+  
+  // State management helpers - these functions are missing from the store type
+  const setUser = (userData: any) => {
+    useStore.setState({ user: userData });
+  };
+  
+  const setAuthChecked = (value: boolean) => {
+    useStore.setState({ authChecked: value });
+  };
   
   // Enregistrer uniquement les changements de route significatifs
   useEffect(() => {
@@ -53,6 +62,18 @@ function AuthCheckerContent() {
             id: data.session.user.id,
             email: data.session.user.email || '',
           });
+          
+          // Essayer de récupérer le profil utilisateur, mais ne pas bloquer la suite du processus
+          try {
+            // Rendre asynchrone pour ne pas bloquer
+            setTimeout(() => {
+              fetchUserProfile().catch(profileError => {
+                logger.error('Error fetching user profile, but continuing', profileError);
+              });
+            }, 0);
+          } catch (profileError) {
+            logger.error('Error initiating profile fetch, but continuing', profileError);
+          }
           
           // Vérifier si nous sommes sur une page d'authentification qui nécessite une redirection
           const isAuthPage = pathname?.startsWith('/auth/');
@@ -129,7 +150,7 @@ function AuthCheckerContent() {
         authListener.subscription.unsubscribe();
       }
     };
-  }, [setUser, setAuthChecked, router, pathname, searchParams, logger]);
+  }, [fetchUserProfile, router, pathname, searchParams, logger]);
 
   return null;
 }
