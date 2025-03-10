@@ -469,7 +469,8 @@ function checkAndFixFrenchApostrophes() {
           const content = fs.readFileSync(filePath, 'utf8');
           
           // Rechercher les apostrophes françaises dans les templates strings
-          if (content.includes('`') && (content.includes(''') || content.includes('''))) {
+          // Utiliser des codes Unicode pour les apostrophes françaises: U+2019 (') et U+2018 (')
+          if (content.includes('`') && (content.includes('\u2019') || content.includes('\u2018'))) {
             console.log(`${colors.yellow}⚠️ Apostrophes françaises détectées dans ${filePath}${colors.reset}`);
             
             // Créer une sauvegarde
@@ -478,8 +479,8 @@ function checkAndFixFrenchApostrophes() {
             
             // Remplacer les apostrophes françaises par des apostrophes droites
             const correctedContent = content
-              .replace(/([''])(?=[^`]*`[^`]*$)/g, '\\\'') // Remplacer les apostrophes françaises dans les templates strings
-              .replace(/([''])/g, '\''); // Remplacer les autres apostrophes françaises
+              .replace(/[\u2018\u2019](?=[^`]*`[^`]*$)/g, '\\\'') // Remplacer les apostrophes françaises dans les templates strings
+              .replace(/[\u2018\u2019]/g, '\''); // Remplacer les autres apostrophes françaises
             
             fs.writeFileSync(filePath, correctedContent);
             console.log(`${colors.green}✅ ${filePath} corrigé avec succès.${colors.reset}`);
