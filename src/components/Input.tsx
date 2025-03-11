@@ -1,74 +1,46 @@
-import React, { forwardRef } from 'react';
-import { useId } from 'react';
+import React from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-  helpText?: string;
+interface InputProps {
+  label: string;
+  value: string | null | undefined;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  required?: boolean;
   icon?: React.ReactNode;
-  iconPosition?: 'left' | 'right';
+  type?: string;
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(({
-  label,
-  error,
-  helpText,
-  icon,
-  iconPosition = 'left',
-  className = '',
-  id,
-  ...props
-}, ref) => {
-  const generatedId = useId();
-  const inputId = id || `input-${generatedId}`;
-  
-  return (
-    <div className="mb-4">
-      {label && (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-          {props.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-      )}
-      
-      <div className={`relative rounded-lg ${icon ? 'flex items-center' : ''}`}>
-        {icon && iconPosition === 'left' && (
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center text-gray-500">
-            {icon}
-          </div>
-        )}
-        
-        <input
-          id={inputId}
-          ref={ref}
-          className={`cm-input transition-all duration-200 ${
-            error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-blue-500'
-          } ${icon && iconPosition === 'left' ? 'pl-10' : ''} ${
-            icon && iconPosition === 'right' ? 'pr-10' : ''
-          } ${className}`}
-          {...props}
-        />
-        
-        {icon && iconPosition === 'right' && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center justify-center text-gray-500">
-            {icon}
-          </div>
-        )}
-      </div>
-      
-      {helpText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helpText}</p>
-      )}
-      
-      {error && (
-        <div className="mt-1 p-2 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
-          {error}
+const Input: React.FC<InputProps> = ({ 
+  label, 
+  value = '', 
+  onChange, 
+  placeholder, 
+  required, 
+  icon, 
+  type = "text" 
+}) => (
+  <div className="mb-4">
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <div className="relative">
+      {icon && (
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          {icon}
         </div>
       )}
+      <input
+        type={type}
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className={`block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 ${
+          icon ? 'pl-10' : ''
+        }`}
+      />
     </div>
-  );
-});
-
-Input.displayName = 'Input';
+  </div>
+);
 
 export default Input;

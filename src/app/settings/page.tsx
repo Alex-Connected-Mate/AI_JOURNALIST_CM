@@ -72,7 +72,7 @@ const Input: React.FC<InputProps> = ({ label, value = '', onChange, placeholder,
   </div>
 );
 
-// Après la définition du composant Input, ajouter le composant TextArea
+// Composant TextArea réutilisable
 const TextArea: React.FC<TextAreaProps> = ({ label, value = '', onChange, placeholder, rows = 4 }) => (
   <div className="mb-4">
     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -88,7 +88,7 @@ const TextArea: React.FC<TextAreaProps> = ({ label, value = '', onChange, placeh
   </div>
 );
 
-// Composant ImageSelector
+// Composant ImageSelector réutilisable
 const ImageSelector: React.FC<ImageSelectorProps> = ({ label, selectedImageId, onChange, helpText, onFileUpload }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -263,16 +263,19 @@ export default function SettingsPage() {
     }
     
     setIsLoading(true);
+    console.log('Submitting user data:', userData);
     
     try {
-      const { error } = await updateProfile(userData);
+      const { error, data } = await updateProfile(userData);
       
       if (error) {
+        console.error('Error updating profile:', error);
         setMessage({
           type: 'error',
-          text: `Erreur: ${error.message}`
+          text: `Erreur: ${error.message || 'Une erreur est survenue lors de la mise à jour du profil'}`
         });
       } else {
+        console.log('Profile updated successfully:', data);
         // Recharger le profil après la mise à jour
         await fetchUserProfile();
         setMessage({
@@ -281,17 +284,15 @@ export default function SettingsPage() {
         });
       }
     } catch (err) {
+      console.error('Unexpected error in handleSubmit:', err);
       setMessage({
         type: 'error',
-        text: 'Une erreur inattendue est survenue. Veuillez réessayer.'
+        text: err instanceof Error 
+          ? `Erreur: ${err.message}` 
+          : 'Une erreur inattendue est survenue. Veuillez réessayer.'
       });
     } finally {
       setIsLoading(false);
-      
-      // Effacer le message après 3 secondes
-      setTimeout(() => {
-        setMessage({ type: '', text: '' });
-      }, 3000);
     }
   };
 
@@ -577,7 +578,7 @@ export default function SettingsPage() {
                   <div className="md:col-span-2">
                     <ImageSelector
                       label="Logo de l'entreprise"
-                      selectedImageId={userData.avatar_url}
+                      selectedImageId={userData.avatar_url || null}
                       onChange={(value) => handleChange('avatar_url', value)}
                       helpText="Format recommandé : PNG ou JPG, 400x400px minimum"
                       onFileUpload={(file) => handleImageUpload(file)}

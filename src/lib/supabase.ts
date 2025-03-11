@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile } from './types';
+import { PostgrestError } from '@supabase/supabase-js';
 
 // These environment variables will need to be set in a .env.local file
 // or in Vercel's deployment settings
@@ -119,36 +120,74 @@ interface UserProfileWithSubscription extends Partial<UserProfile> {
 }
 
 export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
+  console.log('Updating user profile:', { userId, profileData });
+  
   return withRetry(async () => {
-    // Traiter les données comme si elles contenaient des champs d'abonnement
-    const profileWithSub = profileData as UserProfileWithSubscription;
-    // Créer une copie des données du profil sans les champs liés à l'abonnement
-    const { subscription_status, subscription_end_date, stripe_customer_id, ...safeProfileData } = profileWithSub;
-    
-    const { data, error } = await supabase
-      .from('users')
-      .update({
-        ...safeProfileData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-      .select()
-      .single();
+    try {
+      // Traiter les données comme si elles contenaient des champs d'abonnement
+      const profileWithSub = profileData as UserProfileWithSubscription;
+      // Créer une copie des données du profil sans les champs liés à l'abonnement
+      const { subscription_status, subscription_end_date, stripe_customer_id, ...safeProfileData } = profileWithSub;
       
-    if (error) {
-      console.error('Update user profile error:', error.message);
-      throw error;
+      // Vérifier si l'utilisateur existe avant la mise à jour
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .single();
+        
+      if (checkError) {
+        console.error('User check error:', checkError.message);
+        return { data: null, error: checkError };
+      }
+      
+      if (!existingUser) {
+        console.error('User not found:', userId);
+        return { 
+          data: null, 
+          error: { 
+            message: 'User not found',
+            details: `No user found with ID: ${userId}`
+          } as PostgrestError 
+        };
+      }
+      
+      // Procéder à la mise à jour
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          ...safeProfileData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('Update user profile error:', error.message);
+        return { data: null, error };
+      }
+      
+      // Ajouter des valeurs par défaut pour les champs liés à l'abonnement
+      const enrichedProfile = {
+        ...data,
+        subscription_status: 'enterprise', // 'enterprise' pour un accès illimité
+        subscription_end_date: new Date(2099, 11, 31).toISOString(), // Date lointaine dans le futur
+        stripe_customer_id: null
+      };
+      
+      console.log('Profile updated successfully:', enrichedProfile);
+      return { data: enrichedProfile, error: null };
+    } catch (err) {
+      console.error('Unexpected error in updateUserProfile:', err);
+      return { 
+        data: null, 
+        error: { 
+          message: err instanceof Error ? err.message : 'An unexpected error occurred',
+          details: 'Error in updateUserProfile function'
+        } as PostgrestError 
+      };
     }
-    
-    // Ajouter des valeurs par défaut pour les champs liés à l'abonnement
-    const enrichedProfile = {
-      ...data,
-      subscription_status: 'enterprise', // 'enterprise' pour un accès illimité
-      subscription_end_date: new Date(2099, 11, 31).toISOString(), // Date lointaine dans le futur
-      stripe_customer_id: null
-    };
-      
-    return { data: enrichedProfile, error };
   });
 }
 
