@@ -90,4 +90,76 @@ export interface Notification {
   message: string;
   read: boolean;
   created_at: string;
+}
+
+// Types pour le système de cache
+export interface Session {
+  id: string;
+  title: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  owner_id: string;
+  status: 'active' | 'completed' | 'archived';
+  settings: Record<string, any>;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  role: 'admin' | 'user' | 'guest';
+  created_at: string;
+  last_seen?: string;
+}
+
+export interface Message {
+  id: string;
+  session_id: string;
+  user_id: string;
+  content: string;
+  type: 'text' | 'image' | 'file';
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
+export interface Analytics {
+  id: string;
+  session_id: string;
+  metrics: {
+    participants: number;
+    messages: number;
+    active_time: number;
+    engagement_score: number;
+  };
+  insights: {
+    key_topics: string[];
+    sentiment_score: number;
+    participation_distribution: Record<string, number>;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CacheConfig {
+  revalidateOnFocus?: boolean;
+  revalidateOnReconnect?: boolean;
+  refreshInterval?: number;
+  dedupingInterval?: number;
+  errorRetryCount?: number;
+}
+
+export type CacheKeyType = 'session' | 'user' | 'messages' | 'analytics';
+
+export interface CacheKey {
+  type: CacheKeyType;
+  id?: string;
+  params?: Record<string, any>;
+}
+
+export interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
 } 

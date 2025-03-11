@@ -23,6 +23,7 @@ function DashboardContent() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const searchParams = useSearchParams();
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -43,6 +44,24 @@ function DashboardContent() {
       }
     }
   }, [searchParams]);
+
+  // Set a timeout to force end loading state after 5 seconds to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        setLoadingTimeout(true);
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+
+  // Force end loading if timeout reached
+  useEffect(() => {
+    if (loadingTimeout && loading) {
+      setLoading(false);
+      logger.warn('Loading sessions timed out - forcing end of loading state');
+    }
+  }, [loadingTimeout, loading]);
 
   // Fetch sessions
   useEffect(() => {
@@ -78,6 +97,11 @@ function DashboardContent() {
 
     fetchSessions();
   }, [user]);
+
+  // Determine if we should show loading, empty state, or sessions list
+  const shouldShowLoading = loading && !loadingTimeout;
+  const shouldShowEmptyState = (!loading || loadingTimeout) && (!sessions || sessions.length === 0);
+  const shouldShowSessions = (!loading || loadingTimeout) && sessions && sessions.length > 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -119,9 +143,9 @@ function DashboardContent() {
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">{t('dashboard.yourSessions', 'Vos sessions')}</h2>
           
-          {loading ? (
+          {shouldShowLoading ? (
             <LoadingFallback />
-          ) : sessions.length > 0 ? (
+          ) : shouldShowSessions ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sessions.map((session) => (
                 <div key={session.id} className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
@@ -212,7 +236,7 @@ function DashboardContent() {
               </p>
               <Link 
                 href="/sessions/new" 
-                className="cm-button flex items-center gap-2"
+                className="cm-button inline-flex items-center gap-2"
               >
                 <span role="img" aria-label="rocket">🚀</span>
                 {t('dashboard.createSession', 'Créer une session')}

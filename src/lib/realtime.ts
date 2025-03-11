@@ -8,6 +8,59 @@ interface RealtimeConfig {
   onError?: (error: Error) => void;
 }
 
+// Singleton pour gérer toutes les connexions Realtime
+class RealtimeConnectionManager {
+  private static instance: RealtimeConnectionManager;
+  private connections: Map<string, RealtimeManager> = new Map();
+  private connectionCount = 0;
+  private readonly MAX_CONNECTIONS = 5;
+
+  private constructor() {}
+
+  static getInstance(): RealtimeConnectionManager {
+    if (!RealtimeConnectionManager.instance) {
+      RealtimeConnectionManager.instance = new RealtimeConnectionManager();
+    }
+    return RealtimeConnectionManager.instance;
+  }
+
+  async getConnection(config: RealtimeConfig): Promise<RealtimeManager> {
+    const existingConnection = this.connections.get(config.sessionId);
+    if (existingConnection) {
+      return existingConnection;
+    }
+
+    if (this.connectionCount >= this.MAX_CONNECTIONS) {
+      // Fermer la connexion la plus ancienne si nous atteignons la limite
+      const firstKey = Array.from(this.connections.keys())[0];
+      if (firstKey) {
+        await this.closeConnection(firstKey);
+      }
+    }
+
+    const newConnection = new RealtimeManager(config);
+    this.connections.set(config.sessionId, newConnection);
+    this.connectionCount++;
+    return newConnection;
+  }
+
+  async closeConnection(sessionId: string): Promise<void> {
+    const connection = this.connections.get(sessionId);
+    if (connection) {
+      await connection.disconnect();
+      this.connections.delete(sessionId);
+      this.connectionCount--;
+    }
+  }
+
+  async closeAllConnections(): Promise<void> {
+    const sessionIds = Array.from(this.connections.keys());
+    for (const sessionId of sessionIds) {
+      await this.closeConnection(sessionId);
+    }
+  }
+}
+
 class RealtimeManager {
   private channel: RealtimeChannel | null = null;
   private presence: RealtimePresence | null = null;
@@ -15,6 +68,9 @@ class RealtimeManager {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
   private config: RealtimeConfig;
+  private messageQueue: any[] = [];
+  private isProcessingQueue = false;
+  private readonly MAX_QUEUE_SIZE = 100;
 
   constructor(config: RealtimeConfig) {
     this.config = config;
@@ -25,7 +81,6 @@ class RealtimeManager {
       const { data: { user } } = await supabase.auth.getUser();
       const presenceKey = user?.id || 'anonymous';
 
-      // Subscribe to the session channel
       this.channel = supabase.channel(`session:${this.config.sessionId}`, {
         config: {
           presence: {
@@ -34,7 +89,6 @@ class RealtimeManager {
         },
       });
 
-      // Set up presence handling
       if (this.config.onPresenceChange) {
         this.presence = this.channel.presence;
         this.channel.on('presence', { event: 'sync' }, () => {
@@ -43,12 +97,11 @@ class RealtimeManager {
         });
       }
 
-      // Set up message handling
+      // Optimisation du traitement des messages avec une file d'attente
       this.channel.on('broadcast', { event: 'message' }, ({ payload }) => {
-        this.config.onMessage?.(payload);
+        this.queueMessage(payload);
       });
 
-      // Handle connection state changes
       this.channel.on('system', { event: '*' }, ({ event }) => {
         switch (event) {
           case 'disconnect':
@@ -63,13 +116,11 @@ class RealtimeManager {
         }
       });
 
-      // Subscribe to the channel
-      const { error } = await this.channel.subscribe();
-      if (error) {
-        throw new Error(`Failed to subscribe to channel: ${error.message}`);
+      const status = await this.channel.subscribe();
+      if (!status || (status as any).error) {
+        throw new Error(`Failed to subscribe to channel: ${(status as any).error?.message || 'Unknown error'}`);
       }
 
-      // Track presence
       if (this.presence) {
         await this.channel.track({
           online_at: new Date().toISOString(),
@@ -79,6 +130,34 @@ class RealtimeManager {
     } catch (error) {
       this.handleError(error as Error);
     }
+  }
+
+  private async queueMessage(message: any) {
+    if (this.messageQueue.length >= this.MAX_QUEUE_SIZE) {
+      this.messageQueue.shift(); // Supprimer le message le plus ancien si la file est pleine
+    }
+    this.messageQueue.push(message);
+    
+    if (!this.isProcessingQueue) {
+      await this.processMessageQueue();
+    }
+  }
+
+  private async processMessageQueue() {
+    if (this.isProcessingQueue || this.messageQueue.length === 0) return;
+
+    this.isProcessingQueue = true;
+    while (this.messageQueue.length > 0) {
+      const message = this.messageQueue.shift();
+      try {
+        await this.config.onMessage?.(message);
+      } catch (error) {
+        this.handleError(error as Error);
+      }
+      // Petite pause entre chaque traitement pour éviter de bloquer le thread
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    this.isProcessingQueue = false;
   }
 
   private async handleDisconnect() {
@@ -122,11 +201,11 @@ class RealtimeManager {
 
   async updatePresence(state: Record<string, any>) {
     try {
-      if (!this.presence) {
-        throw new Error('Presence not initialized');
+      if (!this.channel || !this.presence) {
+        throw new Error('Channel or presence not initialized');
       }
 
-      await this.presence.update(state);
+      await this.channel.track(state);
     } catch (error) {
       this.handleError(error as Error);
     }
@@ -134,10 +213,10 @@ class RealtimeManager {
 
   async disconnect() {
     try {
-      if (this.presence) {
-        await this.presence.leave();
-      }
       if (this.channel) {
+        if (this.presence) {
+          await this.channel.untrack();
+        }
         await this.channel.unsubscribe();
       }
     } catch (error) {
@@ -146,6 +225,8 @@ class RealtimeManager {
   }
 }
 
+// Export singleton instance
+export const realtimeManager = RealtimeConnectionManager.getInstance();
 export function createRealtimeManager(config: RealtimeConfig) {
-  return new RealtimeManager(config);
+  return realtimeManager.getConnection(config);
 } 
