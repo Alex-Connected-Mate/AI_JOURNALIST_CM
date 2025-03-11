@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
@@ -16,22 +18,37 @@ import {
 
 export default function SessionReportPage() {
   const params = useParams();
+  
+  // Vérification de sécurité pour s'assurer que l'ID est présent
+  if (!params?.id) {
+    return <div>ID de session invalide</div>;
+  }
+
   const sessionId = params.id as string;
 
-  const { data: sessionData, isLoading } = useQuery({
+  const { data: sessionData, isLoading, error } = useQuery({
     queryKey: ['session-report', sessionId],
     queryFn: async () => {
-      const [session, messages, participants] = await Promise.all([
-        supabase.from('sessions').select('*').eq('id', sessionId).single(),
-        supabase.from('messages').select('*').eq('session_id', sessionId),
-        supabase.from('session_participants').select('*').eq('session_id', sessionId)
-      ]);
+      try {
+        const [session, messages, participants] = await Promise.all([
+          supabase.from('sessions').select('*').eq('id', sessionId).single(),
+          supabase.from('messages').select('*').eq('session_id', sessionId),
+          supabase.from('session_participants').select('*').eq('session_id', sessionId)
+        ]);
 
-      return {
-        session: session.data,
-        messages: messages.data || [],
-        participants: participants.data || []
-      };
+        if (!session.data) {
+          throw new Error('Session non trouvée');
+        }
+
+        return {
+          session: session.data,
+          messages: messages.data || [],
+          participants: participants.data || []
+        };
+      } catch (error) {
+        console.error('Erreur lors de la récupération des données:', error);
+        throw error;
+      }
     }
   });
 
