@@ -73,9 +73,15 @@ export default function SettingsPage() {
 
     // Charger le profil depuis Supabase
     const loadUserProfile = async () => {
-      setIsLoading(true);
-      await fetchUserProfile();
-      setIsLoading(false);
+      try {
+        await fetchUserProfile();
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        setMessage({
+          type: 'error',
+          text: 'Erreur lors du chargement du profil'
+        });
+      }
     };
     
     loadUserProfile();
@@ -129,38 +135,28 @@ export default function SettingsPage() {
     handleChange('full_name', fullName);
   };
 
-  const handleSectionSubmit = async (section: 'profile' | 'api' | 'admin') => {
-    const sectionData: Partial<UserFormData> = {};
+  const handleSubmit = async () => {
+    if (isLoading) return;
     
-    switch (section) {
-      case 'profile':
-        sectionData.full_name = userData.full_name;
-        sectionData.institution = userData.institution;
-        sectionData.title = userData.title;
-        sectionData.bio = userData.bio;
-        break;
-      case 'api':
-        sectionData.openai_api_key = userData.openai_api_key;
-        break;
-      case 'admin':
-        sectionData.stripe_customer_id = userData.stripe_customer_id;
-        sectionData.subscription_end_date = userData.subscription_end_date;
-        break;
-    }
-
     setIsLoading(true);
+    setMessage({ type: '', text: '' });
     
     try {
-      const { error, data } = await updateProfile(sectionData);
+      const { error } = await updateProfile({
+        full_name: userData.full_name,
+        institution: userData.institution,
+        title: userData.title,
+        bio: userData.bio,
+        openai_api_key: userData.openai_api_key,
+      });
       
       if (error) {
-        console.error(`Error updating ${section}:`, error);
+        console.error('Error updating profile:', error);
         setMessage({
           type: 'error',
-          text: `Erreur: ${error.message || `Une erreur est survenue lors de la mise à jour de la section ${section}`}`
+          text: `Erreur: ${error.message || 'Une erreur est survenue lors de la mise à jour du profil'}`
         });
       } else {
-        console.log(`${section} updated successfully:`, data);
         await fetchUserProfile();
         setMessage({
           type: 'success',
@@ -168,12 +164,10 @@ export default function SettingsPage() {
         });
       }
     } catch (err) {
-      console.error(`Unexpected error in ${section} update:`, err);
+      console.error('Unexpected error:', err);
       setMessage({
         type: 'error',
-        text: err instanceof Error 
-          ? `Erreur: ${err.message}` 
-          : 'Une erreur inattendue est survenue. Veuillez réessayer.'
+        text: 'Une erreur inattendue est survenue. Veuillez réessayer.'
       });
     } finally {
       setIsLoading(false);
@@ -182,12 +176,13 @@ export default function SettingsPage() {
 
   // Gérer le téléchargement d'image
   const handleImageUpload = async (file: File) => {
-    if (!file) return;
+    if (!file || isLoading) return;
     
     setIsLoading(true);
+    setMessage({ type: '', text: '' });
     
     try {
-      const { url, error } = await uploadAvatarToStore(file);
+      const { error } = await uploadAvatarToStore(file);
       
       if (error) {
         setMessage({
@@ -195,7 +190,6 @@ export default function SettingsPage() {
           text: `Erreur lors du téléchargement: ${error.message}`
         });
       } else {
-        // Mise à jour réussie, actualiser le profil
         await fetchUserProfile();
         setMessage({
           type: 'success',
@@ -209,9 +203,6 @@ export default function SettingsPage() {
       });
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        setMessage({ type: '', text: '' });
-      }, 3000);
     }
   };
 
@@ -249,14 +240,13 @@ export default function SettingsPage() {
                 label="Photo de profil"
                 selectedImageId={userData.avatar_url || ''}
                 onChange={(value) => handleChange('avatar_url', value)}
-                helpText="Formats acceptés : JPG, PNG. Max 5MB."
                 onFileUpload={handleImageUpload}
               />
               
               <InputComponent
                 label="Prénom"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={(e) => handleNameChange('firstName', e.target.value)}
                 placeholder="Votre prénom"
                 required
               />
@@ -264,7 +254,7 @@ export default function SettingsPage() {
               <InputComponent
                 label="Nom"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={(e) => handleNameChange('lastName', e.target.value)}
                 placeholder="Votre nom"
                 required
               />
@@ -275,6 +265,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('email', e.target.value)}
                 type="email"
                 required
+                disabled
               />
               
               <InputComponent
@@ -301,11 +292,18 @@ export default function SettingsPage() {
 
               <div className="flex justify-end mt-6">
                 <button
-                  onClick={() => handleSectionSubmit('profile')}
+                  onClick={handleSubmit}
                   className="cm-button-primary px-6 py-2"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Enregistrement...' : 'Enregistrer les informations personnelles'}
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Enregistrement...
+                    </div>
+                  ) : (
+                    'Enregistrer'
+                  )}
                 </button>
               </div>
             </div>
@@ -322,15 +320,6 @@ export default function SettingsPage() {
                 type="password"
                 placeholder="sk-..."
               />
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={() => handleSectionSubmit('api')}
-                  className="cm-button-primary px-6 py-2"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Enregistrement...' : 'Enregistrer la configuration API'}
-                </button>
-              </div>
             </div>
           </div>
           
