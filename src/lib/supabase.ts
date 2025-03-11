@@ -316,45 +316,52 @@ async function ensureUserRecord(userId: string, email: string) {
 
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
-    // Configurer max_participants à une valeur élevée par défaut si non spécifié
-    const settings = {
-      ...sessionData.settings,
-      maxParticipants: sessionData.settings?.maxParticipants || 999,
-      ai_configuration: {
-        model: 'gpt-4',
-        temperature: 0.7,
-        max_tokens: 2000,
-        presence_penalty: 0,
-        frequency_penalty: 0,
-        custom_instructions: null,
-        ...sessionData.settings?.ai_configuration
-      },
-      participant_settings: {
-        anonymity_level: 'semi-anonymous',
-        require_approval: false,
-        allow_chat: true,
-        allow_reactions: true,
-        ...sessionData.settings?.participant_settings
+    // Validate required fields
+    if (!sessionData.user_id || !sessionData.title) {
+      throw new Error('Missing required fields: user_id and title are required');
+    }
+
+    // Generate a unique access code
+    const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // Prepare session data
+    const session = {
+      ...sessionData,
+      status: 'draft',
+      access_code: accessCode,
+      created_at: new Date().toISOString(),
+      settings: {
+        ...sessionData.settings,
+        participant_settings: {
+          anonymity_level: sessionData.settings?.participant_settings?.anonymity_level || 'anonymous',
+          require_approval: sessionData.settings?.participant_settings?.require_approval ?? true,
+          allow_chat: sessionData.settings?.participant_settings?.allow_chat ?? true,
+          allow_reactions: sessionData.settings?.participant_settings?.allow_reactions ?? true
+        },
+        ai_configuration: {
+          model: 'gpt-4',
+          temperature: 0.7,
+          max_tokens: 2000,
+          presence_penalty: 0.5,
+          frequency_penalty: 0.5,
+          custom_instructions: null
+        }
       }
     };
 
+    // Insert session into database
     const { data, error } = await supabase
       .from('sessions')
-      .insert({
-        ...sessionData,
-        status: 'draft',
-        max_participants: 999, // Garantir une valeur élevée pour les participants
-        settings
-      })
+      .insert(session)
       .select()
       .single();
 
     if (error) {
-      console.error('Create session error:', error.message);
+      console.error('Create session error:', error);
       throw error;
     }
 
-    return { data, error };
+    return { data, error: null };
   });
 }
 

@@ -162,4 +162,21 @@ export interface CacheEntry<T> {
   data: T;
   timestamp: number;
   expiresAt: number;
+}
+
+export interface SessionParticipant {
+  id: string;
+  session_id: string;
+  user_id: string;
+  joined_at: string;
+  last_active: string;
+  status: 'active' | 'inactive' | 'left';
+  role: 'host' | 'participant' | 'observer';
+  metadata?: Record<string, any>;
+}
+
+export interface RealtimeSessionActions {
+  sendMessage: (content: string) => Promise<Message>;
+  updateSession: (updates: Partial<Session>) => Promise<Session>;
+  refresh: () => Promise<void>;
 } 

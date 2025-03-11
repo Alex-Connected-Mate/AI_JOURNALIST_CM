@@ -1,20 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Session, Message } from '@/lib/types';
-import { useSession, useMessages, invalidateCache } from '@/lib/cache';
-import { createRealtimeManager } from '@/lib/realtime';
+import { Session, Message, SessionParticipant } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 
 interface UseRealtimeSessionOptions {
   sessionId: string;
   userId: string;
-  onPresenceChange?: (presenceState: Record<string, any>) => void;
   onError?: (error: Error) => void;
 }
 
 interface RealtimeSessionState {
   session: Session | null;
   messages: Message[];
-  participants: Record<string, any>;
+  participants: Record<string, SessionParticipant>;
   isLoading: boolean;
   error: Error | null;
 }
@@ -22,7 +19,6 @@ interface RealtimeSessionState {
 export function useRealtimeSession({
   sessionId,
   userId,
-  onPresenceChange,
   onError
 }: UseRealtimeSessionOptions) {
   const [state, setState] = useState<RealtimeSessionState>({
@@ -33,100 +29,105 @@ export function useRealtimeSession({
     error: null
   });
 
-  // Utiliser nos hooks de cache optimisés
-  const { data: sessionData, error: sessionError } = useSession(sessionId);
-  const { data: messagesData, error: messagesError } = useMessages(sessionId, { limit: 50 });
-
-  // Gestionnaire de messages en temps réel
-  const handleMessage = useCallback((message: Message) => {
-    setState(prev => ({
-      ...prev,
-      messages: [message, ...prev.messages].slice(0, 50) // Garder les 50 derniers messages
-    }));
-
-    // Invalider le cache des messages
-    invalidateCache({ type: 'messages', id: sessionId });
-  }, [sessionId]);
-
-  // Gestionnaire de présence
-  const handlePresence = useCallback((presenceState: Record<string, any>) => {
-    setState(prev => ({
-      ...prev,
-      participants: presenceState
-    }));
-    onPresenceChange?.(presenceState);
-  }, [onPresenceChange]);
-
-  // Gestionnaire d'erreur
-  const handleError = useCallback((error: Error) => {
-    setState(prev => ({
-      ...prev,
-      error
-    }));
-    onError?.(error);
+  const handleError = useCallback((error: unknown) => {
+    console.error('Session error:', error);
+    const formattedError = error instanceof Error ? error : new Error(String(error));
+    setState(prev => ({ ...prev, error: formattedError }));
+    onError?.(formattedError);
   }, [onError]);
 
-  // Effet pour la connexion en temps réel
+  const fetchSessionData = useCallback(async () => {
+    if (!sessionId) return;
+
+    try {
+      const [sessionResult, messagesResult, participantsResult] = await Promise.all([
+        // Charger la session
+        supabase
+          .from('sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .single(),
+
+        // Charger les messages
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(50),
+
+        // Charger les participants
+        supabase
+          .from('session_participants')
+          .select('*')
+          .eq('session_id', sessionId)
+      ]);
+
+      // Vérifier les erreurs
+      if (sessionResult.error) throw sessionResult.error;
+      if (messagesResult.error) throw messagesResult.error;
+      if (participantsResult.error) throw participantsResult.error;
+
+      // Mettre à jour l'état
+      setState(prev => ({
+        ...prev,
+        session: sessionResult.data,
+        messages: messagesResult.data || [],
+        participants: (participantsResult.data || []).reduce((acc, p) => ({
+          ...acc,
+          [p.user_id]: p
+        }), {}),
+        isLoading: false,
+        error: null
+      }));
+
+    } catch (error) {
+      handleError(error);
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [sessionId, handleError]);
+
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
+    let mounted = true;
+    let pollInterval: NodeJS.Timeout | null = null;
 
-    const initializeRealtime = async () => {
+    const startPolling = async () => {
+      if (!mounted) return;
+      
       try {
-        const manager = await createRealtimeManager({
-          sessionId,
-          onMessage: handleMessage,
-          onPresenceChange: handlePresence,
-          onError: handleError
-        });
-
-        await manager.connect();
-
-        cleanup = () => {
-          manager.disconnect();
-        };
+        await fetchSessionData();
+        
+        if (mounted) {
+          pollInterval = setInterval(fetchSessionData, 5000);
+        }
       } catch (error) {
-        handleError(error as Error);
+        handleError(error);
       }
     };
 
-    initializeRealtime();
+    startPolling();
 
     return () => {
-      cleanup?.();
+      mounted = false;
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
     };
-  }, [sessionId, handleMessage, handlePresence, handleError]);
+  }, [fetchSessionData, handleError]);
 
-  // Mettre à jour l'état avec les données du cache
-  useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      session: sessionData || null,
-      messages: messagesData || [],
-      isLoading: false,
-      error: sessionError || messagesError || null
-    }));
-  }, [sessionData, messagesData, sessionError, messagesError]);
-
-  // Actions pour interagir avec la session
   const actions = {
-    // Envoyer un message
     sendMessage: async (content: string) => {
+      if (!content.trim()) return;
+
       try {
-        const message: Partial<Message> = {
+        const message = {
           session_id: sessionId,
           user_id: userId,
-          content,
+          content: content.trim(),
           type: 'text',
           created_at: new Date().toISOString()
         };
 
-        // Optimistic update
-        setState(prev => ({
-          ...prev,
-          messages: [message as Message, ...prev.messages]
-        }));
-
-        // Envoyer le message via Supabase
         const { data, error } = await supabase
           .from('messages')
           .insert(message)
@@ -134,22 +135,18 @@ export function useRealtimeSession({
 
         if (error) throw error;
 
-        // Invalider le cache des messages
-        invalidateCache({ type: 'messages', id: sessionId });
+        setState(prev => ({
+          ...prev,
+          messages: [data, ...prev.messages].slice(0, 50)
+        }));
 
         return data;
       } catch (error) {
-        handleError(error as Error);
-        // Rollback optimistic update
-        setState(prev => ({
-          ...prev,
-          messages: prev.messages.filter(m => m.content !== content)
-        }));
+        handleError(error);
         throw error;
       }
     },
 
-    // Mettre à jour la session
     updateSession: async (updates: Partial<Session>) => {
       try {
         const { data, error } = await supabase
@@ -160,9 +157,6 @@ export function useRealtimeSession({
 
         if (error) throw error;
 
-        // Invalider le cache de la session
-        invalidateCache({ type: 'session', id: sessionId });
-
         setState(prev => ({
           ...prev,
           session: { ...prev.session, ...updates } as Session
@@ -170,8 +164,16 @@ export function useRealtimeSession({
 
         return data;
       } catch (error) {
-        handleError(error as Error);
+        handleError(error);
         throw error;
+      }
+    },
+
+    refresh: async () => {
+      try {
+        await fetchSessionData();
+      } catch (error) {
+        handleError(error);
       }
     }
   };

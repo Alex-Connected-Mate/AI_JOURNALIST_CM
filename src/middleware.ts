@@ -1,49 +1,38 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-// Commenting out this import as it's causing issues
-// import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup']
 
 export async function middleware(request: NextRequest) {
-  try {
-    // Create a response object that we'll modify
-    const res = NextResponse.next();
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient({ req: request, res })
+  const { data: { session } } = await supabase.auth.getSession()
 
-    // Commenting out Supabase client creation as it's causing connection issues
-    // const supabase = createMiddlewareClient({ req: request, res });
-
-    // Commenting out session verification
-    // const {
-    //   data: { session },
-    // } = await supabase.auth.getSession();
-
-    // Security headers
-    res.headers.set('X-Frame-Options', 'DENY');
-    res.headers.set('X-Content-Type-Options', 'nosniff');
-    res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.headers.set(
-      'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
-    );
-
-    // API route protection - commenting out since we can't check session
-    // if (request.nextUrl.pathname.startsWith('/api/')) {
-    //   if (!session) {
-    //     return new NextResponse('Unauthorized', { status: 401 });
-    //   }
-    // }
-
-    return res;
-  } catch (error) {
-    console.error('Middleware error:', error);
-    return new NextResponse('Internal Error', { status: 500 });
+  const isPublicRoute = PUBLIC_ROUTES.includes(request.nextUrl.pathname)
+  
+  if (!session && !isPublicRoute) {
+    // Redirect to login if trying to access protected route without session
+    return NextResponse.redirect(new URL('/auth/login', request.url))
   }
+
+  if (session && isPublicRoute) {
+    // Redirect to dashboard if trying to access public route with session
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Security headers
+  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+  );
+
+  return res
 }
 
 export const config = {
-  matcher: [
-    '/api/:path*',
-    '/dashboard/:path*',
-    '/settings/:path*',
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
-}; 
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+} 
