@@ -6,9 +6,15 @@ export interface UserProfile {
   title: string | null;
   bio: string | null;
   avatar_url: string | null;
-  subscription_status?: string;
+  openai_api_key: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+  role: 'user' | 'admin' | 'premium';
+  subscription_status: 'free' | 'basic' | 'premium' | 'enterprise';
+  subscription_end_date: string | null;
+  stripe_customer_id: string | null;
+  last_login: string | null;
 }
 
 export interface SessionData {

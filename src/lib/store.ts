@@ -6,7 +6,7 @@ import { UserProfile } from './types';
 
 // Function to log store actions if not in production
 const logAction = (action: string, data?: any) => {
-  if (typeof window !== 'undefined') {
+  if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     console.log(`[STORE] ${action}`, data || '');
   }
 };
