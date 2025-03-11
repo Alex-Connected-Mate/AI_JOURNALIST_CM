@@ -129,33 +129,38 @@ export default function SettingsPage() {
     handleChange('full_name', fullName);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSectionSubmit = async (section: 'profile' | 'api' | 'admin') => {
+    const sectionData: Partial<UserFormData> = {};
     
-    // Validation des champs obligatoires
-    if (!userData.full_name) {
-      setMessage({
-        type: 'error',
-        text: 'Veuillez remplir tous les champs obligatoires.'
-      });
-      return;
+    switch (section) {
+      case 'profile':
+        sectionData.full_name = userData.full_name;
+        sectionData.institution = userData.institution;
+        sectionData.title = userData.title;
+        sectionData.bio = userData.bio;
+        break;
+      case 'api':
+        sectionData.openai_api_key = userData.openai_api_key;
+        break;
+      case 'admin':
+        sectionData.stripe_customer_id = userData.stripe_customer_id;
+        sectionData.subscription_end_date = userData.subscription_end_date;
+        break;
     }
-    
+
     setIsLoading(true);
-    console.log('Submitting user data:', userData);
     
     try {
-      const { error, data } = await updateProfile(userData);
+      const { error, data } = await updateProfile(sectionData);
       
       if (error) {
-        console.error('Error updating profile:', error);
+        console.error(`Error updating ${section}:`, error);
         setMessage({
           type: 'error',
-          text: `Erreur: ${error.message || 'Une erreur est survenue lors de la mise à jour du profil'}`
+          text: `Erreur: ${error.message || `Une erreur est survenue lors de la mise à jour de la section ${section}`}`
         });
       } else {
-        console.log('Profile updated successfully:', data);
-        // Recharger le profil après la mise à jour
+        console.log(`${section} updated successfully:`, data);
         await fetchUserProfile();
         setMessage({
           type: 'success',
@@ -163,7 +168,7 @@ export default function SettingsPage() {
         });
       }
     } catch (err) {
-      console.error('Unexpected error in handleSubmit:', err);
+      console.error(`Unexpected error in ${section} update:`, err);
       setMessage({
         type: 'error',
         text: err instanceof Error 
@@ -293,6 +298,16 @@ export default function SettingsPage() {
                 placeholder="Parlez-nous de vous..."
                 rows={4}
               />
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => handleSectionSubmit('profile')}
+                  className="cm-button-primary px-6 py-2"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Enregistrement...' : 'Enregistrer les informations personnelles'}
+                </button>
+              </div>
             </div>
           </div>
           
@@ -307,6 +322,15 @@ export default function SettingsPage() {
                 type="password"
                 placeholder="sk-..."
               />
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => handleSectionSubmit('api')}
+                  className="cm-button-primary px-6 py-2"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Enregistrement...' : 'Enregistrer la configuration API'}
+                </button>
+              </div>
             </div>
           </div>
           
@@ -359,14 +383,6 @@ export default function SettingsPage() {
           <div className="second-level-block p-6 rounded-xl">
             <h3 className="text-lg font-semibold mb-4">Actions</h3>
             <div className="space-y-4">
-              <button
-                onClick={handleSubmit}
-                className="w-full cm-button-primary"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
-              </button>
-              
               <button
                 onClick={handleLogout}
                 className="w-full cm-button-secondary"

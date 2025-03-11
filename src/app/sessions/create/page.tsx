@@ -15,6 +15,10 @@ import RadioGroup from '@/components/RadioGroup';
 import Tabs from '@/components/Tabs';
 import { createSession } from '@/lib/supabase';
 
+interface SessionError {
+  message: string;
+}
+
 // Helper function to generate anonymous identifier
 const generateAnonymousId = (name: string) => {
   if (!name || name.length < 2) return "XX12345";
@@ -33,28 +37,44 @@ const generateAnonymousId = (name: string) => {
 
 export default function CreateSessionPage() {
   const router = useRouter();
-  const { user } = useStore();
+  const { user, userProfile } = useStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
   
   // Session form state
-  const [sessionName, setSessionName] = useState('');
-  const [institution, setInstitution] = useState('');
-  const [professorName, setProfessorName] = useState('');
-  const [showProfessorName, setShowProfessorName] = useState(true);
-  const [selectedImage, setSelectedImage] = useState('university');
-  const [profileMode, setProfileMode] = useState('anonymous');
-  const [color, setColor] = useState('#3490dc');
-  const [emoji, setEmoji] = useState('🎓');
-  const [maxParticipants, setMaxParticipants] = useState(50);
+  const [sessionName, setSessionName] = useState<string>('');
+  const [institution, setInstitution] = useState<string>('');
+  const [professorName, setProfessorName] = useState<string>('');
+  const [showProfessorName, setShowProfessorName] = useState<boolean>(true);
+  const [selectedImage, setSelectedImage] = useState<string>('university');
+  const [profileMode, setProfileMode] = useState<'anonymous' | 'semi-anonymous' | 'non-anonymous'>('anonymous');
+  const [color, setColor] = useState<string>('#3490dc');
+  const [emoji, setEmoji] = useState<string>('🎓');
+  const [maxParticipants, setMaxParticipants] = useState<number>(50);
   
+  // États pour le contrôle de l'utilisation des informations du profil
+  const [useProfileInstitution, setUseProfileInstitution] = useState<boolean>(false);
+  const [useProfileName, setUseProfileName] = useState<boolean>(false);
+
   useEffect(() => {
     // If user is not logged in, redirect to login page
     if (!user) {
       router.push('/auth/login');
     }
   }, [user, router]);
+
+  // Effet pour mettre à jour les champs avec les informations du profil
+  useEffect(() => {
+    if (userProfile) {
+      if (useProfileInstitution && userProfile.institution) {
+        setInstitution(userProfile.institution);
+      }
+      if (useProfileName && userProfile.full_name) {
+        setProfessorName(userProfile.full_name);
+      }
+    }
+  }, [userProfile, useProfileInstitution, useProfileName]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,10 +106,11 @@ export default function CreateSessionPage() {
         maxParticipants,
       };
       
-      const { data, error } = await createSession(sessionData);
+      const { data, error: apiError } = await createSession(sessionData);
       
-      if (error) {
-        setError(error.message);
+      if (apiError) {
+        const sessionError = apiError as SessionError;
+        setError(sessionError.message);
         setLoading(false);
         return;
       }
@@ -100,6 +121,10 @@ export default function CreateSessionPage() {
       setError('An unexpected error occurred');
       setLoading(false);
     }
+  };
+  
+  const handleImageChange = (value: string | null) => {
+    setSelectedImage(value || 'university'); // Utiliser une valeur par défaut si null
   };
   
   if (!user) {
@@ -174,20 +199,62 @@ export default function CreateSessionPage() {
                       required
                     />
                     
-                    <Input
-                      label="Institution/Program Name"
-                      value={institution}
-                      onChange={(e) => setInstitution(e.target.value)}
-                      placeholder="Enter institution or program name"
-                      required
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Input
+                          label="Institution/Program Name"
+                          value={institution}
+                          onChange={(e) => {
+                            setInstitution(e.target.value);
+                            setUseProfileInstitution(false);
+                          }}
+                          placeholder="Enter institution or program name"
+                          required
+                        />
+                        {userProfile?.institution && (
+                          <div className="ml-4 flex items-center">
+                            <Checkbox
+                              label="Utiliser mon institution"
+                              checked={useProfileInstitution}
+                              onChange={(checked) => {
+                                setUseProfileInstitution(checked);
+                                if (checked && userProfile.institution) {
+                                  setInstitution(userProfile.institution);
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     
-                    <Input
-                      label="Professor's Name"
-                      value={professorName}
-                      onChange={(e) => setProfessorName(e.target.value)}
-                      placeholder="Enter professor's name"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Input
+                          label="Professor's Name"
+                          value={professorName}
+                          onChange={(e) => {
+                            setProfessorName(e.target.value);
+                            setUseProfileName(false);
+                          }}
+                          placeholder="Enter professor's name"
+                        />
+                        {userProfile?.full_name && (
+                          <div className="ml-4 flex items-center">
+                            <Checkbox
+                              label="Utiliser mon nom"
+                              checked={useProfileName}
+                              onChange={(checked) => {
+                                setUseProfileName(checked);
+                                if (checked && userProfile.full_name) {
+                                  setProfessorName(userProfile.full_name);
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     
                     <Checkbox
                       label="Display professor's name publicly"
@@ -213,7 +280,7 @@ export default function CreateSessionPage() {
                       name="profileMode"
                       options={userModeOptions}
                       value={profileMode}
-                      onChange={setProfileMode}
+                      onChange={(value) => setProfileMode(value as 'anonymous' | 'semi-anonymous' | 'non-anonymous')}
                     />
                     
                     {profileMode === 'semi-anonymous' && (
@@ -257,7 +324,11 @@ export default function CreateSessionPage() {
                     <ImageSelector
                       label="Session Image"
                       selectedImageId={selectedImage}
-                      onChange={setSelectedImage}
+                      onChange={handleImageChange}
+                      onFileUpload={async (file) => {
+                        // Gérer le téléchargement du fichier ici
+                        console.log('File upload not implemented yet:', file);
+                      }}
                     />
                     
                     <ColorPicker
