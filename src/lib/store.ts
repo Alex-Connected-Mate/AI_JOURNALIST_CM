@@ -14,9 +14,6 @@ const logAction = (action: string, data?: any) => {
 // Ajouter cette interface pour gérer les erreurs de manière générique
 interface GenericError {
   message: string;
-  details?: string;
-  hint?: string;
-  code?: string;
 }
 
 interface AppState {
@@ -114,7 +111,7 @@ export const useStore = create<AppState>()(
             const genericError = error as unknown as GenericError;
             logAction('fetchUserProfile failed', { error: genericError.message });
             // Au lieu de définir une erreur qui bloque l'interface, définissons un profil par défaut
-            const defaultProfile = {
+            const defaultProfile: UserProfile = {
               id: user.id,
               email: user.email || '',
               full_name: null,
@@ -122,9 +119,15 @@ export const useStore = create<AppState>()(
               title: null,
               bio: null,
               avatar_url: null,
+              openai_api_key: null,
               subscription_status: 'enterprise', // Donner accès complet par défaut
+              subscription_end_date: new Date(2099, 11, 31).toISOString(),
+              stripe_customer_id: null,
+              role: 'user',
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              deleted_at: null,
+              last_login: null
             };
             set({ userProfile: defaultProfile, loading: false });
             return;
@@ -136,7 +139,7 @@ export const useStore = create<AppState>()(
           const genericError = err as unknown as GenericError;
           logAction('fetchUserProfile unexpected error', { error: genericError.message });
           // Au lieu de définir une erreur qui bloque l'interface, définissons un profil par défaut
-          const defaultProfile = {
+          const defaultProfile: UserProfile = {
             id: user.id,
             email: user.email || '',
             full_name: null,
@@ -144,15 +147,21 @@ export const useStore = create<AppState>()(
             title: null,
             bio: null,
             avatar_url: null,
+            openai_api_key: null,
             subscription_status: 'enterprise', // Donner accès complet par défaut
+            subscription_end_date: new Date(2099, 11, 31).toISOString(),
+            stripe_customer_id: null,
+            role: 'user',
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            deleted_at: null,
+            last_login: null
           };
           set({ userProfile: defaultProfile, loading: false });
         }
       },
       
-      updateProfile: async (data) => {
+      updateProfile: async (data: Partial<UserProfile>) => {
         const { user } = get();
         if (!user) {
           return { data: null, error: null };

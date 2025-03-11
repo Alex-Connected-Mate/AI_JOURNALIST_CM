@@ -119,8 +119,8 @@ export async function getUserProfile(userId: string) {
 
 // Interface temporaire pour gérer les champs d'abonnement supplémentaires
 interface UserProfileWithSubscription extends Partial<UserProfile> {
-  subscription_status?: string;
-  subscription_end_date?: string;
+  subscription_status?: 'free' | 'basic' | 'premium' | 'enterprise';
+  subscription_end_date?: string | null;
   stripe_customer_id?: string | null;
 }
 
@@ -129,11 +129,6 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
   
   return withRetry(async () => {
     try {
-      // Traiter les données comme si elles contenaient des champs d'abonnement
-      const profileWithSub = profileData as UserProfileWithSubscription;
-      // Créer une copie des données du profil sans les champs liés à l'abonnement
-      const { subscription_status, subscription_end_date, stripe_customer_id, ...safeProfileData } = profileWithSub;
-      
       // Vérifier si l'utilisateur existe avant la mise à jour
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
@@ -161,7 +156,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       const { data, error } = await supabase
         .from('users')
         .update({
-          ...safeProfileData,
+          ...profileData,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId)
@@ -173,12 +168,16 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         return { data: null, error };
       }
       
-      // Ajouter des valeurs par défaut pour les champs liés à l'abonnement
-      const enrichedProfile = {
+      // Enrichir le profil avec les valeurs par défaut
+      const enrichedProfile: UserProfile = {
         ...data,
-        subscription_status: 'enterprise', // 'enterprise' pour un accès illimité
-        subscription_end_date: new Date(2099, 11, 31).toISOString(), // Date lointaine dans le futur
-        stripe_customer_id: null
+        subscription_status: data.subscription_status || 'enterprise',
+        subscription_end_date: data.subscription_end_date || new Date(2099, 11, 31).toISOString(),
+        stripe_customer_id: data.stripe_customer_id || null,
+        role: data.role || 'user',
+        deleted_at: data.deleted_at || null,
+        last_login: data.last_login || null,
+        openai_api_key: data.openai_api_key || null
       };
       
       console.log('Profile updated successfully:', enrichedProfile);
