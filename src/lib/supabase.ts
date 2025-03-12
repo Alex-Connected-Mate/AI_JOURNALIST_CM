@@ -94,26 +94,75 @@ export async function signOut() {
 // Profile management functions with retry logic
 export async function getUserProfile(userId: string) {
   return withRetry(async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      // First check if user exists and get the most recent profile
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .eq('deleted_at', null)  // Only get non-deleted profiles
+        .order('updated_at', { ascending: false })  // Get the most recent profile
+        .limit(1)  // Ensure we only get one row
+        .maybeSingle();  // Use maybeSingle instead of single to handle no rows gracefully
+        
+      if (error) {
+        console.error('Get user profile error:', error.message);
+        throw error;
+      }
       
-    if (error) {
-      console.error('Get user profile error:', error.message);
-      throw error;
+      if (!data) {
+        // Create a default profile if none exists
+        const defaultProfile = {
+          id: userId,
+          email: '',  // This will be updated when we get the user email
+          full_name: null,
+          institution: null,
+          title: null,
+          bio: null,
+          avatar_url: null,
+          openai_api_key: null,
+          subscription_status: 'enterprise',
+          subscription_end_date: new Date(2099, 11, 31).toISOString(),
+          stripe_customer_id: null,
+          role: 'user',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          deleted_at: null,
+          last_login: null
+        };
+
+        // Insert the default profile
+        const { data: newProfile, error: insertError } = await supabase
+          .from('users')
+          .insert(defaultProfile)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Error creating default profile:', insertError.message);
+          throw insertError;
+        }
+
+        return { data: newProfile, error: null };
+      }
+      
+      // Enrich existing profile with default values
+      const enrichedProfile = {
+        ...data,
+        subscription_status: data.subscription_status || 'enterprise',
+        subscription_end_date: data.subscription_end_date || new Date(2099, 11, 31).toISOString(),
+        stripe_customer_id: data.stripe_customer_id || null,
+        role: data.role || 'user',
+        deleted_at: data.deleted_at || null,
+        last_login: data.last_login || null,
+        openai_api_key: data.openai_api_key || null
+      };
+        
+      return { data: enrichedProfile, error: null };
+    } catch (err) {
+      console.error('Unexpected error in getUserProfile:', err);
+      throw err;
     }
-    
-    // Ajouter des valeurs par défaut pour les champs liés à l'abonnement
-    const enrichedProfile = {
-      ...data,
-      subscription_status: data.subscription_status || 'enterprise', // 'enterprise' pour un accès illimité
-      subscription_end_date: data.subscription_end_date || new Date(2099, 11, 31).toISOString(), // Date lointaine dans le futur
-      stripe_customer_id: data.stripe_customer_id || null
-    };
-      
-    return { data: enrichedProfile, error };
   });
 }
 

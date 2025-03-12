@@ -101,63 +101,51 @@ export const useStore = create<AppState>()(
         const { user } = get();
         if (!user) return;
         
+        // Don't fetch if we're already loading
+        if (get().loading) return;
+        
         logAction('fetchUserProfile', { userId: user.id });
-        set({ loading: true });
+        set({ loading: true, error: null });
         
         try {
           const { data, error } = await getUserProfile(user.id);
           
           if (error) {
-            const genericError = error as unknown as GenericError;
-            logAction('fetchUserProfile failed', { error: genericError.message });
-            // Au lieu de définir une erreur qui bloque l'interface, définissons un profil par défaut
-            const defaultProfile: UserProfile = {
-              id: user.id,
-              email: user.email || '',
-              full_name: null,
-              institution: null,
-              title: null,
-              bio: null,
-              avatar_url: null,
-              openai_api_key: null,
-              subscription_status: 'enterprise', // Donner accès complet par défaut
-              subscription_end_date: new Date(2099, 11, 31).toISOString(),
-              stripe_customer_id: null,
-              role: 'user',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              deleted_at: null,
-              last_login: null
-            };
-            set({ userProfile: defaultProfile, loading: false });
+            const errorMessage = typeof error === 'object' && error !== null && 'message' in error 
+              ? error.message as string 
+              : 'Failed to fetch user profile';
+            logAction('fetchUserProfile failed', { error: errorMessage });
+            // Set error but keep any existing profile data
+            set({ 
+              error: errorMessage, 
+              loading: false 
+            });
+            return;
+          }
+          
+          if (!data) {
+            logAction('fetchUserProfile: no data returned');
+            // Keep any existing profile data
+            set({ loading: false });
             return;
           }
           
           logAction('fetchUserProfile successful', { profileData: data });
-          set({ userProfile: data, loading: false });
+          set({ 
+            userProfile: data, 
+            loading: false,
+            error: null 
+          });
         } catch (err) {
-          const genericError = err as unknown as GenericError;
-          logAction('fetchUserProfile unexpected error', { error: genericError.message });
-          // Au lieu de définir une erreur qui bloque l'interface, définissons un profil par défaut
-          const defaultProfile: UserProfile = {
-            id: user.id,
-            email: user.email || '',
-            full_name: null,
-            institution: null,
-            title: null,
-            bio: null,
-            avatar_url: null,
-            openai_api_key: null,
-            subscription_status: 'enterprise', // Donner accès complet par défaut
-            subscription_end_date: new Date(2099, 11, 31).toISOString(),
-            stripe_customer_id: null,
-            role: 'user',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            deleted_at: null,
-            last_login: null
-          };
-          set({ userProfile: defaultProfile, loading: false });
+          const errorMessage = typeof err === 'object' && err !== null && 'message' in err 
+            ? err.message as string 
+            : 'An unexpected error occurred';
+          logAction('fetchUserProfile unexpected error', { error: errorMessage });
+          // Set error but keep any existing profile data
+          set({ 
+            error: errorMessage, 
+            loading: false 
+          });
         }
       },
       
