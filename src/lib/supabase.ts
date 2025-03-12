@@ -112,6 +112,7 @@ export async function getUserProfile(userId: string) {
       
       if (!data) {
         // Create a default profile if none exists
+        const now = new Date().toISOString();
         const defaultProfile = {
           id: userId,
           email: '',  // This will be updated when we get the user email
@@ -122,11 +123,11 @@ export async function getUserProfile(userId: string) {
           avatar_url: null,
           openai_api_key: null,
           subscription_status: 'enterprise',
-          subscription_end_date: new Date(2099, 11, 31).toISOString(),
+          subscription_end_date: '2099-12-31T23:59:59.999Z',  // Use explicit timestamp string
           stripe_customer_id: null,
           role: 'user',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: now,
+          updated_at: now,
           deleted_at: null,
           last_login: null
         };
@@ -146,16 +147,18 @@ export async function getUserProfile(userId: string) {
         return { data: newProfile, error: null };
       }
       
-      // Enrich existing profile with default values
+      // Enrich existing profile with default values and ensure valid timestamps
       const enrichedProfile = {
         ...data,
         subscription_status: data.subscription_status || 'enterprise',
-        subscription_end_date: data.subscription_end_date || new Date(2099, 11, 31).toISOString(),
+        subscription_end_date: data.subscription_end_date || '2099-12-31T23:59:59.999Z',
         stripe_customer_id: data.stripe_customer_id || null,
         role: data.role || 'user',
         deleted_at: data.deleted_at || null,
         last_login: data.last_login || null,
-        openai_api_key: data.openai_api_key || null
+        openai_api_key: data.openai_api_key || null,
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at || new Date().toISOString()
       };
         
       return { data: enrichedProfile, error: null };
@@ -202,7 +205,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       // Check if user exists
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
-        .select('id')
+        .select('*')  // Select all fields to get current timestamps
         .eq('id', userId)
         .single();
         
@@ -222,10 +225,16 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
       
-      // Prepare update data
+      // Prepare update data with proper timestamp handling
+      const now = new Date().toISOString();
       const updateData = {
         ...profileData,
-        updated_at: new Date().toISOString()
+        updated_at: now,
+        // Preserve existing timestamps if not being updated
+        created_at: existingUser.created_at || now,
+        deleted_at: existingUser.deleted_at || null,
+        last_login: existingUser.last_login || null,
+        subscription_end_date: existingUser.subscription_end_date || '2099-12-31T23:59:59.999Z'
       };
 
       // Perform update
@@ -255,12 +264,14 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       const enrichedProfile: UserProfile = {
         ...data,
         subscription_status: data.subscription_status || 'enterprise',
-        subscription_end_date: data.subscription_end_date || new Date(2099, 11, 31).toISOString(),
+        subscription_end_date: data.subscription_end_date || '2099-12-31T23:59:59.999Z',
         stripe_customer_id: data.stripe_customer_id || null,
         role: data.role || 'user',
         deleted_at: data.deleted_at || null,
         last_login: data.last_login || null,
-        openai_api_key: data.openai_api_key || null
+        openai_api_key: data.openai_api_key || null,
+        created_at: data.created_at || now,
+        updated_at: data.updated_at || now
       };
       
       console.log('Profile updated successfully:', enrichedProfile);
