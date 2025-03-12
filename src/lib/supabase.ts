@@ -80,37 +80,45 @@ export async function signUp(email: string, password: string) {
 
 export async function signOut() {
   console.log('Starting signOut process');
-  return withRetry(async () => {
-    try {
-      // Attempt to sign out
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Sign out error:', error);
-        return { error };
-      }
-
-      // Clear any stored session data
-      await supabase.auth.clearSession();
-      
-      // Clear any stored data in localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('app-storage');
-      }
-      
-      console.log('Sign out successful');
-      return { error: null };
-    } catch (err) {
-      console.error('Unexpected error during sign out:', err);
-      return { 
-        error: {
-          message: err instanceof Error ? err.message : 'Failed to sign out',
-          details: 'Unexpected error during sign out process'
-        }
-      };
+  try {
+    // Force clear any stored session data first
+    if (typeof window !== 'undefined') {
+      localStorage.clear(); // Clear all localStorage
+      sessionStorage.clear(); // Clear all sessionStorage
     }
-  });
+    
+    // Attempt to sign out from Supabase
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Sign out error:', error);
+      return { error };
+    }
+    
+    // Double check session is cleared
+    await supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        console.warn('Session still exists after signOut, forcing removal');
+        supabase.auth.setSession({ access_token: '', refresh_token: '' });
+      }
+    });
+    
+    console.log('Sign out successful');
+    return { error: null };
+  } catch (err) {
+    console.error('Unexpected error during sign out:', err);
+    // Even if there's an error, clear local storage
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+    return { 
+      error: {
+        message: err instanceof Error ? err.message : 'Failed to sign out',
+        details: 'Unexpected error during sign out process'
+      }
+    };
+  }
 }
 
 // Helper function to ensure user record exists and is synchronized

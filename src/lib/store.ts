@@ -109,7 +109,8 @@ export const useStore = create<AppState>()(
           set({ 
             sessions: [],
             userProfile: null,
-            error: null
+            error: null,
+            loading: true
           });
 
           // Attempt to sign out
@@ -117,32 +118,42 @@ export const useStore = create<AppState>()(
           
           if (error) {
             logAction('logout failed', { error: error.message });
-            set({ error: error.message, loading: false });
-            return;
+            throw error;
           }
           
-          // Clear remaining state and ensure user is null
+          // Force clear remaining state
           set({ 
             user: null,
             loading: false,
-            authChecked: false // Reset auth check
+            authChecked: false
           });
 
           // Force clear persisted state
           if (typeof window !== 'undefined') {
-            window.localStorage.removeItem('app-storage');
+            window.localStorage.clear();
+            window.sessionStorage.clear();
+            // Force reload to ensure clean state
+            window.location.href = '/auth/login';
           }
           
           logAction('logout successful');
         } catch (err) {
           const error = err as AuthError;
           logAction('logout unexpected error', { error: error.message });
+          // Even if there's an error, clear the state
           set({ 
-            error: error.message || 'An unexpected error occurred', 
+            user: null,
+            userProfile: null,
+            sessions: [],
             loading: false,
-            // Keep user null to ensure they're logged out even if there's an error
-            user: null
+            authChecked: false,
+            error: error.message || 'An unexpected error occurred'
           });
+          
+          // Force reload on error
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/login';
+          }
         }
       },
       
