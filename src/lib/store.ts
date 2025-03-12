@@ -152,6 +152,7 @@ export const useStore = create<AppState>()(
       updateProfile: async (data: Partial<UserProfile>) => {
         const { user } = get();
         if (!user) {
+          logAction('updateProfile failed', { reason: 'User not authenticated' });
           return { 
             data: null, 
             error: { 
@@ -165,22 +166,24 @@ export const useStore = create<AppState>()(
         set({ loading: true, error: null });
         
         try {
-          const { data: updatedProfile, error } = await updateUserProfile(user.id, data);
+          logAction('calling updateUserProfile');
+          const result = await updateUserProfile(user.id, data);
           
-          if (error) {
-            logAction('updateProfile failed', { error: error.message });
+          if (result.error) {
+            logAction('updateProfile failed', { error: result.error });
             set({ 
-              error: error.message, 
+              error: result.error.message, 
               loading: false 
             });
-            return { data: null, error };
+            return { data: null, error: result.error };
           }
           
-          if (!updatedProfile) {
+          if (!result.data) {
             const err = {
               message: 'Failed to update profile',
               details: 'No profile data returned'
             } as PostgrestError;
+            logAction('updateProfile failed', { error: err });
             set({ 
               error: err.message, 
               loading: false 
@@ -188,21 +191,33 @@ export const useStore = create<AppState>()(
             return { data: null, error: err };
           }
           
-          logAction('updateProfile successful', { profile: updatedProfile });
+          logAction('updateProfile successful', { profile: result.data });
           set({ 
-            userProfile: updatedProfile, 
+            userProfile: result.data, 
             loading: false,
             error: null
           });
-          return { data: updatedProfile, error: null };
+          return { data: result.data, error: null };
         } catch (err) {
-          const error = err as PostgrestError;
-          logAction('updateProfile unexpected error', { error: error.message });
+          const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+          logAction('updateProfile unexpected error', { error: errorMessage });
           set({ 
-            error: error.message || 'An unexpected error occurred', 
+            error: errorMessage, 
             loading: false 
           });
-          return { data: null, error };
+          return { 
+            data: null, 
+            error: {
+              message: errorMessage,
+              details: 'Unexpected error in updateProfile'
+            } as PostgrestError 
+          };
+        } finally {
+          // Ensure loading is always set to false
+          if (get().loading) {
+            logAction('updateProfile force end loading state');
+            set({ loading: false });
+          }
         }
       },
       

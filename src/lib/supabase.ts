@@ -177,12 +177,13 @@ interface UserProfileWithSubscription extends Partial<UserProfile> {
 }
 
 export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
-  console.log('Updating user profile:', { userId, profileData });
+  console.log('Starting profile update process:', { userId, profileData });
   
   return withRetry(async () => {
     try {
       // Validate input data
       if (!userId) {
+        console.error('Update failed: No user ID provided');
         return {
           data: null,
           error: {
@@ -193,6 +194,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       }
 
       if (!profileData || Object.keys(profileData).length === 0) {
+        console.error('Update failed: No profile data provided');
         return {
           data: null,
           error: {
@@ -202,6 +204,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
 
+      console.log('Checking if user exists...');
       // Check if user exists
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
@@ -210,7 +213,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         .single();
         
       if (checkError) {
-        console.error('User check error:', checkError.message);
+        console.error('User check failed:', checkError);
         return { data: null, error: checkError };
       }
       
@@ -224,7 +227,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           } as PostgrestError 
         };
       }
-      
+
+      console.log('User found, preparing update data...');
       // Prepare update data with proper timestamp handling
       const now = new Date().toISOString();
       const updateData = {
@@ -237,6 +241,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         subscription_end_date: existingUser.subscription_end_date || '2099-12-31T23:59:59.999Z'
       };
 
+      console.log('Performing update with data:', updateData);
       // Perform update
       const { data, error } = await supabase
         .from('users')
@@ -246,11 +251,12 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         .single();
         
       if (error) {
-        console.error('Update user profile error:', error.message);
+        console.error('Update failed:', error);
         return { data: null, error };
       }
       
       if (!data) {
+        console.error('Update succeeded but no data returned');
         return {
           data: null,
           error: {
@@ -260,6 +266,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
 
+      console.log('Update successful, enriching profile data...');
       // Enrich profile with default values
       const enrichedProfile: UserProfile = {
         ...data,
@@ -274,10 +281,12 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         updated_at: data.updated_at || now
       };
       
-      console.log('Profile updated successfully:', enrichedProfile);
+      console.log('Profile update completed successfully:', enrichedProfile);
       return { data: enrichedProfile, error: null };
     } catch (err) {
       console.error('Unexpected error in updateUserProfile:', err);
+      // Log the full error object for debugging
+      console.error('Full error details:', JSON.stringify(err, null, 2));
       return { 
         data: null, 
         error: { 
