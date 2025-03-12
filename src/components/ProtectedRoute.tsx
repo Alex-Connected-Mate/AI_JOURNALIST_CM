@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import useLogger from '@/hooks/useLogger';
 
@@ -20,22 +20,53 @@ function LoadingFallback() {
 
 /**
  * ProtectedRoute Component
- * Version simplifiée qui ne gère que l'accès aux pages protégées
+ * Garde d'authentification qui vérifie si l'utilisateur peut accéder à la page
  */
 const ProtectedRoute = ({ children, excludedPaths = [] }: ProtectedRouteProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, authChecked } = useStore();
   const logger = useLogger('ProtectedRoute');
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
-  // Si l'authentification n'est pas encore vérifiée, afficher le loader
-  if (!authChecked) {
-    return <LoadingFallback />;
-  }
+  useEffect(() => {
+    // Vérification de l'authentification
+    if (!authChecked) return;
 
-  // Si l'utilisateur n'est pas authentifié et que la page n'est pas exclue
-  if (!user && !excludedPaths.includes(window.location.pathname)) {
-    logger.auth('Redirecting to login - user not authenticated');
-    router.push(`/auth/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+    // Vérifier si le chemin actuel est exclu de la protection
+    const isExcluded = excludedPaths.some(path => 
+      pathname === path || 
+      pathname?.startsWith(path + '/') || 
+      path === '*'
+    );
+    
+    if (isExcluded) {
+      logger.auth('Path is excluded from protection', { path: pathname });
+      setIsAuthorized(true);
+      return;
+    }
+    
+    // Vérifier l'authentification
+    if (!user) {
+      const redirectUrl = `/auth/login?redirect=${encodeURIComponent(pathname || '/')}`;
+      
+      logger.auth('User not authenticated, redirecting', { 
+        from: pathname,
+        to: redirectUrl
+      });
+      
+      router.push(redirectUrl);
+    } else {
+      logger.auth('User is authenticated, allowing access', { 
+        path: pathname,
+        userId: user.id 
+      });
+      setIsAuthorized(true);
+    }
+  }, [authChecked, pathname, user, excludedPaths, logger, router]);
+
+  // Si l'authentification n'est pas encore vérifiée ou si l'autorisation est en cours, afficher le loader
+  if (!authChecked || (!isAuthorized && !excludedPaths.some(path => pathname === path))) {
     return <LoadingFallback />;
   }
 

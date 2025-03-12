@@ -2,22 +2,35 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/auth/login', '/auth/signup']
+// Routes publiques qui ne nécessitent pas d'authentification
+const PUBLIC_ROUTES = [
+  '/', 
+  '/auth/login', 
+  '/auth/signup',
+  '/auth/reset-password',
+  '/auth/callback'
+]
 
 export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
   const { data: { session } } = await supabase.auth.getSession()
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(request.nextUrl.pathname)
+  const path = request.nextUrl.pathname;
+  const isPublicRoute = PUBLIC_ROUTES.some(route => 
+    path === route || path.startsWith(`${route}/`)
+  );
   
   if (!session && !isPublicRoute) {
-    // Redirect to login if trying to access protected route without session
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+    // Rediriger vers la page de connexion avec l'URL actuelle en paramètre de redirection
+    return NextResponse.redirect(
+      new URL(`/auth/login?redirect=${encodeURIComponent(path)}`, request.url)
+    );
   }
 
-  if (session && isPublicRoute) {
-    // Redirect to dashboard if trying to access public route with session
+  if (session && (path === '/auth/login' || path === '/auth/signup')) {
+    // Rediriger vers le tableau de bord si l'utilisateur tente d'accéder 
+    // aux pages d'authentification alors qu'il est déjà connecté
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
@@ -34,5 +47,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|assets).*)'],
 } 
