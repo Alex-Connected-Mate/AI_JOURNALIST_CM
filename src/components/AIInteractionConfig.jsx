@@ -137,11 +137,10 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     ]
   };
   
-  // Default configuration values for Lightbulbs
+  // Mettre à jour le defaultLightbulbsPromptConfig pour utiliser le nouveau format
   const defaultLightbulbsPromptConfig = {
-    agentName: "",
-    programName: "",
-    questionnaireName: "Nexus X Insead questionnaire", 
+    agentName: "LightBulb Agent",
+    programName: "Workshop",
     location: "Annecy",
     venue: "Palace de Menthon",
     agentPersonality: "professional, supportive, attentive",
@@ -154,35 +153,43 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     questions: [
       {
         title: "Inspiration Nugget Reference",
-        question: "Which story specifically inspired you? Could you briefly describe it?"
+        question: "Which nugget specifically inspired you? Could you briefly describe it?",
+        objective: "Identify the inspiration source to ensure a clear cross-reference between nuggets and insights."
       },
       {
         title: "Light Bulb Moment",
-        question: "What about this nugget inspired you to think, 'We could try this here'?"
+        question: "What about this nugget inspired you to think, 'We could try this here'?",
+        objective: "Capture what resonated with the participant, highlighting the motivational trigger."
       },
       {
         title: "From Inspiration to Action",
-        question: "What did this nugget inspire you to do? Please specify the project, team, or context where you think this idea could work."
+        question: "What did this nugget inspire you to do? Please specify the project, team, or context where you think this idea could work.",
+        objective: "Link inspiration to a concrete action plan or context for application."
       },
       {
         title: "Implementation Steps",
-        question: "What concrete steps will you take to bring this idea to life in your own context?"
+        question: "What concrete steps will you take to bring this idea to life in your own context?",
+        objective: "Define specific, actionable steps, encouraging clear and practical strategies."
       },
       {
         title: "Timeline for Action",
-        question: "By when do you plan to test or implement this idea?"
+        question: "By when do you plan to test or implement this idea?",
+        objective: "Establish a timeline, prompting commitment to a timeframe."
       },
       {
         title: "Testing and Success Measures",
-        question: "How will you test this idea to see if it gains traction? What will success look like?"
+        question: "How will you test this idea to see if it gains traction? What will success look like?",
+        objective: "Promote experimentation, defining success metrics for evaluation."
       },
       {
         title: "Challenges and Solutions",
-        question: "What potential challenges do you anticipate in implementing this idea, and how could you overcome them?"
+        question: "What potential challenges do you anticipate in implementing this idea, and how could you overcome them?",
+        objective: "Encourage proactive thinking about obstacles and solutions."
       },
       {
         title: "Long-Term Impact",
-        question: "If this idea works, what could the long-term impact be for your team or business unit?"
+        question: "If this idea works, what could the long-term impact be for your team or business unit?",
+        objective: "Have participants reflect on potential broader impacts and strategic alignment with Nexus goals."
       }
     ]
   };
@@ -458,22 +465,32 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
       questions: (localConfig && localConfig.questions) || defaultLightbulbsPromptConfig.questions
     };
     
-    // Build the prompt using the configuration
-    return `You are ${config.agentName || "an AI assistant"} ${config.agentPersonality ? `with a ${config.agentPersonality} personality` : ""}.
+    // Build the prompt using the updated format based on the user-provided template
+    return `You are a dedicated support agent named "${config.agentName || "AI LightBulb"}" responsible for conducting the "${config.programName || "Workshop"}" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
 
-This is a Lightbulbs session for the ${config.programName || "[program name]"} ${config.questionnaireName ? `in the "${config.questionnaireName}" questionnaire` : ""}.
-${config.location ? `You are interacting with participants at ${config.location}` : ""}
-${config.venue ? `The venue is ${config.venue}` : ""}
+Style:
 
-Your job is to facilitate the sharing of ideas that participants have gained from listening to others' stories.
+Your tone should be ${config.agentPersonality || "professional, supportive, and attentive"}. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.
 
-Follow these rules:
-${config.rules.map(rule => `- ${rule}`).join('\n')}
+Rules:
+${config.rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
 
-Ask the following questions in order:
-${config.questions.map(q => `- ${q.title}: ${q.question}`).join('\n')}
+Steps:
+${config.questions.map((q, index) => `
+Step ${index + 1}: ${q.title}
+• Required Question: "${q.question}"
+• Objective: "${q.objective || "Gather detailed information for this step."}"
+`).join('\n')}
 
-Begin by introducing yourself and asking the first question.`;
+Closing the Discussion:
+
+After confirming all responses are complete, the agent should conclude with a personalized and lighthearted closing message.
+
+Rules for the Closing Message:
+1. Mention ${config.location || "Annecy"} and the specific context (e.g., being at the ${config.venue || "Palace de Menthon"}, the weather, etc.).
+2. Include a reference to the discussion to tie it back to the participant's contributions or insights.
+3. Add a touch of humor to make the participant smile (e.g., a joke about the rain, the lake, or the setting).
+4. Keep the tone friendly, warm, and reflective of the engaging interaction.`;
   };
 
   // Update local lightbulbs state without immediately updating parent state
@@ -1154,7 +1171,7 @@ Begin by introducing yourself and asking the first question.`;
               </div>
             </div>
             
-            <div className="p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl mb-6 shadow-inner">
+            <div className="p-5 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 rounded-xl mb-6 shadow-inner">
               <h3 className="font-medium text-indigo-900 mb-3 text-xl">Prompt Template Variables</h3>
               <p className="text-indigo-700 mb-4">
                 Customize the template by editing these variables. You can also modify rules and questions below.
@@ -1708,34 +1725,53 @@ Begin by introducing yourself and asking the first question.`;
   if (mode === "lightbulb") {
     return (
       <div className="space-y-8">
-        <div className="bg-gradient-to-r from-amber-100 to-yellow-50 border-l-4 border-amber-500 p-6 mb-8 rounded-r-lg shadow-md">
+        <div className="bg-gradient-to-r from-amber-100/80 to-yellow-50/80 border-l-4 border-amber-500 p-6 mb-8 rounded-r-lg shadow-md">
           <p className="text-amber-800 text-lg">
-            Configure the AI Lightbulbs agent that will interact with participants who choose to discuss their ideas.
-            This is optional and can be turned off if not needed.
+            Configure the AI Lightbulbs agent that will interact with participants to capture their ideas inspired by nuggets.
           </p>
         </div>
 
-        {/* AI Lightbulbs Configuration */}
-        <div className="bg-white p-6 rounded-xl shadow-md mb-6 border border-amber-200">
-          <Checkbox
-            label="Enable AI Lightbulbs"
-            checked={enableIdeaSharingInteraction !== false}
-            onChange={(value) => handleChange('enableIdeaSharingInteraction', value)}
-          />
-          <p className="text-sm text-gray-600 ml-6 mt-2">
-            When enabled, participants can choose to discuss their ideas with the AI Lightbulbs agent.
-          </p>
+        {/* Add an instruction banner at the top */}
+        <div className="p-4 mb-6 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">À propos de ce formulaire</h3>
+              <div className="mt-1 text-sm text-blue-700">
+                <p>Les modifications ne sont <strong>pas sauvegardées automatiquement</strong>. Après avoir effectué vos modifications, cliquez sur le bouton <strong>Enregistrer</strong> en bas de chaque section pour les appliquer.</p>
+                {hasUnsavedChanges && (
+                  <p className="mt-1 font-medium text-orange-600">
+                    ⚠️ Vous avez des modifications non enregistrées. N'oubliez pas de cliquer sur "Enregistrer" !
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {enableIdeaSharingInteraction !== false && (
-          <>
-            <CollapsibleSection 
-              title="Configure your AI" 
-              isOpen={showAIConfig}
-              onToggle={() => setShowAIConfig(!showAIConfig)}
-              icon="💡"
-              color="amber"
-            >
+        <CollapsibleSection 
+          title="Configure your AI" 
+          isOpen={showAIConfig}
+          onToggle={() => setShowAIConfig(!showAIConfig)}
+          icon="💡"
+          color="amber"
+        >
+          <div className="space-y-8">
+            <div className="p-5 bg-gradient-to-r from-amber-50/80 to-yellow-50/80 rounded-xl mb-6 shadow-inner">
+              <h3 className="font-medium text-amber-900 mb-3 text-xl">Prompt Template Variables</h3>
+              <p className="text-amber-700 mb-4">
+                Customize the template by editing these variables. You can also modify rules and steps below.
+              </p>
+            </div>
+            
+            {/* Basic Information */}
+            <div>
+              <h4 className="font-medium text-gray-800 mb-4 text-lg border-b pb-2">Basic Information</h4>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
                   <Input
@@ -1749,7 +1785,7 @@ Begin by introducing yourself and asking the first question.`;
                       setHasUnsavedChanges(true);
                     }}
                     error={validationState.agentName?.message}
-                    placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
+                    placeholder="Enter the AI agent's name"
                     className="focus:ring-2 focus:ring-amber-400"
                   />
                   <p className="text-sm text-gray-600 mt-2">
@@ -1788,7 +1824,7 @@ Begin by introducing yourself and asking the first question.`;
                       }));
                       setHasUnsavedChanges(true);
                     }}
-                    placeholder="Enter the city or location"
+                    placeholder="Enter the city or location (default: Annecy)"
                     className="focus:ring-2 focus:ring-amber-400"
                   />
                   <p className="text-sm text-gray-600 mt-2">
@@ -1807,7 +1843,7 @@ Begin by introducing yourself and asking the first question.`;
                       }));
                       setHasUnsavedChanges(true);
                     }}
-                    placeholder="Enter the specific venue"
+                    placeholder="Enter the specific venue (default: Palace de Menthon)"
                     className="focus:ring-2 focus:ring-amber-400"
                   />
                   <p className="text-sm text-gray-600 mt-2">
@@ -1816,9 +1852,11 @@ Begin by introducing yourself and asking the first question.`;
                 </div>
 
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
-                  <Input
-                    label="Agent Personality"
-                    value={localConfig.agentPersonality || ""}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Agent Personality
+                  </label>
+                  <select
+                    value={localConfig.agentPersonality || "professional, supportive, attentive"}
                     onChange={(e) => {
                       setLocalConfig(prev => ({
                         ...prev,
@@ -1826,84 +1864,336 @@ Begin by introducing yourself and asking the first question.`;
                       }));
                       setHasUnsavedChanges(true);
                     }}
-                    placeholder="Enter personality traits"
-                    className="focus:ring-2 focus:ring-amber-400"
-                  />
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400 bg-white transition duration-150 ease-in-out"
+                  >
+                    <option value="professional, supportive, attentive">Professional & Supportive (Default)</option>
+                    <option value="friendly, enthusiastic, encouraging">Friendly & Enthusiastic</option>
+                    <option value="analytical, precise, methodical">Analytical & Precise</option>
+                    <option value="empathetic, understanding, patient">Empathetic & Patient</option>
+                    <option value="direct, concise, focused">Direct & Focused</option>
+                  </select>
                   <p className="text-sm text-gray-600 mt-2">
-                    Personality traits that define how the AI agent communicates.
+                    Personality traits that define how the AI agent communicates with participants.
                   </p>
                 </div>
               </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection 
-              title="Book Generation Settings" 
-              isOpen={showBookConfig}
-              onToggle={() => setShowBookConfig(!showBookConfig)}
-              icon="📚"
-              color="amber"
-            >
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={applyChanges}
+                  className={`px-6 py-2 bg-gradient-to-r ${hasUnsavedChanges ? 'from-orange-600 to-red-600' : 'from-amber-600 to-orange-500'} text-white rounded-md hover:from-amber-700 hover:to-orange-600 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 active:translate-y-0`}
+                >
+                  {hasUnsavedChanges ? 'Save Changes*' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+              
+            {/* Rules Configuration */}
+            <div className="mt-10 border-t pt-8">
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="font-medium text-gray-800 text-lg">Conversation Rules</h4>
+                <button
+                  onClick={() => {
+                    const newRules = [...(localConfig.rules || defaultLightbulbsPromptConfig.rules), "New rule: Description of the rule"];
+                    setLocalConfig(prev => ({
+                      ...prev,
+                      rules: newRules
+                    }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-500 text-white text-sm rounded-lg hover:from-amber-700 hover:to-orange-600 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
+                >
+                  <span className="mr-2">+</span> Add Rule
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {(localConfig.rules || defaultLightbulbsPromptConfig.rules).map((rule, index) => (
+                  <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
                     <Input
-                      label="Book Title"
-                      value={lightBulbsBookTitle}
-                      onChange={(e) => handleChange('lightBulbsBookTitle', e.target.value)}
-                      placeholder="Enter the book title"
+                      label={`Rule ${index + 1}`}
+                      value={rule}
+                      onChange={(e) => {
+                        const newRules = [...(localConfig.rules || defaultLightbulbsPromptConfig.rules)];
+                        newRules[index] = e.target.value;
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          rules: newRules
+                        }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      placeholder="Enter rule description"
                       className="focus:ring-2 focus:ring-amber-400"
                     />
+                    
+                    <button
+                      onClick={() => {
+                        const newRules = [...(localConfig.rules || defaultLightbulbsPromptConfig.rules)];
+                        newRules.splice(index, 1);
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          rules: newRules
+                        }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
                   </div>
-
-                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Book Color Theme
-                    </label>
-                    <div className="flex space-x-4">
-                      <button
-                        onClick={() => handleChange('lightBulbsBookColor', '#F59E0B')}
-                        className={`w-8 h-8 rounded-full bg-amber-500 ${lightBulbsBookColor === '#F59E0B' ? 'ring-2 ring-offset-2 ring-amber-500' : ''}`}
-                      />
-                      <button
-                        onClick={() => handleChange('lightBulbsBookColor', '#EF4444')}
-                        className={`w-8 h-8 rounded-full bg-red-500 ${lightBulbsBookColor === '#EF4444' ? 'ring-2 ring-offset-2 ring-red-500' : ''}`}
-                      />
-                      <button
-                        onClick={() => handleChange('lightBulbsBookColor', '#10B981')}
-                        className={`w-8 h-8 rounded-full bg-emerald-500 ${lightBulbsBookColor === '#10B981' ? 'ring-2 ring-offset-2 ring-emerald-500' : ''}`}
-                      />
+                ))}
+              </div>
+            </div>
+            
+            {/* Steps & Questions Configuration */}
+            <div className="mt-10 border-t pt-8">
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="font-medium text-gray-800 text-lg">Steps & Questions</h4>
+                <button
+                  onClick={() => {
+                    const newQuestions = [...(localConfig.questions || defaultLightbulbsPromptConfig.questions), 
+                      {
+                        title: "New Step",
+                        question: "Enter the question for this step",
+                        objective: "Enter the objective for this question"
+                      }
+                    ];
+                    setLocalConfig(prev => ({
+                      ...prev,
+                      questions: newQuestions
+                    }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-500 text-white text-sm rounded-lg hover:from-amber-700 hover:to-orange-600 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
+                >
+                  <span className="mr-2">+</span> Add Step
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {(localConfig.questions || defaultLightbulbsPromptConfig.questions).map((questionObj, index) => (
+                  <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
+                    <div className="mb-2 flex items-center">
+                      <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-xs font-medium">
+                        Step {index + 1}
+                      </span>
                     </div>
+                    
+                    <Input
+                      label="Step Title"
+                      value={questionObj.title}
+                      onChange={(e) => {
+                        const newQuestions = [...(localConfig.questions || defaultLightbulbsPromptConfig.questions)];
+                        newQuestions[index] = {
+                          ...newQuestions[index],
+                          title: e.target.value
+                        };
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      placeholder="Enter step title (e.g., Inspiration Nugget Reference)"
+                      className="focus:ring-2 focus:ring-amber-400 mb-4"
+                    />
+                    
+                    <Input
+                      label="Question"
+                      value={questionObj.question}
+                      onChange={(e) => {
+                        const newQuestions = [...(localConfig.questions || defaultLightbulbsPromptConfig.questions)];
+                        newQuestions[index] = {
+                          ...newQuestions[index],
+                          question: e.target.value
+                        };
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      placeholder="Enter the question text"
+                      className="focus:ring-2 focus:ring-amber-400 mb-4"
+                    />
+                    
+                    <Input
+                      label="Objective"
+                      value={questionObj.objective || ""}
+                      onChange={(e) => {
+                        const newQuestions = [...(localConfig.questions || defaultLightbulbsPromptConfig.questions)];
+                        newQuestions[index] = {
+                          ...newQuestions[index],
+                          objective: e.target.value
+                        };
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      placeholder="Enter the objective for this question"
+                      className="focus:ring-2 focus:ring-amber-400"
+                    />
+                    
+                    <button
+                      onClick={() => {
+                        const newQuestions = [...(localConfig.questions || defaultLightbulbsPromptConfig.questions)];
+                        newQuestions.splice(index, 1);
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
                   </div>
-                </div>
+                ))}
+              </div>
+            </div>
 
-                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
-                  <NumberInput
-                    label="Book Generation Time (seconds)"
-                    value={bookGenerationTime}
-                    onChange={(value) => handleChange('bookGenerationTime', value)}
-                    min={30}
-                    max={300}
-                    step={10}
-                  />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Time needed for the AI to generate the ideas book.
-                  </p>
-                </div>
-
-                <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
-                  <Checkbox
-                    label="Show books to all participants"
-                    checked={showGeneratedBooksToAll}
-                    onChange={(value) => handleChange('showGeneratedBooksToAll', value)}
-                  />
-                  <p className="text-sm text-gray-600 ml-6 mt-2">
-                    If enabled, all participants will be able to see the generated books.
-                  </p>
+            {/* Closing Message Configuration */}
+            <div className="mt-10 border-t pt-8">
+              <h4 className="font-medium text-gray-800 mb-4 text-lg">Closing Message Rules</h4>
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <p className="text-sm text-gray-700 mb-4">
+                  Configure the rules for the closing message that the AI will use to conclude the discussion.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="bg-amber-50 p-3 rounded-md">
+                    <p className="text-sm text-amber-800">
+                      <span className="font-medium">1.</span> Mention the location and context (e.g., being at {localConfig.venue || "Palace de Menthon"} in {localConfig.location || "Annecy"}).
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 p-3 rounded-md">
+                    <p className="text-sm text-amber-800">
+                      <span className="font-medium">2.</span> Include a reference to the discussion to tie it back to the participant's contributions.
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 p-3 rounded-md">
+                    <p className="text-sm text-amber-800">
+                      <span className="font-medium">3.</span> Add a touch of humor to make the participant smile (e.g., a joke about the setting).
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 p-3 rounded-md">
+                    <p className="text-sm text-amber-800">
+                      <span className="font-medium">4.</span> Keep the tone friendly, warm, and reflective of the engaging interaction.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </CollapsibleSection>
-          </>
-        )}
+            </div>
+            
+            {/* Prompt Preview */}
+            <div className="mt-8 pt-6 border-t">
+              <CollapsibleSection 
+                title="Preview Complete Prompt" 
+                isOpen={showPromptPreview}
+                onToggle={() => setShowPromptPreview(!showPromptPreview)}
+                icon="📝"
+                color="amber"
+              >
+                <div className="bg-gray-50 p-5 rounded-xl border-2 border-amber-100 max-h-96 overflow-y-auto shadow-inner">
+                  <pre className="text-sm whitespace-pre-wrap font-mono text-gray-700">
+                    {generateCompleteLightbulbsPrompt()}
+                  </pre>
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() => {
+                      // Implement validation logic here
+                      alert("Prompt validation logic not implemented yet");
+                    }}
+                    className="px-5 py-2 bg-gradient-to-r from-amber-600 to-orange-500 text-white rounded-lg hover:from-amber-700 hover:to-orange-600 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 active:translate-y-0"
+                  >
+                    Validate with OpenAI
+                  </button>
+                </div>
+              </CollapsibleSection>
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection 
+          title="Book Generation Settings" 
+          isOpen={showBookConfig}
+          onToggle={() => setShowBookConfig(!showBookConfig)}
+          icon="📚"
+          color="amber"
+        >
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <Input
+                  label="Book Title"
+                  value={lightBulbsBookTitle}
+                  onChange={(e) => {
+                    setLocalConfig(prev => ({
+                      ...prev,
+                      lightBulbsBookTitle: e.target.value
+                    }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  placeholder="Enter the book title"
+                  className="focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Book Color Theme
+                </label>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleChange('lightBulbsBookColor', '#F59E0B')}
+                    className={`w-8 h-8 rounded-full bg-amber-500 ${lightBulbsBookColor === '#F59E0B' ? 'ring-2 ring-offset-2 ring-amber-500' : ''}`}
+                  />
+                  <button
+                    onClick={() => handleChange('lightBulbsBookColor', '#EF4444')}
+                    className={`w-8 h-8 rounded-full bg-red-500 ${lightBulbsBookColor === '#EF4444' ? 'ring-2 ring-offset-2 ring-red-500' : ''}`}
+                  />
+                  <button
+                    onClick={() => handleChange('lightBulbsBookColor', '#10B981')}
+                    className={`w-8 h-8 rounded-full bg-emerald-500 ${lightBulbsBookColor === '#10B981' ? 'ring-2 ring-offset-2 ring-emerald-500' : ''}`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+              <NumberInput
+                label="Book Generation Time (seconds)"
+                value={bookGenerationTime}
+                onChange={(value) => handleChange('bookGenerationTime', value)}
+                min={30}
+                max={300}
+                step={10}
+              />
+              <p className="text-sm text-gray-600 mt-2">
+                Time needed for the AI to generate the ideas book.
+              </p>
+            </div>
+
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+              <Checkbox
+                label="Show books to all participants"
+                checked={showGeneratedBooksToAll}
+                onChange={(value) => handleChange('showGeneratedBooksToAll', value)}
+              />
+              <p className="text-sm text-gray-600 ml-6 mt-2">
+                If enabled, all participants will be able to see the generated books.
+              </p>
+            </div>
+          </div>
+        </CollapsibleSection>
       </div>
     );
   }
