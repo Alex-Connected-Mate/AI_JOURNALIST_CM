@@ -158,16 +158,16 @@ export default function SettingsPage() {
         return;
       }
       
-      const updateData = {
+      const updateData: Partial<UserProfile> = {
         full_name: fullName,
-        institution: formData.institution,
-        title: formData.title,
-        bio: formData.bio,
-        openai_api_key: formData.openai_api_key
+        institution: formData.institution || null,
+        title: formData.title || null,
+        bio: formData.bio || null,
+        openai_api_key: formData.openai_api_key || null
       };
       
       console.log('🔵 [SETTINGS] Updating profile with data:', updateData);
-      const { data, error } = await updateProfile(updateData);
+      const { data: updatedProfile, error } = await updateProfile(updateData);
       
       if (error) {
         console.error('🔴 [SETTINGS] Profile update failed:', error);
@@ -179,21 +179,21 @@ export default function SettingsPage() {
         return;
       }
       
-      if (!data) {
+      if (!updatedProfile) {
         console.error('🔴 [SETTINGS] No data returned from update');
         throw new Error('No data returned from profile update');
       }
       
-      console.log('✅ [SETTINGS] Profile updated successfully:', data);
+      console.log('✅ [SETTINGS] Profile updated successfully:', updatedProfile);
       
       // Verify the update
       console.log('🔵 [SETTINGS] Fetching updated profile');
       await fetchUserProfile();
       
       // Compare updated fields
-      const updatedProfile = userProfile;
-      if (updatedProfile) {
-        const nameParts = (updatedProfile.full_name || '').split(' ');
+      const currentProfile = userProfile;
+      if (currentProfile) {
+        const nameParts = (currentProfile.full_name || '').split(' ');
         const expectedFirstName = formData.firstName;
         const expectedLastName = formData.lastName;
         
@@ -201,6 +201,20 @@ export default function SettingsPage() {
           console.warn('🟡 [SETTINGS] Name mismatch after update:', {
             expected: { firstName: expectedFirstName, lastName: expectedLastName },
             actual: nameParts
+          });
+        }
+
+        // Compare other fields
+        const fieldsToCheck = ['institution', 'title', 'bio', 'openai_api_key'] as const;
+        const mismatches = fieldsToCheck.filter(field => 
+          updateData[field] !== currentProfile[field]
+        );
+
+        if (mismatches.length > 0) {
+          console.warn('🟡 [SETTINGS] Field mismatches:', {
+            fields: mismatches,
+            expected: updateData,
+            actual: currentProfile
           });
         }
       }

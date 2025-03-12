@@ -281,28 +281,22 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       // Log initial validation
       console.log('🔵 [UPDATE_PROFILE] Validating input data');
       
+      // Clean up empty strings to null
+      const cleanedData = Object.entries(profileData).reduce((acc, [key, value]) => {
+        acc[key] = value === '' ? null : value;
+        return acc;
+      }, {} as Record<string, any>);
+      
+      console.log('🔵 [UPDATE_PROFILE] Cleaned data:', cleanedData);
+
       // Validate role if provided
-      if (profileData.role && !['user', 'admin', 'premium'].includes(profileData.role)) {
-        console.error('🔴 [UPDATE_PROFILE] Invalid role:', profileData.role);
+      if (cleanedData.role && !['user', 'admin', 'premium'].includes(cleanedData.role)) {
+        console.error('🔴 [UPDATE_PROFILE] Invalid role:', cleanedData.role);
         return {
           data: null,
           error: {
             message: 'Invalid role',
             details: 'Role must be one of: user, admin, premium',
-            code: 'VALIDATION_ERROR'
-          } as PostgrestError
-        };
-      }
-
-      // Validate subscription_status if provided
-      if (profileData.subscription_status && 
-          !['free', 'basic', 'premium', 'enterprise'].includes(profileData.subscription_status)) {
-        console.error('🔴 [UPDATE_PROFILE] Invalid subscription status:', profileData.subscription_status);
-        return {
-          data: null,
-          error: {
-            message: 'Invalid subscription status',
-            details: 'Status must be one of: free, basic, premium, enterprise',
             code: 'VALIDATION_ERROR'
           } as PostgrestError
         };
@@ -314,7 +308,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         .from('users')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
         
       if (checkError) {
         console.error('🔴 [UPDATE_PROFILE] User check failed:', checkError);
@@ -338,15 +332,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       // Prepare update data with proper timestamp handling
       const now = new Date().toISOString();
       const updateData = {
-        ...profileData,
-        updated_at: now,
-        // Preserve existing timestamps and values
-        created_at: existingUser.created_at || now,
-        deleted_at: existingUser.deleted_at,
-        last_login: existingUser.last_login,
-        subscription_end_date: existingUser.subscription_end_date || '2099-12-31T23:59:59.999Z',
-        role: profileData.role || existingUser.role || 'user',
-        subscription_status: profileData.subscription_status || existingUser.subscription_status || 'free'
+        ...cleanedData,
+        updated_at: now
       };
 
       console.log('🔵 [UPDATE_PROFILE] Prepared update data:', updateData);
@@ -391,15 +378,19 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       }
 
       // Compare updated fields
-      const updatedFields = Object.keys(profileData).filter(key => 
-        profileData[key as keyof UserProfile] !== verifyData[key as keyof UserProfile]
+      const updatedFields = Object.keys(cleanedData).filter(key => 
+        cleanedData[key] !== verifyData[key]
       );
 
       if (updatedFields.length > 0) {
-        console.warn('🟡 [UPDATE_PROFILE] Some fields may not have updated correctly:', updatedFields);
+        console.warn('🟡 [UPDATE_PROFILE] Some fields may not have updated correctly:', {
+          expected: cleanedData,
+          actual: verifyData,
+          differences: updatedFields
+        });
       }
 
-      console.log('✅ [UPDATE_PROFILE] Update successful:', data);
+      console.log('✅ [UPDATE_PROFILE] Update successful:', verifyData);
       return { data: verifyData, error: null };
     } catch (err) {
       console.error('🔴 [UPDATE_PROFILE] Unexpected error:', err);
