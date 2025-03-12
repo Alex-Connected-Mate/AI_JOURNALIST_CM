@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { User as SupabaseUser, AuthError, AuthResponse } from '@supabase/supabase-js';
 import { supabase, signIn, signOut, getSessions, createSession as createSessionApi, getUserProfile, updateUserProfile, uploadProfileImage, SessionData, ensureUserRecord, SupabaseError } from './supabase';
 import { UserProfile } from './types';
+import { SessionCreationLog } from './sessionCreationLogger';
 
 // Function to log store actions if not in production
 const logAction = (action: string, data?: any) => {
@@ -11,12 +12,21 @@ const logAction = (action: string, data?: any) => {
   }
 };
 
-// Ajouter cette interface pour gérer les erreurs de manière générique
+// Helper function to log errors
+const logError = (action: string, error: any) => {
+  if (typeof window !== 'undefined') {
+    console.error(`[STORE ERROR] ${action}:`, error);
+    logAction(`${action} failed`, error);
+  }
+};
+
+// Types
 interface GenericError {
   message: string;
 }
 
 interface AppState {
+  // Auth state
   user: SupabaseUser | null;
   userProfile: UserProfile | null;
   sessions: SessionData[];
@@ -25,21 +35,48 @@ interface AppState {
   authChecked: boolean;
   appInitialized: boolean;
   
-  // Application lifecycle
+  // Session creation logging
+  sessionCreationLogs: SessionCreationLog[];
+  currentSessionCreation: {
+    inProgress: boolean;
+    startedAt: string | null;
+    currentStep: string | null;
+    formData: Record<string, any>;
+  };
+  
+  // Auth actions
   initApp: () => Promise<void>;
-  
-  // Authentication actions
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error: AuthError | null }>;
+  register: (email: string, password: string, username?: string) => Promise<{ success: boolean; error: AuthError | null }>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error: AuthError | null }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error: AuthError | null }>;
   
-  // Profile actions
+  // Session creation logging actions
+  startSessionCreation: () => void;
+  finishSessionCreation: (success: boolean, sessionId?: string) => void;
+  setSessionCreationStep: (step: string) => void;
+  updateSessionCreationField: (field: string, value: any, source?: 'user' | 'profile' | 'default' | 'template') => void;
+  logSessionCreationEvent: (log: SessionCreationLog) => void;
+  clearSessionCreationLogs: () => void;
+  
+  // User profile actions
   fetchUserProfile: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<{ data: UserProfile | null; error: SupabaseError | null }>;
-  uploadAvatar: (file: File) => Promise<{ url: string | null; error: SupabaseError | null }>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<{
+    data: UserProfile | null;
+    error: SupabaseError | null;
+  }>;
+  uploadAvatar: (file: File) => Promise<{
+    url: string | null;
+    error: SupabaseError | null;
+  }>;
   
   // Session actions
   fetchSessions: () => Promise<void>;
-  createSession: (sessionData: Partial<SessionData>) => Promise<{ data: SessionData | null; error: SupabaseError | string | null }>;
+  createSession: (sessionData: Partial<SessionData>) => Promise<{
+    data: SessionData | null;
+    error: any;
+  }>;
 }
 
 // Type guard for PostgrestError
@@ -48,7 +85,7 @@ function isSupabaseError(error: unknown): error is SupabaseError {
 }
 
 // Enhanced error logging
-function logError(action: string, error: unknown) {
+function logErrorEnhanced(action: string, error: unknown) {
   if (isSupabaseError(error)) {
     console.error(`[STORE] ${action} failed:`, {
       message: error.message,
@@ -76,6 +113,201 @@ export const useStore = create<AppState>()(
       error: null,
       authChecked: false,
       appInitialized: false,
+      
+      // Session creation logs initial state
+      sessionCreationLogs: [],
+      currentSessionCreation: {
+        inProgress: false,
+        startedAt: null,
+        currentStep: null,
+        formData: {}
+      },
+      
+      // Session creation logging actions
+      startSessionCreation: () => {
+        const startTime = new Date().toISOString();
+        console.log(`🔵 [SESSION_CREATION] Starting new session creation at ${startTime}`);
+        
+        set({
+          currentSessionCreation: {
+            inProgress: true,
+            startedAt: startTime,
+            currentStep: 'basic',
+            formData: {}
+          }
+        });
+        
+        // Add initial log
+        const newLog: SessionCreationLog = {
+          timestamp: startTime,
+          action: 'step_change',
+          step: 'basic',
+          message: 'Session creation started'
+        };
+        
+        get().logSessionCreationEvent(newLog);
+      },
+      
+      finishSessionCreation: (success: boolean, sessionId?: string) => {
+        const { currentSessionCreation, sessionCreationLogs } = get();
+        const endTime = new Date().toISOString();
+        
+        if (!currentSessionCreation.inProgress) {
+          console.warn('🟡 [SESSION_CREATION] Attempted to finish session creation that was not in progress');
+          return;
+        }
+        
+        const startTime = currentSessionCreation.startedAt || new Date().toISOString();
+        const duration = new Date(endTime).getTime() - new Date(startTime).getTime();
+        
+        console.log(`${success ? '✅' : '❌'} [SESSION_CREATION] Finished session creation after ${duration}ms`, 
+          success ? { success: true, sessionId } : { success: false }
+        );
+        
+        // Add final log
+        const finalLog: SessionCreationLog = {
+          timestamp: endTime,
+          action: success ? 'api_call_success' : 'api_call_error',
+          message: success 
+            ? `Session created successfully with ID: ${sessionId}` 
+            : 'Session creation failed',
+          details: {
+            success,
+            sessionId,
+            duration,
+            totalSteps: Object.keys(
+              sessionCreationLogs.reduce((acc, log) => {
+                if (log.step) acc[log.step] = true;
+                return acc;
+              }, {} as Record<string, boolean>)
+            ).length
+          }
+        };
+        
+        const updatedLogs = [...sessionCreationLogs, finalLog];
+        
+        // Reset current session creation state but keep the logs
+        set({
+          sessionCreationLogs: updatedLogs,
+          currentSessionCreation: {
+            inProgress: false,
+            startedAt: null,
+            currentStep: null,
+            formData: {}
+          }
+        });
+        
+        // Export logs to console for debugging
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('📊 [SESSION_CREATION] Complete session creation log:');
+          const formattedLogs = updatedLogs.map(log => {
+            const time = new Date(log.timestamp).toLocaleTimeString();
+            let message = `[${time}] [${log.action}]`;
+            if (log.step) message += ` STEP: ${log.step}`;
+            if (log.field) message += ` FIELD: ${log.field}`;
+            if (log.message) message += ` - ${log.message}`;
+            return message;
+          }).join('\n');
+          console.log(formattedLogs);
+        }
+      },
+      
+      setSessionCreationStep: (step: string) => {
+        const { currentSessionCreation } = get();
+        
+        if (!currentSessionCreation.inProgress) {
+          console.warn('🟡 [SESSION_CREATION] Attempted to update step while not in progress');
+          return;
+        }
+        
+        console.log(`🔵 [SESSION_CREATION] Step changed from ${currentSessionCreation.currentStep} to ${step}`);
+        
+        // Add step change log
+        const newLog: SessionCreationLog = {
+          timestamp: new Date().toISOString(),
+          action: 'step_change',
+          step,
+          message: `Navigated to step: ${step}`
+        };
+        
+        get().logSessionCreationEvent(newLog);
+        
+        // Update current step
+        set({
+          currentSessionCreation: {
+            ...currentSessionCreation,
+            currentStep: step
+          }
+        });
+      },
+      
+      updateSessionCreationField: (field: string, value: any, source: 'user' | 'profile' | 'default' | 'template' = 'user') => {
+        const { currentSessionCreation } = get();
+        
+        if (!currentSessionCreation.inProgress) {
+          console.warn('🟡 [SESSION_CREATION] Attempted to update field while not in progress');
+          return;
+        }
+        
+        // Determine action type based on source
+        let action: string;
+        switch (source) {
+          case 'profile':
+            action = 'profile_info_used';
+            break;
+          case 'default':
+            action = 'default_value_used';
+            break;
+          case 'template':
+            action = 'template_used';
+            break;
+          default:
+            action = 'field_update';
+        }
+        
+        console.log(`🔵 [SESSION_CREATION] Field "${field}" updated via ${source}`, { value });
+        
+        // Add field update log
+        const newLog: SessionCreationLog = {
+          timestamp: new Date().toISOString(),
+          action: action as any,
+          field,
+          value,
+          message: `Field "${field}" updated via ${source}`
+        };
+        
+        get().logSessionCreationEvent(newLog);
+        
+        // Update form data
+        set({
+          currentSessionCreation: {
+            ...currentSessionCreation,
+            formData: {
+              ...currentSessionCreation.formData,
+              [field]: value
+            }
+          }
+        });
+      },
+      
+      logSessionCreationEvent: (log: SessionCreationLog) => {
+        const { sessionCreationLogs } = get();
+        set({
+          sessionCreationLogs: [...sessionCreationLogs, log]
+        });
+      },
+      
+      clearSessionCreationLogs: () => {
+        set({
+          sessionCreationLogs: [],
+          currentSessionCreation: {
+            inProgress: false,
+            startedAt: null,
+            currentStep: null,
+            formData: {}
+          }
+        });
+      },
       
       initApp: async () => {
         if (get().appInitialized) {
@@ -182,7 +414,7 @@ export const useStore = create<AppState>()(
         }
       },
       
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string): Promise<{ success: boolean; error: AuthError | null }> => {
         logAction('login attempt', { email });
         set({ loading: true, error: null });
         try {
@@ -191,7 +423,7 @@ export const useStore = create<AppState>()(
           if (error) {
             logAction('login failed', { error: error.message });
             set({ error: error.message, loading: false });
-            return;
+            return { success: false, error };
           }
           
           if (data?.user) {
@@ -201,11 +433,19 @@ export const useStore = create<AppState>()(
             // Fetch user data after login
             get().fetchUserProfile();
             get().fetchSessions();
+            
+            return { success: true, error: null };
           }
+          
+          // Si nous arrivons ici, c'est qu'il n'y a ni erreur ni utilisateur (cas théorique)
+          logAction('login indeterminate', { data });
+          set({ loading: false });
+          return { success: false, error: { message: 'No user returned', name: 'IndeterminateAuthError' } as AuthError };
         } catch (err) {
           const error = err as AuthError;
           logAction('login unexpected error', { error: error.message });
           set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return { success: false, error };
         }
       },
       
@@ -596,6 +836,16 @@ export const useStore = create<AppState>()(
         }
         
         logAction('createSession attempt', { userId: user.id });
+        
+        // Log session creation attempt in the new logging system
+        const logTimestamp = new Date().toISOString();
+        get().logSessionCreationEvent({
+          timestamp: logTimestamp,
+          action: 'api_call_start',
+          message: 'Starting API call to create session',
+          details: { sessionData }
+        });
+        
         try {
           const fullSessionData = {
             ...sessionData,
@@ -606,6 +856,15 @@ export const useStore = create<AppState>()(
           
           if (error) {
             logAction('createSession failed', { error });
+            
+            // Log error in the new logging system
+            get().logSessionCreationEvent({
+              timestamp: new Date().toISOString(),
+              action: 'api_call_error',
+              message: 'Session creation API call failed',
+              details: { error }
+            });
+            
             return { data: null, error };
           }
           
@@ -613,12 +872,101 @@ export const useStore = create<AppState>()(
             logAction('createSession successful', { sessionId: data.id });
             const sessions = [...get().sessions, data];
             set({ sessions });
+            
+            // Log success in the new logging system
+            get().logSessionCreationEvent({
+              timestamp: new Date().toISOString(),
+              action: 'api_call_success',
+              message: 'Session created successfully',
+              details: { sessionId: data.id }
+            });
           }
           
           return { data, error };
         } catch (err: any) {
           logAction('createSession unexpected error', { error: err?.message });
+          
+          // Log error in the new logging system
+          get().logSessionCreationEvent({
+            timestamp: new Date().toISOString(),
+            action: 'api_call_error',
+            message: 'Unexpected error during session creation',
+            details: { errorMessage: err?.message }
+          });
+          
           return { data: null, error: err?.message || 'Failed to create session' };
+        }
+      },
+      
+      register: async (email: string, password: string, username?: string): Promise<{ success: boolean; error: AuthError | null }> => {
+        logAction('register attempt', { email });
+        set({ loading: true, error: null });
+        
+        try {
+          // Implémenter l'enregistrement lorsque la fonction sera disponible dans supabase.ts
+          // Pour l'instant, utilisons une implémentation fictive
+          logAction('register not implemented');
+          set({ loading: false });
+          return {
+            success: false,
+            error: {
+              name: 'NotImplementedError',
+              message: 'La fonction register n\'est pas encore implémentée'
+            } as AuthError
+          };
+        } catch (err) {
+          const error = err as AuthError;
+          logAction('register unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return { success: false, error };
+        }
+      },
+      
+      resetPassword: async (email: string): Promise<{ success: boolean; error: AuthError | null }> => {
+        logAction('resetPassword attempt', { email });
+        set({ loading: true, error: null });
+        
+        try {
+          // Implémenter la réinitialisation de mot de passe lorsque la fonction sera disponible dans supabase.ts
+          // Pour l'instant, utilisons une implémentation fictive
+          logAction('resetPassword not implemented');
+          set({ loading: false });
+          return {
+            success: false,
+            error: {
+              name: 'NotImplementedError',
+              message: 'La fonction resetPassword n\'est pas encore implémentée'
+            } as AuthError
+          };
+        } catch (err) {
+          const error = err as AuthError;
+          logAction('resetPassword unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return { success: false, error };
+        }
+      },
+      
+      forgotPassword: async (email: string): Promise<{ success: boolean; error: AuthError | null }> => {
+        logAction('forgotPassword attempt', { email });
+        set({ loading: true, error: null });
+        
+        try {
+          // Implémenter la récupération de mot de passe lorsque la fonction sera disponible dans supabase.ts
+          // Pour l'instant, utilisons une implémentation fictive
+          logAction('forgotPassword not implemented');
+          set({ loading: false });
+          return {
+            success: false,
+            error: {
+              name: 'NotImplementedError',
+              message: 'La fonction forgotPassword n\'est pas encore implémentée'
+            } as AuthError
+          };
+        } catch (err) {
+          const error = err as AuthError;
+          logAction('forgotPassword unexpected error', { error: error.message });
+          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          return { success: false, error };
         }
       },
     }),

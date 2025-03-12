@@ -14,30 +14,35 @@ import NumberInput from '@/components/NumberInput';
 import RadioGroup from '@/components/RadioGroup';
 import Tabs from '@/components/Tabs';
 import { createSession, uploadProfileImage } from '@/lib/supabase';
+import { useSessionCreationLogger, SessionCreationAction } from '@/lib/sessionCreationLogger';
 
 interface SessionError {
   message: string;
 }
 
-// Helper function to generate anonymous identifier
+// Fonction pour générer un ID anonyme basé sur un nom
 const generateAnonymousId = (name: string) => {
-  if (!name || name.length < 2) return "XX12345";
-  
-  const firstTwo = name.substring(0, 2).toUpperCase();
-  
-  // Create a stable hash based on the name
-  const nameHash = name.split('').reduce((acc, char, index) => 
-    acc + char.charCodeAt(0) * (index + 1), 0) % 100000;
-  
-  // Format to ensure it's always 5 digits
-  const formattedHash = nameHash.toString().padStart(5, '0');
-  
-  return `${firstTwo}${formattedHash}`;
+  const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const randomNum = Math.floor(Math.random() * 1000);
+  return `${cleanName.substring(0, 3)}${randomNum}`;
 };
+
+// Options pour les modes de profil utilisateur
+const userModeOptions = [
+  { value: 'anonymous', label: 'Anonymous' },
+  { value: 'semi-anonymous', label: 'Semi-Anonymous' },
+  { value: 'non-anonymous', label: 'Non-Anonymous' },
+];
+
+const tabs = [
+  { id: 'basic', label: 'Basic Information' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'profile', label: 'User Profiles' },
+];
 
 export default function CreateSessionPage() {
   const router = useRouter();
-  const { user, userProfile } = useStore();
+  const { user, userProfile, createSession: storeCreateSession, startSessionCreation, updateSessionCreationField, setSessionCreationStep, finishSessionCreation } = useStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
@@ -57,6 +62,13 @@ export default function CreateSessionPage() {
   // États pour le contrôle de l'utilisation des informations du profil
   const [useProfileInstitution, setUseProfileInstitution] = useState<boolean>(true);
   const [useProfileName, setUseProfileName] = useState<boolean>(true);
+  
+  // Initialize session creation logger in store
+  useEffect(() => {
+    // Démarrer le logging de création de session
+    startSessionCreation();
+    console.log('📝 [SESSION_CREATION] Page loaded and logging initialized');
+  }, [startSessionCreation]);
 
   useEffect(() => {
     // If user is not logged in, redirect to login page
@@ -65,56 +77,68 @@ export default function CreateSessionPage() {
     }
   }, [user, router]);
 
-  // Auto-remplir les champs avec les informations du profil dès le chargement
+  // Initialiser avec les données de profil si disponibles
   useEffect(() => {
     if (userProfile) {
-      // Auto-remplir l'institution si disponible
-      if (userProfile.institution) {
+      console.log('📝 [SESSION_CREATION] User profile available, initializing fields');
+      
+      // Utiliser le nom de l'institution du profil
+      if (userProfile.institution && useProfileInstitution) {
         setInstitution(userProfile.institution);
-        setUseProfileInstitution(true);
+        updateSessionCreationField('institution', userProfile.institution, 'profile');
       }
       
-      // Auto-remplir le nom du professeur si disponible
-      if (userProfile.full_name) {
+      // Utiliser le nom complet du profil
+      if (userProfile.full_name && useProfileName) {
         setProfessorName(userProfile.full_name);
-        setUseProfileName(true);
-      }
-      
-      // Utiliser l'avatar du profil comme image de session si disponible
-      if (userProfile.avatar_url) {
-        setUploadedImageUrl(userProfile.avatar_url);
-        setSelectedImage(userProfile.avatar_url);
+        updateSessionCreationField('professorName', userProfile.full_name, 'profile');
       }
     }
-  }, [userProfile]);
-
-  // Effet pour mettre à jour les champs avec les informations du profil quand les checkboxes changent
+  }, [userProfile, useProfileInstitution, useProfileName, updateSessionCreationField]);
+  
+  // Log tab changes
   useEffect(() => {
-    if (userProfile) {
-      if (useProfileInstitution && userProfile.institution) {
-        setInstitution(userProfile.institution);
-      }
-      if (useProfileName && userProfile.full_name) {
-        setProfessorName(userProfile.full_name);
-      }
-    }
-  }, [userProfile, useProfileInstitution, useProfileName]);
+    setSessionCreationStep(activeTab);
+  }, [activeTab, setSessionCreationStep]);
+  
+  const handleTabChange = (tabId: string) => {
+    console.log(`📝 [SESSION_CREATION] Tab changed to ${tabId}`);
+    setActiveTab(tabId);
+  };
+  
+  // Helper function for field updates with logging
+  const updateField = (field: string, value: any, source: 'user' | 'profile' | 'default' | 'template' = 'user') => {
+    console.log(`📝 [SESSION_CREATION] Field ${field} updated to:`, value);
+    updateSessionCreationField(field, value, source);
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!user) {
-      setError('You must be logged in to create a session');
+      const errorMsg = 'You must be logged in to create a session';
+      setError(errorMsg);
+      console.error(`❌ [SESSION_CREATION] Submit failed: ${errorMsg}`);
       return;
     }
     
     if (!sessionName || !institution) {
-      setError('Session name and institution are required');
+      const errorMsg = 'Session name and institution are required';
+      setError(errorMsg);
+      console.error(`❌ [SESSION_CREATION] Submit validation failed: ${errorMsg}`);
+      updateSessionCreationField('validation_error', { 
+        fields: { 
+          sessionName: !sessionName, 
+          institution: !institution 
+        },
+        message: errorMsg
+      });
       return;
     }
     
     setLoading(true);
     setError(null);
+    console.log('📝 [SESSION_CREATION] Starting session creation API call');
     
     try {
       const sessionData = {
@@ -130,20 +154,32 @@ export default function CreateSessionPage() {
         maxParticipants,
       };
       
-      const { data, error: apiError } = await createSession(sessionData);
+      console.log('📝 [SESSION_CREATION] Session data being sent:', sessionData);
+      
+      const { data, error: apiError } = await storeCreateSession(sessionData);
       
       if (apiError) {
         const sessionError = apiError as SessionError;
         setError(sessionError.message);
         setLoading(false);
+        console.error(`❌ [SESSION_CREATION] API error:`, sessionError);
+        finishSessionCreation(false);
         return;
       }
+      
+      console.log('✅ [SESSION_CREATION] Session created successfully:', data);
+      
+      // Mark session creation as completed with success
+      finishSessionCreation(true, data?.id);
       
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (err) {
-      setError('An unexpected error occurred');
+      const errorMsg = 'An unexpected error occurred';
+      setError(errorMsg);
       setLoading(false);
+      console.error(`❌ [SESSION_CREATION] Unexpected error:`, err);
+      finishSessionCreation(false);
     }
   };
   
@@ -151,77 +187,91 @@ export default function CreateSessionPage() {
     // Si c'est null, revenir à la valeur par défaut
     if (!value) {
       setSelectedImage('university');
+      updateField('image', 'university', 'default');
+      console.log('📝 [SESSION_CREATION] Image reset to default: university');
       return;
     }
     
     // Si c'est une URL complète (image téléchargée), préserver cette information
     if (value.startsWith('http')) {
       setUploadedImageUrl(value);
+      console.log('📝 [SESSION_CREATION] Custom image URL set:', value);
+      updateField('uploadedImageUrl', value);
     }
     
     setSelectedImage(value);
+    updateField('selectedImage', value);
+    console.log('📝 [SESSION_CREATION] Image selection changed to:', value);
   };
   
-  const handleFileUpload = async (file: File) => {
-    if (!user) {
-      setError('You must be logged in to upload an image');
-      return;
-    }
+  const handleColorChange = (newColor: string) => {
+    setColor(newColor);
+    updateField('color', newColor);
+    console.log('📝 [SESSION_CREATION] Color updated to:', newColor);
+  };
+  
+  const handleEmojiChange = (newEmoji: string) => {
+    setEmoji(newEmoji);
+    updateField('emoji', newEmoji);
+    console.log('📝 [SESSION_CREATION] Emoji updated to:', newEmoji);
+  };
+  
+  const handleSessionNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSessionName(value);
+    updateField('sessionName', value);
+  };
+  
+  const handleInstitutionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInstitution(value);
+    setUseProfileInstitution(false);
+    updateField('institution', value);
+    updateField('useProfileInstitution', false);
+  };
+  
+  const handleProfessorNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setProfessorName(value);
+    setUseProfileName(false);
+    updateField('professorName', value);
+    updateField('useProfileName', false);
+  };
+  
+  const handleUseProfileInstitution = (checked: boolean) => {
+    setUseProfileInstitution(checked);
+    updateField('useProfileInstitution', checked);
     
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Implémenter l'upload d'image
-      const { url, error: uploadError } = await uploadProfileImage(user.id, file);
-      
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        setError('Failed to upload image. Please try again.');
-        setLoading(false);
-        return;
-      }
-      
-      if (url) {
-        setUploadedImageUrl(url);
-        setSelectedImage(url);
-        console.log('Image uploaded successfully:', url);
-      }
-    } catch (err) {
-      console.error('Unexpected error during image upload:', err);
-      setError('An unexpected error occurred during image upload');
-    } finally {
-      setLoading(false);
+    if (checked && userProfile?.institution) {
+      setInstitution(userProfile.institution);
+      updateField('institution', userProfile.institution, 'profile');
     }
   };
   
-  if (!user) {
-    return null; // Will redirect in useEffect
-  }
-  
-  const tabs = [
-    { id: 'basic', label: 'Basic Information' },
-    { id: 'profile', label: 'User Profile' },
-    { id: 'appearance', label: 'Appearance' },
-  ];
-  
-  const userModeOptions = [
-    {
-      value: 'anonymous',
-      label: 'Anonymous',
-      description: 'Automatically generate an identifier for participants (e.g., "AC16122001").'
-    },
-    {
-      value: 'semi-anonymous',
-      label: 'Semi-anonymous',
-      description: 'Allow participants to enter a nickname, select an emoji, and optionally add a photo.'
-    },
-    {
-      value: 'non-anonymous',
-      label: 'Non-anonymous',
-      description: 'Require full participant information (name, email, phone, etc.).'
+  const handleUseProfileName = (checked: boolean) => {
+    setUseProfileName(checked);
+    updateField('useProfileName', checked);
+    
+    if (checked && userProfile?.full_name) {
+      setProfessorName(userProfile.full_name);
+      updateField('professorName', userProfile.full_name, 'profile');
     }
-  ];
+  };
+  
+  const handleProfileModeChange = (value: string) => {
+    setProfileMode(value as 'anonymous' | 'semi-anonymous' | 'non-anonymous');
+    updateField('profileMode', value);
+  };
+  
+  const handleMaxParticipantsChange = (value: number) => {
+    setMaxParticipants(value);
+    updateField('maxParticipants', value);
+  };
+  
+  const handleShowProfessorNameChange = (checked: boolean) => {
+    setShowProfessorName(checked);
+    updateField('showProfessorName', checked);
+  };
   
   // Sample preview data based on current form values
   const previewData = {
@@ -252,7 +302,7 @@ export default function CreateSessionPage() {
                 <Tabs
                   tabs={tabs}
                   activeTab={activeTab}
-                  onChange={setActiveTab}
+                  onChange={handleTabChange}
                   className="mb-6"
                 />
                 
@@ -262,7 +312,7 @@ export default function CreateSessionPage() {
                     <Input
                       label="Session Name"
                       value={sessionName}
-                      onChange={(e) => setSessionName(e.target.value)}
+                      onChange={handleSessionNameChange}
                       placeholder="Enter session name"
                       required
                     />
@@ -272,10 +322,7 @@ export default function CreateSessionPage() {
                         <Input
                           label="Institution/Program Name"
                           value={institution}
-                          onChange={(e) => {
-                            setInstitution(e.target.value);
-                            setUseProfileInstitution(false);
-                          }}
+                          onChange={handleInstitutionChange}
                           placeholder="Enter institution or program name"
                           required
                         />
@@ -284,12 +331,7 @@ export default function CreateSessionPage() {
                             <Checkbox
                               label="Utiliser mon institution"
                               checked={useProfileInstitution}
-                              onChange={(checked) => {
-                                setUseProfileInstitution(checked);
-                                if (checked && userProfile.institution) {
-                                  setInstitution(userProfile.institution);
-                                }
-                              }}
+                              onChange={handleUseProfileInstitution}
                             />
                           </div>
                         )}
@@ -299,25 +341,17 @@ export default function CreateSessionPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Input
-                          label="Professor's Name"
+                          label="Professor Name"
                           value={professorName}
-                          onChange={(e) => {
-                            setProfessorName(e.target.value);
-                            setUseProfileName(false);
-                          }}
-                          placeholder="Enter professor's name"
+                          onChange={handleProfessorNameChange}
+                          placeholder="Enter your name"
                         />
                         {userProfile?.full_name && (
                           <div className="ml-4 flex items-center">
                             <Checkbox
                               label="Utiliser mon nom"
                               checked={useProfileName}
-                              onChange={(checked) => {
-                                setUseProfileName(checked);
-                                if (checked && userProfile.full_name) {
-                                  setProfessorName(userProfile.full_name);
-                                }
-                              }}
+                              onChange={handleUseProfileName}
                             />
                           </div>
                         )}
@@ -325,22 +359,63 @@ export default function CreateSessionPage() {
                     </div>
                     
                     <Checkbox
-                      label="Display professor's name publicly"
+                      label="Show professor name on session"
                       checked={showProfessorName}
-                      onChange={setShowProfessorName}
+                      onChange={handleShowProfessorNameChange}
                     />
                     
                     <NumberInput
-                      label="Maximum Number of Participants"
+                      label="Maximum Participants"
                       value={maxParticipants}
-                      onChange={setMaxParticipants}
+                      onChange={handleMaxParticipantsChange}
                       min={1}
-                      max={1000}
+                      max={500}
                     />
                   </div>
                 )}
                 
-                {/* User Profile Tab */}
+                {/* Appearance Tab */}
+                {activeTab === 'appearance' && (
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Session Image
+                      </label>
+                      <ImageSelector
+                        label="Session Image"
+                        selectedImageId={selectedImage}
+                        onChange={handleImageChange}
+                        onFileUpload={async () => {
+                          console.log('📝 [SESSION_CREATION] File upload not implemented in this version');
+                          return Promise.resolve();
+                        }}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Theme Color
+                      </label>
+                      <ColorPicker
+                        label="Theme Color"
+                        selectedColor={color}
+                        onChange={handleColorChange}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Session Emoji
+                      </label>
+                      <EmojiPicker
+                        label="Session Emoji"
+                        selectedEmoji={emoji}
+                        onChange={handleEmojiChange}
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 {activeTab === 'profile' && (
                   <div className="space-y-4">
                     <RadioGroup
@@ -348,7 +423,7 @@ export default function CreateSessionPage() {
                       name="profileMode"
                       options={userModeOptions}
                       value={profileMode}
-                      onChange={(value) => setProfileMode(value as 'anonymous' | 'semi-anonymous' | 'non-anonymous')}
+                      onChange={handleProfileModeChange}
                     />
                     
                     {profileMode === 'semi-anonymous' && (
@@ -373,40 +448,15 @@ export default function CreateSessionPage() {
                           Non-anonymous Mode Options
                         </h3>
                         <p className="text-sm text-gray-500 mb-2">
-                          Participants will need to provide:
+                          Participants will use their real profiles, including:
                         </p>
                         <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
-                          <li>Full name</li>
-                          <li>Email address</li>
-                          <li>Phone number (optional)</li>
-                          <li>Additional contact links (optional)</li>
+                          <li>Real name from their account</li>
+                          <li>Profile picture from their account</li>
+                          <li>Institution information</li>
                         </ul>
                       </div>
                     )}
-                  </div>
-                )}
-                
-                {/* Appearance Tab */}
-                {activeTab === 'appearance' && (
-                  <div className="space-y-4">
-                    <ImageSelector
-                      label="Session Image"
-                      selectedImageId={uploadedImageUrl || selectedImage}
-                      onChange={handleImageChange}
-                      onFileUpload={handleFileUpload}
-                    />
-                    
-                    <ColorPicker
-                      label="Session Color"
-                      selectedColor={color}
-                      onChange={setColor}
-                    />
-                    
-                    <EmojiPicker
-                      label="Session Emoji"
-                      selectedEmoji={emoji}
-                      onChange={setEmoji}
-                    />
                   </div>
                 )}
                 
@@ -420,7 +470,10 @@ export default function CreateSessionPage() {
                   <Button
                     variant="outline"
                     type="button"
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => {
+                      updateField('navigation', 'cancel');
+                      router.push('/dashboard');
+                    }}
                   >
                     Cancel
                   </Button>
@@ -505,44 +558,41 @@ export default function CreateSessionPage() {
                       {previewData.profileMode === 'non-anonymous' && (
                         <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
                           <div className="flex items-center">
-                            <div 
-                              className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3"
-                            >
-                              <span className="text-sm text-gray-600">JD</span>
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 overflow-hidden">
+                              {userProfile?.avatar_url ? (
+                                <img 
+                                  src={userProfile.avatar_url} 
+                                  alt="Profile" 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-lg">{previewData.emoji}</span>
+                              )}
                             </div>
                             <div>
-                              <p className="font-medium">John Doe</p>
-                              <p className="text-sm text-gray-500">john.doe@example.com</p>
+                              <p className="font-medium">{userProfile?.full_name || 'User Name'}</p>
+                              <p className="text-sm text-gray-500">{userProfile?.institution || 'Institution'}</p>
                             </div>
                           </div>
                         </div>
                       )}
                     </div>
                     
-                    <div className="space-y-4">
+                    <div>
                       <h4 className="text-sm font-medium text-gray-500 mb-2">
-                        Session Features Preview
+                        Participation Options
                       </h4>
-                      
                       <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                        <p className="text-sm text-gray-700">
-                          This is a preview of your interactive session. The actual interface will include:
-                        </p>
-                        <ul className="mt-2 space-y-1 text-sm text-gray-600 list-disc pl-5">
-                          <li>Live voting capabilities</li>
-                          <li>AI-driven chat for "nuggets" and "light bulbs"</li>
-                          <li>Real-time synchronization</li>
-                          <li>QR code connection option</li>
+                        <ul className="text-sm text-gray-600 space-y-2">
+                          <li className="flex items-center">
+                            <span className="mr-2">👥</span>
+                            <span>Max participants: {maxParticipants}</span>
+                          </li>
+                          <li className="flex items-center">
+                            <span className="mr-2">👤</span>
+                            <span>Profile mode: {profileMode}</span>
+                          </li>
                         </ul>
-                      </div>
-                      
-                      <div className="bg-gray-50 border border-gray-200 rounded-md p-4 flex justify-between items-center">
-                        <div className="text-sm text-gray-700">
-                          <span className="font-medium">Maximum Participants:</span> {maxParticipants}
-                        </div>
-                        <div className="text-xs text-gray-500 bg-white px-2 py-1 rounded border border-gray-300">
-                          0 / {maxParticipants} joined
-                        </div>
                       </div>
                     </div>
                   </div>
