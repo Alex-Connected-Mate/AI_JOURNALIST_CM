@@ -463,31 +463,6 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
   return { isValid: true };
 }
 
-// Helper function to ensure user record exists
-async function ensureUserRecord(userId: string, email: string) {
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', userId)
-    .single();
-
-  if (!existingUser) {
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert({
-        id: userId,
-        email: email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (insertError) {
-      console.error('Failed to create user record:', insertError);
-      throw insertError;
-    }
-  }
-}
-
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
     // Validate required fields
