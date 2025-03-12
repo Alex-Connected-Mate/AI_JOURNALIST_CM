@@ -130,25 +130,31 @@ export default function SettingsPage() {
       ...prev,
       [field]: value
     }));
+    console.log('Form data updated:', field, value);
   };
 
   // Handle profile update
   const handleSubmit = async () => {
-    if (isLoading) return;
-    
-    setIsLoading(true);
-    setMessage({ type: '', text: '' });
+    if (isLoading) {
+      console.log('🔴 [SETTINGS] Update aborted: already loading');
+      return;
+    }
     
     try {
-      console.log('Starting profile update...');
+      setIsLoading(true);
+      setMessage({ type: '', text: '' });
+      
+      console.log('🔵 [SETTINGS] Starting profile update...');
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       
       // Validate required fields
       if (!fullName) {
+        console.error('🔴 [SETTINGS] Validation failed: name is required');
         setMessage({
           type: 'error',
           text: 'Le nom est requis'
         });
+        setIsLoading(false);
         return;
       }
       
@@ -160,44 +166,57 @@ export default function SettingsPage() {
         openai_api_key: formData.openai_api_key
       };
       
-      console.log('Updating profile with data:', updateData);
+      console.log('🔵 [SETTINGS] Updating profile with data:', updateData);
       const { data, error } = await updateProfile(updateData);
       
       if (error) {
-        console.error('Profile update failed:', error);
-        let errorMessage = 'Erreur lors de la mise à jour du profil';
-        
-        // Handle specific error cases
-        switch (error.code) {
-          case 'VALIDATION_ERROR':
-            errorMessage = error.details || 'Données invalides';
-            break;
-          case 'AUTH_ERROR':
-            errorMessage = 'Vous devez être connecté pour effectuer cette action';
-            router.push('/auth/login');
-            break;
-          case 'UPDATE_FAILED':
-            errorMessage = 'La mise à jour a échoué, veuillez réessayer';
-            break;
-          default:
-            errorMessage = error.message || 'Une erreur inattendue est survenue';
-        }
-        
+        console.error('🔴 [SETTINGS] Profile update failed:', error);
         setMessage({
           type: 'error',
-          text: errorMessage
+          text: error.message || 'Erreur lors de la mise à jour du profil'
         });
+        setIsLoading(false);
         return;
       }
       
-      console.log('Profile updated successfully:', data);
+      if (!data) {
+        console.error('🔴 [SETTINGS] No data returned from update');
+        throw new Error('No data returned from profile update');
+      }
+      
+      console.log('✅ [SETTINGS] Profile updated successfully:', data);
+      
+      // Verify the update
+      console.log('🔵 [SETTINGS] Fetching updated profile');
       await fetchUserProfile();
+      
+      // Compare updated fields
+      const updatedProfile = userProfile;
+      if (updatedProfile) {
+        const nameParts = (updatedProfile.full_name || '').split(' ');
+        const expectedFirstName = formData.firstName;
+        const expectedLastName = formData.lastName;
+        
+        if (nameParts[0] !== expectedFirstName || nameParts.slice(1).join(' ') !== expectedLastName) {
+          console.warn('🟡 [SETTINGS] Name mismatch after update:', {
+            expected: { firstName: expectedFirstName, lastName: expectedLastName },
+            actual: nameParts
+          });
+        }
+      }
+      
       setMessage({
         type: 'success',
         text: 'Profil mis à jour avec succès'
       });
+      
+      console.log('🔵 [SETTINGS] Reloading page to show changes');
+      // Force reload after a short delay to ensure state is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (err) {
-      console.error('Error updating profile:', err);
+      console.error('🔴 [SETTINGS] Error updating profile:', err);
       setMessage({
         type: 'error',
         text: err instanceof Error ? err.message : 'Erreur lors de la mise à jour du profil'
@@ -240,34 +259,28 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     if (isLoading) return;
     
-    setIsLoading(true);
-    setMessage({ type: '', text: '' });
-    
     try {
+      setIsLoading(true);
+      setMessage({ type: '', text: '' });
+      
       console.log('Starting logout process');
+      
+      // Force clear local storage first
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      
+      // Attempt to sign out
       await logout();
       
-      // Force clear any local state
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        institution: '',
-        title: '',
-        bio: '',
-        avatar_url: '',
-        openai_api_key: ''
-      });
-      
-      // Use replace instead of push to prevent back navigation
-      router.replace('/auth/login');
+      // Force redirect to login page
+      window.location.href = '/auth/login';
     } catch (error) {
       console.error('Logout error:', error);
-      setMessage({
-        type: 'error',
-        text: 'Erreur lors de la déconnexion. Veuillez réessayer.'
-      });
-      setIsLoading(false);
+      
+      // Force redirect even on error
+      window.location.href = '/auth/login';
     }
   };
 

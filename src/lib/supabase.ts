@@ -79,43 +79,69 @@ export async function signUp(email: string, password: string) {
 }
 
 export async function signOut() {
-  console.log('Starting signOut process');
-  try {
-    // Force clear any stored session data first
-    if (typeof window !== 'undefined') {
-      localStorage.clear(); // Clear all localStorage
-      sessionStorage.clear(); // Clear all sessionStorage
-    }
+  console.log('Starting forced signOut process');
+  
+  // Force clear all storage immediately
+  if (typeof window !== 'undefined') {
+    localStorage.clear();
+    sessionStorage.clear();
     
-    // Attempt to sign out from Supabase
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error('Sign out error:', error);
-      return { error };
-    }
-    
-    // Double check session is cleared
-    await supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        console.warn('Session still exists after signOut, forcing removal');
-        supabase.auth.setSession({ access_token: '', refresh_token: '' });
+    // Clear specific Supabase items
+    const items = ['supabase.auth.token', 'supabase.auth.refreshToken', 'app-storage'];
+    items.forEach(item => {
+      try {
+        localStorage.removeItem(item);
+        sessionStorage.removeItem(item);
+      } catch (e) {
+        console.warn(`Failed to remove ${item}`, e);
       }
     });
+  }
+
+  try {
+    // Force expire the session first
+    await supabase.auth.setSession({
+      access_token: '',
+      refresh_token: ''
+    });
+    
+    // Kill the session
+    await supabase.auth.signOut();
+    
+    // Double check session is killed
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      console.warn('Session still exists, forcing removal');
+      await supabase.auth.setSession({
+        access_token: '',
+        refresh_token: ''
+      });
+    }
+    
+    // Clear any remaining cookies
+    if (typeof document !== 'undefined') {
+      document.cookie.split(';').forEach(cookie => {
+        document.cookie = cookie
+          .replace(/^ +/, '')
+          .replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`);
+      });
+    }
     
     console.log('Sign out successful');
     return { error: null };
   } catch (err) {
-    console.error('Unexpected error during sign out:', err);
-    // Even if there's an error, clear local storage
+    console.error('Sign out error:', err);
+    
+    // Force clear everything even on error
     if (typeof window !== 'undefined') {
       localStorage.clear();
       sessionStorage.clear();
     }
+    
     return { 
       error: {
         message: err instanceof Error ? err.message : 'Failed to sign out',
-        details: 'Unexpected error during sign out process'
+        details: 'Forced sign out due to error'
       }
     };
   }
@@ -248,12 +274,16 @@ interface UserProfileWithSubscription extends Partial<UserProfile> {
 
 // Update the updateUserProfile function to validate data against DB constraints
 export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
-  console.log('Starting profile update process:', { userId, profileData });
+  console.log('🔵 [UPDATE_PROFILE] Starting update process:', { userId, profileData });
   
   return withRetry(async () => {
     try {
+      // Log initial validation
+      console.log('🔵 [UPDATE_PROFILE] Validating input data');
+      
       // Validate role if provided
       if (profileData.role && !['user', 'admin', 'premium'].includes(profileData.role)) {
+        console.error('🔴 [UPDATE_PROFILE] Invalid role:', profileData.role);
         return {
           data: null,
           error: {
@@ -267,6 +297,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       // Validate subscription_status if provided
       if (profileData.subscription_status && 
           !['free', 'basic', 'premium', 'enterprise'].includes(profileData.subscription_status)) {
+        console.error('🔴 [UPDATE_PROFILE] Invalid subscription status:', profileData.subscription_status);
         return {
           data: null,
           error: {
@@ -277,6 +308,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
 
+      console.log('🔵 [UPDATE_PROFILE] Checking if user exists');
       // Ensure user record exists
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
@@ -285,12 +317,12 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         .maybeSingle();
         
       if (checkError) {
-        console.error('User check failed:', checkError);
+        console.error('🔴 [UPDATE_PROFILE] User check failed:', checkError);
         return { data: null, error: checkError };
       }
       
       if (!existingUser) {
-        console.error('User not found:', userId);
+        console.error('🔴 [UPDATE_PROFILE] User not found:', userId);
         return { 
           data: null, 
           error: { 
@@ -300,6 +332,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           } as PostgrestError 
         };
       }
+
+      console.log('🔵 [UPDATE_PROFILE] Existing user found:', existingUser);
 
       // Prepare update data with proper timestamp handling
       const now = new Date().toISOString();
@@ -315,7 +349,10 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         subscription_status: profileData.subscription_status || existingUser.subscription_status || 'free'
       };
 
-      console.log('Performing update with data:', updateData);
+      console.log('🔵 [UPDATE_PROFILE] Prepared update data:', updateData);
+
+      // Perform the update
+      console.log('🔵 [UPDATE_PROFILE] Executing update query');
       const { data, error } = await supabase
         .from('users')
         .update(updateData)
@@ -324,12 +361,12 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         .single();
         
       if (error) {
-        console.error('Update failed:', error);
+        console.error('🔴 [UPDATE_PROFILE] Update failed:', error);
         return { data: null, error };
       }
       
       if (!data) {
-        console.error('Update succeeded but no data returned');
+        console.error('🔴 [UPDATE_PROFILE] Update succeeded but no data returned');
         return {
           data: null,
           error: {
@@ -340,10 +377,32 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
 
-      console.log('Profile update completed successfully:', data);
-      return { data, error: null };
+      // Verify the update
+      console.log('🔵 [UPDATE_PROFILE] Verifying update');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (verifyError || !verifyData) {
+        console.error('🔴 [UPDATE_PROFILE] Verification failed:', verifyError);
+        return { data: null, error: verifyError };
+      }
+
+      // Compare updated fields
+      const updatedFields = Object.keys(profileData).filter(key => 
+        profileData[key as keyof UserProfile] !== verifyData[key as keyof UserProfile]
+      );
+
+      if (updatedFields.length > 0) {
+        console.warn('🟡 [UPDATE_PROFILE] Some fields may not have updated correctly:', updatedFields);
+      }
+
+      console.log('✅ [UPDATE_PROFILE] Update successful:', data);
+      return { data: verifyData, error: null };
     } catch (err) {
-      console.error('Unexpected error in updateUserProfile:', err);
+      console.error('🔴 [UPDATE_PROFILE] Unexpected error:', err);
       return { 
         data: null, 
         error: { 

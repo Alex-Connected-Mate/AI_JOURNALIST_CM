@@ -102,58 +102,75 @@ export const useStore = create<AppState>()(
       
       logout: async () => {
         logAction('logout attempt');
-        set({ loading: true, error: null });
         
+        // Clear all state immediately
+        set({ 
+          user: null,
+          userProfile: null,
+          sessions: [],
+          loading: true,
+          error: null,
+          authChecked: false
+        });
+
         try {
-          // Clear all state first
-          set({ 
-            sessions: [],
-            userProfile: null,
-            error: null,
-            loading: true
-          });
-
-          // Attempt to sign out
-          const { error } = await signOut();
-          
-          if (error) {
-            logAction('logout failed', { error: error.message });
-            throw error;
-          }
-          
-          // Force clear remaining state
-          set({ 
-            user: null,
-            loading: false,
-            authChecked: false
-          });
-
-          // Force clear persisted state
+          // Force clear storage first
           if (typeof window !== 'undefined') {
             window.localStorage.clear();
             window.sessionStorage.clear();
-            // Force reload to ensure clean state
-            window.location.href = '/auth/login';
           }
+
+          // Attempt to sign out from Supabase
+          await signOut();
           
           logAction('logout successful');
+          
+          // Clear any remaining state
+          set({ 
+            user: null,
+            userProfile: null,
+            sessions: [],
+            loading: false,
+            error: null,
+            authChecked: false
+          });
+
+          // Force clear persisted state again
+          if (typeof window !== 'undefined') {
+            window.localStorage.clear();
+            window.sessionStorage.clear();
+            
+            // Remove specific items
+            const items = ['supabase.auth.token', 'supabase.auth.refreshToken', 'app-storage'];
+            items.forEach(item => {
+              try {
+                localStorage.removeItem(item);
+                sessionStorage.removeItem(item);
+              } catch (e) {
+                console.warn(`Failed to remove ${item}`, e);
+              }
+            });
+          }
         } catch (err) {
-          const error = err as AuthError;
-          logAction('logout unexpected error', { error: error.message });
-          // Even if there's an error, clear the state
+          logAction('logout error', err);
+          
+          // Clear state even on error
           set({ 
             user: null,
             userProfile: null,
             sessions: [],
             loading: false,
             authChecked: false,
-            error: error.message || 'An unexpected error occurred'
+            error: null
           });
           
-          // Force reload on error
+          // Force clear storage on error
           if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login';
+            window.localStorage.clear();
+            window.sessionStorage.clear();
           }
+          
+          throw err; // Re-throw to handle in the component
         }
       },
       
@@ -231,8 +248,12 @@ export const useStore = create<AppState>()(
         set({ loading: true, error: null });
         
         try {
+          // Log current state
+          console.log('🔵 [STORE] Current profile state:', get().userProfile);
+          
           // Validate required fields
           if (data.role && !['user', 'admin', 'premium'].includes(data.role)) {
+            console.error('🔴 [STORE] Invalid role:', data.role);
             const error = {
               message: 'Invalid role',
               details: 'Role must be one of: user, admin, premium',
@@ -244,6 +265,7 @@ export const useStore = create<AppState>()(
 
           if (data.subscription_status && 
               !['free', 'basic', 'premium', 'enterprise'].includes(data.subscription_status)) {
+            console.error('🔴 [STORE] Invalid subscription status:', data.subscription_status);
             const error = {
               message: 'Invalid subscription status',
               details: 'Status must be one of: free, basic, premium, enterprise',
@@ -253,10 +275,11 @@ export const useStore = create<AppState>()(
             return { data: null, error };
           }
           
-          logAction('calling updateUserProfile');
+          console.log('🔵 [STORE] Calling updateUserProfile with data:', data);
           const result = await updateUserProfile(user.id, data);
           
           if (result.error) {
+            console.error('🔴 [STORE] Update failed:', result.error);
             logError('updateProfile', result.error);
             set({ 
               error: result.error.message, 
@@ -267,6 +290,7 @@ export const useStore = create<AppState>()(
           }
           
           if (!result.data) {
+            console.error('🔴 [STORE] No data returned from update');
             const error = {
               message: 'Failed to update profile',
               details: 'No profile data returned',
@@ -281,14 +305,35 @@ export const useStore = create<AppState>()(
             return { data: null, error };
           }
           
-          logAction('updateProfile successful', { profile: result.data });
+          // Verify the update by comparing fields
+          const currentProfile = get().userProfile;
+          const updatedFields = Object.keys(data).filter(key => 
+            data[key as keyof UserProfile] !== result.data?.[key as keyof UserProfile]
+          );
+
+          if (updatedFields.length > 0) {
+            console.warn('🟡 [STORE] Some fields may not have updated correctly:', {
+              expected: data,
+              actual: result.data,
+              differences: updatedFields
+            });
+          }
+          
+          console.log('✅ [STORE] Profile update successful:', {
+            oldProfile: currentProfile,
+            newProfile: result.data
+          });
+          
+          // Update the store
           set({ 
             userProfile: result.data, 
             loading: false,
             error: null
           });
+          
           return { data: result.data, error: null };
         } catch (err) {
+          console.error('🔴 [STORE] Unexpected error in updateProfile:', err);
           logError('updateProfile', err);
           set({ 
             error: err instanceof Error ? err.message : 'An unexpected error occurred',
@@ -305,7 +350,7 @@ export const useStore = create<AppState>()(
           };
         } finally {
           if (get().loading) {
-            logAction('updateProfile force end loading state');
+            console.log('🔵 [STORE] Forcing end of loading state');
             set({ loading: false });
           }
         }
