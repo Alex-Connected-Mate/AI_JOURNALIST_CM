@@ -188,7 +188,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           data: null,
           error: {
             message: 'User ID is required',
-            details: 'No user ID provided for profile update'
+            details: 'No user ID provided for profile update',
+            code: 'INVALID_INPUT'
           } as PostgrestError
         };
       }
@@ -199,7 +200,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           data: null,
           error: {
             message: 'Profile data is required',
-            details: 'No profile data provided for update'
+            details: 'No profile data provided for update',
+            code: 'INVALID_INPUT'
           } as PostgrestError
         };
       }
@@ -210,11 +212,15 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         .from('users')
         .select('*')  // Select all fields to get current timestamps
         .eq('id', userId)
-        .single();
+        .maybeSingle();
         
       if (checkError) {
         console.error('User check failed:', checkError);
-        return { data: null, error: checkError };
+        return { data: null, error: {
+          ...checkError,
+          details: `Failed to check user existence: ${checkError.message}`,
+          code: 'USER_CHECK_FAILED'
+        }};
       }
       
       if (!existingUser) {
@@ -223,7 +229,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           data: null, 
           error: { 
             message: 'User not found',
-            details: `No user found with ID: ${userId}`
+            details: `No user found with ID: ${userId}`,
+            code: 'NOT_FOUND'
           } as PostgrestError 
         };
       }
@@ -252,7 +259,11 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         
       if (error) {
         console.error('Update failed:', error);
-        return { data: null, error };
+        return { data: null, error: {
+          ...error,
+          details: `Failed to update user profile: ${error.message}`,
+          code: 'UPDATE_FAILED'
+        }};
       }
       
       if (!data) {
@@ -261,7 +272,8 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           data: null,
           error: {
             message: 'Failed to update profile',
-            details: 'No data returned after update'
+            details: 'No data returned after update',
+            code: 'UPDATE_FAILED'
           } as PostgrestError
         };
       }
@@ -291,7 +303,9 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         data: null, 
         error: { 
           message: err instanceof Error ? err.message : 'An unexpected error occurred',
-          details: 'Error in updateUserProfile function'
+          details: 'Error in updateUserProfile function',
+          code: 'INTERNAL_ERROR',
+          hint: err instanceof Error ? err.stack : undefined
         } as PostgrestError 
       };
     }

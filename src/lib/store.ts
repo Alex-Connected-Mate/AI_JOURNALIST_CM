@@ -173,7 +173,8 @@ export const useStore = create<AppState>()(
             logAction('updateProfile failed', { error: result.error });
             set({ 
               error: result.error.message, 
-              loading: false 
+              loading: false,
+              userProfile: get().userProfile // Keep existing profile data
             });
             return { data: null, error: result.error };
           }
@@ -181,12 +182,14 @@ export const useStore = create<AppState>()(
           if (!result.data) {
             const err = {
               message: 'Failed to update profile',
-              details: 'No profile data returned'
+              details: 'No profile data returned',
+              code: 'UPDATE_FAILED'
             } as PostgrestError;
             logAction('updateProfile failed', { error: err });
             set({ 
               error: err.message, 
-              loading: false 
+              loading: false,
+              userProfile: get().userProfile // Keep existing profile data
             });
             return { data: null, error: err };
           }
@@ -200,16 +203,19 @@ export const useStore = create<AppState>()(
           return { data: result.data, error: null };
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-          logAction('updateProfile unexpected error', { error: errorMessage });
+          logAction('updateProfile unexpected error', { error: errorMessage, fullError: err });
           set({ 
             error: errorMessage, 
-            loading: false 
+            loading: false,
+            userProfile: get().userProfile // Keep existing profile data
           });
           return { 
             data: null, 
             error: {
               message: errorMessage,
-              details: 'Unexpected error in updateProfile'
+              details: 'Unexpected error in updateProfile',
+              code: 'INTERNAL_ERROR',
+              hint: err instanceof Error ? err.stack : undefined
             } as PostgrestError 
           };
         } finally {

@@ -140,26 +140,33 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
+      console.log('Starting profile update...');
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       
-      const { data, error } = await updateProfile({
+      const updateData = {
         full_name: fullName,
         institution: formData.institution,
         title: formData.title,
         bio: formData.bio,
         openai_api_key: formData.openai_api_key
-      });
+      };
+      
+      console.log('Updating profile with data:', updateData);
+      const { data, error } = await updateProfile(updateData);
       
       if (error) {
+        console.error('Profile update failed:', error);
         throw new Error(error.message);
       }
       
+      console.log('Profile updated successfully:', data);
       await fetchUserProfile();
       setMessage({
         type: 'success',
         text: 'Profil mis à jour avec succès'
       });
     } catch (err) {
+      console.error('Error updating profile:', err);
       setMessage({
         type: 'error',
         text: err instanceof Error ? err.message : 'Erreur lors de la mise à jour du profil'
@@ -363,14 +370,14 @@ export default function SettingsPage() {
                 <div className="flex justify-end mt-6">
                   <button
                     onClick={handleSubmit}
-                    className="cm-button-primary px-6 py-2 relative"
+                    className="cm-button-primary px-6 py-2 relative flex items-center justify-center min-w-[150px]"
                     disabled={isLoading}
                   >
                     {isLoading ? (
-                      <div className="flex items-center">
+                      <>
                         <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
                         <span>Enregistrement...</span>
-                      </div>
+                      </>
                     ) : (
                       'Enregistrer'
                     )}
