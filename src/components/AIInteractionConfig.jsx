@@ -342,20 +342,32 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     });
   };
 
-  // Update local state without immediately validating
+  // Add a state to track if there are unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Update handleLocalChange to set unsaved changes flag
   const handleLocalChange = (field, value) => {
+    // Update the local config
     setLocalConfig(prev => ({
       ...prev,
       [field]: value
     }));
     
-    // Remove this problematic call that's causing auto-submission on each keystroke
-    // handleChange(field, value);
+    // Set unsaved changes flag
+    setHasUnsavedChanges(true);
+    
+    // Reset validation state for this field to prevent showing errors while typing
+    if (validationState[field]?.message) {
+      setValidationState(prev => ({
+        ...prev,
+        [field]: { isValid: true, message: '' }
+      }));
+    }
   };
 
   // Validate a single field
-  const validateField = async (field, value) => {
-    // Ne pas valider les champs vides pendant la saisie
+  const validateField = (field, value) => {
+    // Don't validate empty fields
     if (!value || value.trim() === '') {
       return { isValid: true, message: '' };
     }
@@ -372,7 +384,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
         isValid = value.length >= 3;
         message = isValid ? '' : 'Le nom du programme doit contenir au moins 3 caractères';
         break;
-      // Les autres champs ne nécessitent pas de validation pendant la saisie
+      // Other fields don't need validation
       default:
         return { isValid: true, message: '' };
     }
@@ -380,20 +392,18 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     return { isValid, message };
   };
 
-  // Apply all local changes to the parent state
-  const applyChanges = async () => {
+  // Update applyChanges to reset unsaved changes flag
+  const applyChanges = () => {
     const fields = ['agentName', 'programName', 'teacherName', 'location', 'venue', 'agentPersonality'];
     let isValid = true;
     const newValidationState = {};
 
     // Validate all fields on submission
-    await Promise.all(
-      fields.map(async (field) => {
-        const result = await validateField(field, localConfig[field]);
-        newValidationState[field] = result;
-        if (!result.isValid) isValid = false;
-      })
-    );
+    fields.forEach((field) => {
+      const result = validateField(field, localConfig[field]);
+      newValidationState[field] = result;
+      if (!result.isValid) isValid = false;
+    });
 
     setValidationState(newValidationState);
 
@@ -408,6 +418,9 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
           questions: localConfig.questions || defaultNuggetsPromptConfig.questions
         }
       });
+      
+      // Reset unsaved changes flag
+      setHasUnsavedChanges(false);
       
       // Show success message
       alert("AI configuration saved successfully!");
@@ -1130,6 +1143,28 @@ Begin by introducing yourself and asking the first question.`;
           color="purple"
         >
           <div className="space-y-8">
+            {/* Add an instruction banner at the top of the form */}
+            <div className="p-4 mb-6 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">À propos de ce formulaire</h3>
+                  <div className="mt-1 text-sm text-blue-700">
+                    <p>Les modifications ne sont <strong>pas sauvegardées automatiquement</strong>. Après avoir effectué vos modifications, cliquez sur le bouton <strong>Enregistrer</strong> en bas de chaque section pour les appliquer.</p>
+                    {hasUnsavedChanges && (
+                      <p className="mt-1 font-medium text-orange-600">
+                        ⚠️ Vous avez des modifications non enregistrées. N'oubliez pas de cliquer sur "Enregistrer" !
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <div className="p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl mb-6 shadow-inner">
               <h3 className="font-medium text-indigo-900 mb-3 text-xl">Prompt Template Variables</h3>
               <p className="text-indigo-700 mb-4">
@@ -1153,7 +1188,6 @@ Begin by introducing yourself and asking the first question.`;
                     label="Agent Name"
                     value={localConfig.agentName}
                     onChange={(e) => handleLocalChange('agentName', e.target.value)}
-                    validate={(value) => validateField('agentName', value)}
                     error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-purple-400"
@@ -1168,7 +1202,6 @@ Begin by introducing yourself and asking the first question.`;
                     label="Program Name"
                     value={localConfig.programName}
                     onChange={(e) => handleLocalChange('programName', e.target.value)}
-                    validate={(value) => validateField('programName', value)}
                     error={validationState.programName?.message}
                     placeholder="Enter your program or event name (e.g., Nuggets Workshop)"
                     className="focus:ring-2 focus:ring-purple-400"
@@ -1241,9 +1274,9 @@ Begin by introducing yourself and asking the first question.`;
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={applyChanges}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 active:translate-y-0"
+                  className={`px-6 py-2 bg-gradient-to-r ${hasUnsavedChanges ? 'from-orange-600 to-red-600' : 'from-purple-600 to-indigo-600'} text-white rounded-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 active:translate-y-0`}
                 >
-                  Save Changes
+                  {hasUnsavedChanges ? 'Save Changes*' : 'Save Changes'}
                 </button>
                 </div>
                 </div>
@@ -1273,6 +1306,8 @@ Begin by introducing yourself and asking the first question.`;
                         const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules)];
                         newRules[index] = e.target.value;
                         handleLocalChange('rules', newRules);
+                        // Set unsaved changes flag
+                        setHasUnsavedChanges(true);
                       }}
                       placeholder="Enter rule description"
                       className="focus:ring-2 focus:ring-purple-400"
@@ -1328,6 +1363,8 @@ Begin by introducing yourself and asking the first question.`;
                           title: e.target.value
                         };
                         handleLocalChange('questions', newQuestions);
+                        // Set unsaved changes flag
+                        setHasUnsavedChanges(true);
                       }}
                       placeholder="Enter question title (e.g., Origin Story)"
                       className="focus:ring-2 focus:ring-purple-400 mb-4"
@@ -1657,7 +1694,6 @@ Begin by introducing yourself and asking the first question.`;
                     label="Agent Name"
                     value={localConfig.agentName || ""}
                     onChange={(e) => handleLocalChange('agentName', e.target.value)}
-                    validate={(value) => validateField('agentName', value)}
                     error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-amber-400"
@@ -1672,7 +1708,6 @@ Begin by introducing yourself and asking the first question.`;
                     label="Program Name"
                     value={localConfig.programName || ""}
                     onChange={(e) => handleLocalChange('programName', e.target.value)}
-                    validate={(value) => validateField('programName', value)}
                     error={validationState.programName?.message}
                     placeholder="Enter your program or event name"
                     className="focus:ring-2 focus:ring-amber-400"

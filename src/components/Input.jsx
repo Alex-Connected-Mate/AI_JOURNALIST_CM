@@ -81,6 +81,9 @@ const Input = ({
     if (domProps.onBlur) {
       domProps.onBlur(e);
     }
+    if (validate) {
+      handleValidation(localValue);
+    }
   };
 
   const handleFocus = (e) => {
