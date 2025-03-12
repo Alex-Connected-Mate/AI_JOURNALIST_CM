@@ -129,7 +129,28 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
   
   return withRetry(async () => {
     try {
-      // Vérifier si l'utilisateur existe avant la mise à jour
+      // Validate input data
+      if (!userId) {
+        return {
+          data: null,
+          error: {
+            message: 'User ID is required',
+            details: 'No user ID provided for profile update'
+          } as PostgrestError
+        };
+      }
+
+      if (!profileData || Object.keys(profileData).length === 0) {
+        return {
+          data: null,
+          error: {
+            message: 'Profile data is required',
+            details: 'No profile data provided for update'
+          } as PostgrestError
+        };
+      }
+
+      // Check if user exists
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
         .select('id')
@@ -152,13 +173,16 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
       
-      // Procéder à la mise à jour
+      // Prepare update data
+      const updateData = {
+        ...profileData,
+        updated_at: new Date().toISOString()
+      };
+
+      // Perform update
       const { data, error } = await supabase
         .from('users')
-        .update({
-          ...profileData,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', userId)
         .select()
         .single();
@@ -168,7 +192,17 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         return { data: null, error };
       }
       
-      // Enrichir le profil avec les valeurs par défaut
+      if (!data) {
+        return {
+          data: null,
+          error: {
+            message: 'Failed to update profile',
+            details: 'No data returned after update'
+          } as PostgrestError
+        };
+      }
+
+      // Enrich profile with default values
       const enrichedProfile: UserProfile = {
         ...data,
         subscription_status: data.subscription_status || 'enterprise',

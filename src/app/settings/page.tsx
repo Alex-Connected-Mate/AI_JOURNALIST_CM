@@ -9,6 +9,7 @@ import InputComponent from '@/components/Input';
 import TextAreaComponent from '@/components/TextArea';
 import ImageSelectorComponent from '@/components/ImageSelector';
 import { ErrorBoundary } from 'react-error-boundary';
+import { useTranslation } from '@/components/LocaleProvider';
 
 // Helper function to format dates
 const formatDate = (dateString: string | null | undefined): string => {
@@ -45,6 +46,7 @@ function ErrorFallback({ error }: { error: Error }) {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const { user, userProfile, updateProfile, uploadAvatar: uploadAvatarToStore, fetchUserProfile, logout, authChecked } = useStore();
   
   // Form state
@@ -108,7 +110,6 @@ export default function SettingsPage() {
   // Update form when profile changes
   useEffect(() => {
     if (userProfile) {
-      console.log('Updating form with profile data', userProfile);
       const nameParts = (userProfile.full_name || '').split(' ');
       setFormData({
         firstName: nameParts[0] || '',
@@ -140,9 +141,8 @@ export default function SettingsPage() {
     
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-      console.log('Updating profile with data', { fullName, institution: formData.institution });
       
-      const { error } = await updateProfile({
+      const { data, error } = await updateProfile({
         full_name: fullName,
         institution: formData.institution,
         title: formData.title,
@@ -160,7 +160,6 @@ export default function SettingsPage() {
         text: 'Profil mis à jour avec succès'
       });
     } catch (err) {
-      console.error('Error updating profile:', err);
       setMessage({
         type: 'error',
         text: err instanceof Error ? err.message : 'Erreur lors de la mise à jour du profil'
@@ -178,8 +177,7 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
-      console.log('Uploading image', file.name);
-      const { error } = await uploadAvatarToStore(file);
+      const { url, error } = await uploadAvatarToStore(file);
       
       if (error) {
         throw new Error(error.message);
@@ -191,7 +189,6 @@ export default function SettingsPage() {
         text: 'Image mise à jour avec succès'
       });
     } catch (err) {
-      console.error('Error uploading image:', err);
       setMessage({
         type: 'error',
         text: err instanceof Error ? err.message : 'Erreur lors du téléchargement de l\'image'
@@ -207,16 +204,14 @@ export default function SettingsPage() {
     
     setIsLoading(true);
     try {
-      console.log('Logging out user');
       await logout();
       router.push('/auth/login');
     } catch (error) {
-      console.error('Error during logout:', error);
       setMessage({
         type: 'error',
         text: 'Erreur lors de la déconnexion'
       });
-      setIsLoading(false); // Only reset loading here if error, otherwise redirect will happen
+      setIsLoading(false);
     }
   };
 

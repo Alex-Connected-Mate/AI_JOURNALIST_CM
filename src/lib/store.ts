@@ -164,30 +164,57 @@ export const useStore = create<AppState>()(
       updateProfile: async (data: Partial<UserProfile>) => {
         const { user } = get();
         if (!user) {
-          return { data: null, error: null };
+          return { 
+            data: null, 
+            error: { 
+              message: 'User not authenticated',
+              details: 'No user found in store'
+            } as PostgrestError 
+          };
         }
         
         logAction('updateProfile attempt', { userId: user.id, profileData: data });
-        set({ loading: true });
+        set({ loading: true, error: null });
         
         try {
           const { data: updatedProfile, error } = await updateUserProfile(user.id, data);
           
           if (error) {
-            const genericError = error as unknown as GenericError;
-            logAction('updateProfile failed', { error: genericError.message });
-            set({ error: genericError.message, loading: false });
+            logAction('updateProfile failed', { error: error.message });
+            set({ 
+              error: error.message, 
+              loading: false 
+            });
             return { data: null, error };
           }
           
+          if (!updatedProfile) {
+            const err = {
+              message: 'Failed to update profile',
+              details: 'No profile data returned'
+            } as PostgrestError;
+            set({ 
+              error: err.message, 
+              loading: false 
+            });
+            return { data: null, error: err };
+          }
+          
           logAction('updateProfile successful', { profile: updatedProfile });
-          set({ userProfile: updatedProfile, loading: false });
+          set({ 
+            userProfile: updatedProfile, 
+            loading: false,
+            error: null
+          });
           return { data: updatedProfile, error: null };
         } catch (err) {
-          const genericError = err as unknown as GenericError;
-          logAction('updateProfile unexpected error', { error: genericError.message });
-          set({ error: genericError.message || 'An unexpected error occurred', loading: false });
-          return { data: null, error: err as PostgrestError };
+          const error = err as PostgrestError;
+          logAction('updateProfile unexpected error', { error: error.message });
+          set({ 
+            error: error.message || 'An unexpected error occurred', 
+            loading: false 
+          });
+          return { data: null, error };
         }
       },
       
