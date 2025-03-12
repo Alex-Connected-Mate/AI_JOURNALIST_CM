@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile } from './types';
-import { PostgrestError } from '@supabase/supabase-js';
+import { PostgrestError, AuthError } from '@supabase/supabase-js';
 
 // These environment variables will need to be set in a .env.local file
 // or in Vercel's deployment settings
@@ -148,7 +148,7 @@ export async function signOut() {
 }
 
 // Helper function to ensure user record exists and is synchronized
-async function ensureUserRecord(userId: string, email: string): Promise<{ data: UserProfile | null; error: PostgrestError | null }> {
+export async function ensureUserRecord(userId: string, email: string): Promise<{ data: UserProfile | null; error: SupabaseError | null }> {
   console.log('Ensuring user record exists:', { userId, email });
   try {
     // Check if user exists in public.users
@@ -217,13 +217,13 @@ async function ensureUserRecord(userId: string, email: string): Promise<{ data: 
         message: err instanceof Error ? err.message : 'Failed to ensure user record',
         details: 'Unexpected error in ensureUserRecord function',
         code: 'SYNC_ERROR'
-      } as PostgrestError
+      } as SupabaseError
     };
   }
 }
 
 // Update the getUserProfile function to use ensureUserRecord
-export async function getUserProfile(userId: string) {
+export async function getUserProfile(userId: string): Promise<{ data: UserProfile | null; error: SupabaseError | null }> {
   return withRetry(async () => {
     try {
       // Get the user's email from auth.users
@@ -259,7 +259,7 @@ export async function getUserProfile(userId: string) {
           message: err instanceof Error ? err.message : 'Failed to get user profile',
           details: 'Error in getUserProfile function',
           code: 'PROFILE_ERROR'
-        } as PostgrestError 
+        } as SupabaseError 
       };
     }
   });
@@ -272,8 +272,15 @@ interface UserProfileWithSubscription extends Partial<UserProfile> {
   stripe_customer_id?: string | null;
 }
 
+// Type unifié pour les erreurs de Supabase
+export type SupabaseError = PostgrestError | AuthError | {
+  message: string;
+  details?: string;
+  code?: string;
+};
+
 // Update the updateUserProfile function to validate data against DB constraints
-export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
+export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>): Promise<{ data: UserProfile | null; error: SupabaseError | null }> {
   console.log('🔵 [UPDATE_PROFILE] Starting update process:', { userId, profileData });
   
   return withRetry(async () => {
@@ -281,11 +288,52 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
       // Log initial validation
       console.log('🔵 [UPDATE_PROFILE] Validating input data');
       
+      // Vérification préliminaire de l'existence de l'utilisateur
+      const { data: authUser, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser?.user || authUser.user.id !== userId) {
+        console.error('🔴 [UPDATE_PROFILE] User authentication check failed:', 
+          authError || { message: 'User ID mismatch or user not authenticated' });
+        return { 
+          data: null, 
+          error: authError || { 
+            message: 'User not authenticated or ID mismatch',
+            details: 'Authentication verification failed',
+            code: 'AUTH_ERROR'
+          } as SupabaseError 
+        };
+      }
+      
       // Clean up empty strings to null
       const cleanedData = Object.entries(profileData).reduce((acc, [key, value]) => {
         acc[key] = value === '' ? null : value;
         return acc;
       }, {} as Record<string, any>);
+      
+      // Validation des types avant insertion en base
+      Object.entries(cleanedData).forEach(([key, value]) => {
+        // Valider les timestamps
+        if (['created_at', 'updated_at', 'deleted_at', 'last_login', 'subscription_end_date'].includes(key) && value !== null) {
+          try {
+            // Vérifier si c'est un timestamp ISO valide
+            if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/.test(value as string)) {
+              throw new Error(`Invalid timestamp format for ${key}: ${value}`);
+            }
+          } catch (e) {
+            throw new Error(`Invalid timestamp format for ${key}: ${value}`);
+          }
+        }
+        
+        // Valider le rôle
+        if (key === 'role' && value !== null && !['user', 'admin', 'premium'].includes(value as string)) {
+          throw new Error(`Invalid role: ${value}`);
+        }
+        
+        // Valider le statut d'abonnement
+        if (key === 'subscription_status' && value !== null && 
+            !['free', 'basic', 'premium', 'enterprise'].includes(value as string)) {
+          throw new Error(`Invalid subscription status: ${value}`);
+        }
+      });
       
       console.log('🔵 [UPDATE_PROFILE] Cleaned data:', cleanedData);
 
@@ -298,7 +346,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
             message: 'Invalid role',
             details: 'Role must be one of: user, admin, premium',
             code: 'VALIDATION_ERROR'
-          } as PostgrestError
+          } as SupabaseError
         };
       }
 
@@ -312,6 +360,32 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         
       if (checkError) {
         console.error('🔴 [UPDATE_PROFILE] User check failed:', checkError);
+        
+        // Vérifier si c'est une erreur de "non trouvé"
+        if (checkError.code === 'PGRST116') {
+          // Tenter de récupérer l'e-mail de l'utilisateur à partir de auth.users
+          try {
+            console.log('🔵 [UPDATE_PROFILE] User not found in public.users, attempting to create record');
+            const result = await ensureUserRecord(userId, authUser.user.email || '');
+            if (result.error) {
+              throw result.error;
+            }
+            console.log('✅ [UPDATE_PROFILE] User record created successfully');
+            // Continuer avec les données utilisateur nouvellement créées
+            return updateUserProfile(userId, profileData);
+          } catch (syncError) {
+            console.error('🔴 [UPDATE_PROFILE] Failed to create user record:', syncError);
+            return { 
+              data: null, 
+              error: { 
+                message: 'Failed to create user record', 
+                details: 'Error in ensureUserRecord',
+                code: 'SYNC_ERROR'
+              } as SupabaseError 
+            };
+          }
+        }
+        
         return { data: null, error: checkError };
       }
       
@@ -323,7 +397,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
             message: 'User not found',
             details: `No user found with ID: ${userId}`,
             code: 'NOT_FOUND'
-          } as PostgrestError 
+          } as SupabaseError 
         };
       }
 
@@ -340,58 +414,64 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
 
       // Perform the update
       console.log('🔵 [UPDATE_PROFILE] Executing update query');
-      const { data, error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', userId)
-        .select()
-        .single();
+      try {
+        const updateResult = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', userId)
+          .select();
+
+        console.log('🔵 [UPDATE_PROFILE] Update query result:', updateResult);
+
+        if (updateResult.error) {
+          console.error('🔴 [UPDATE_PROFILE] Update failed:', updateResult.error);
+          return { data: null, error: updateResult.error };
+        }
+
+        if (!updateResult.data || updateResult.data.length === 0) {
+          console.error('🔴 [UPDATE_PROFILE] Update succeeded but no data returned');
+          return {
+            data: null,
+            error: {
+              message: 'Failed to update profile',
+              details: 'No data returned after update',
+              code: 'UPDATE_FAILED'
+            } as SupabaseError
+          };
+        }
+
+        const updatedProfile = updateResult.data[0];
+        console.log('✅ [UPDATE_PROFILE] Update successful:', updatedProfile);
+
+        // Add transaction consistency check
+        const expectedFields = Object.keys(cleanedData);
+        const mismatchedFields = expectedFields.filter(key => {
+          // Skip updated_at which we know will be different
+          if (key === 'updated_at') return false;
+          
+          return cleanedData[key] !== updatedProfile[key];
+        });
         
-      if (error) {
-        console.error('🔴 [UPDATE_PROFILE] Update failed:', error);
-        return { data: null, error };
-      }
-      
-      if (!data) {
-        console.error('🔴 [UPDATE_PROFILE] Update succeeded but no data returned');
+        if (mismatchedFields.length > 0) {
+          console.warn('🟡 [UPDATE_PROFILE] Some fields may not have updated correctly:', {
+            expected: cleanedData,
+            actual: updatedProfile,
+            mismatches: mismatchedFields
+          });
+        }
+
+        return { data: updatedProfile, error: null };
+      } catch (updateError) {
+        console.error('🔴 [UPDATE_PROFILE] Update query error:', updateError);
         return {
           data: null,
           error: {
-            message: 'Failed to update profile',
-            details: 'No data returned after update',
-            code: 'UPDATE_FAILED'
-          } as PostgrestError
+            message: updateError instanceof Error ? updateError.message : 'Failed to execute update',
+            details: 'Error executing update query',
+            code: 'UPDATE_ERROR'
+          } as SupabaseError
         };
       }
-
-      // Verify the update
-      console.log('🔵 [UPDATE_PROFILE] Verifying update');
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (verifyError || !verifyData) {
-        console.error('🔴 [UPDATE_PROFILE] Verification failed:', verifyError);
-        return { data: null, error: verifyError };
-      }
-
-      // Compare updated fields
-      const updatedFields = Object.keys(cleanedData).filter(key => 
-        cleanedData[key] !== verifyData[key]
-      );
-
-      if (updatedFields.length > 0) {
-        console.warn('🟡 [UPDATE_PROFILE] Some fields may not have updated correctly:', {
-          expected: cleanedData,
-          actual: verifyData,
-          differences: updatedFields
-        });
-      }
-
-      console.log('✅ [UPDATE_PROFILE] Update successful:', verifyData);
-      return { data: verifyData, error: null };
     } catch (err) {
       console.error('🔴 [UPDATE_PROFILE] Unexpected error:', err);
       return { 
@@ -400,7 +480,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
           message: err instanceof Error ? err.message : 'An unexpected error occurred',
           details: 'Error in updateUserProfile function',
           code: 'INTERNAL_ERROR'
-        } as PostgrestError 
+        } as SupabaseError 
       };
     }
   });

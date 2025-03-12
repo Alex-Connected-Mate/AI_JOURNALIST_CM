@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User as SupabaseUser, AuthError, AuthResponse, PostgrestError } from '@supabase/supabase-js';
-import { supabase, signIn, signOut, getSessions, createSession as createSessionApi, getUserProfile, updateUserProfile, uploadProfileImage, SessionData } from './supabase';
+import { User as SupabaseUser, AuthError, AuthResponse } from '@supabase/supabase-js';
+import { supabase, signIn, signOut, getSessions, createSession as createSessionApi, getUserProfile, updateUserProfile, uploadProfileImage, SessionData, ensureUserRecord, SupabaseError } from './supabase';
 import { UserProfile } from './types';
 
 // Function to log store actions if not in production
@@ -23,6 +23,10 @@ interface AppState {
   loading: boolean;
   error: string | null;
   authChecked: boolean;
+  appInitialized: boolean;
+  
+  // Application lifecycle
+  initApp: () => Promise<void>;
   
   // Authentication actions
   login: (email: string, password: string) => Promise<void>;
@@ -30,27 +34,26 @@ interface AppState {
   
   // Profile actions
   fetchUserProfile: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<{ data: UserProfile | null; error: PostgrestError | null }>;
-  uploadAvatar: (file: File) => Promise<{ url: string | null; error: PostgrestError | null }>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<{ data: UserProfile | null; error: SupabaseError | null }>;
+  uploadAvatar: (file: File) => Promise<{ url: string | null; error: SupabaseError | null }>;
   
   // Session actions
   fetchSessions: () => Promise<void>;
-  createSession: (sessionData: Partial<SessionData>) => Promise<{ data: SessionData | null; error: PostgrestError | null }>;
+  createSession: (sessionData: Partial<SessionData>) => Promise<{ data: SessionData | null; error: SupabaseError | string | null }>;
 }
 
 // Type guard for PostgrestError
-function isPostgrestError(error: unknown): error is PostgrestError {
-  return typeof error === 'object' && error !== null && 'code' in error;
+function isSupabaseError(error: unknown): error is SupabaseError {
+  return typeof error === 'object' && error !== null && 'message' in error;
 }
 
 // Enhanced error logging
 function logError(action: string, error: unknown) {
-  if (isPostgrestError(error)) {
+  if (isSupabaseError(error)) {
     console.error(`[STORE] ${action} failed:`, {
       message: error.message,
-      details: error.details,
-      code: error.code,
-      hint: error.hint
+      details: 'details' in error ? error.details : undefined,
+      code: 'code' in error ? error.code : undefined
     });
   } else if (error instanceof Error) {
     console.error(`[STORE] ${action} failed:`, {
@@ -72,6 +75,112 @@ export const useStore = create<AppState>()(
       loading: false,
       error: null,
       authChecked: false,
+      appInitialized: false,
+      
+      initApp: async () => {
+        if (get().appInitialized) {
+          logAction('initApp skipped', 'App already initialized');
+          return;
+        }
+        
+        logAction('initApp started');
+        set({ loading: true, error: null });
+        
+        try {
+          // Vérifier si l'utilisateur est connecté
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            logAction('initApp session check failed', sessionError);
+            set({ 
+              authChecked: true, 
+              loading: false, 
+              error: sessionError.message, 
+              appInitialized: true 
+            });
+            return;
+          }
+          
+          if (!session) {
+            logAction('initApp no session found');
+            set({ 
+              user: null, 
+              userProfile: null, 
+              authChecked: true, 
+              loading: false, 
+              appInitialized: true 
+            });
+            return;
+          }
+          
+          logAction('initApp session found', { userId: session.user.id });
+          set({ user: session.user });
+          
+          // Synchroniser les données entre auth.users et public.users
+          try {
+            logAction('initApp ensuring user record sync');
+            const { data: syncedProfile, error: syncError } = await ensureUserRecord(
+              session.user.id, 
+              session.user.email || '' // Utiliser une chaîne vide si l'email est undefined
+            );
+            
+            if (syncError) {
+              logAction('initApp sync error', syncError);
+              set({ 
+                error: syncError.message,
+                loading: false,
+                authChecked: true,
+                appInitialized: true
+              });
+              return;
+            }
+            
+            if (syncedProfile) {
+              logAction('initApp sync successful', { profile: syncedProfile });
+              set({ userProfile: syncedProfile });
+              
+              // Mettre à jour le last_login si nécessaire
+              if (!syncedProfile.last_login || new Date(syncedProfile.last_login).getTime() < Date.now() - 24 * 60 * 60 * 1000) {
+                logAction('initApp updating last_login');
+                
+                const { error: updateError } = await updateUserProfile(
+                  session.user.id, { last_login: new Date().toISOString() }
+                );
+                
+                if (updateError) {
+                  logAction('initApp last_login update failed', updateError);
+                }
+              }
+            }
+            
+            // Charger les sessions de l'utilisateur
+            await get().fetchSessions();
+          } catch (error) {
+            logAction('initApp unexpected error', error);
+            set({ error: error instanceof Error ? error.message : 'Unknown error during initialization' });
+          }
+          
+          // Mettre en place les listeners Supabase pour les mises à jour en temps réel si nécessaire
+          // TODO: Implémenter si nécessaire
+          
+          // Finaliser l'initialisation
+          set({ 
+            authChecked: true, 
+            loading: false, 
+            appInitialized: true 
+          });
+          
+          logAction('initApp completed successfully');
+        } catch (error) {
+          logAction('initApp failed', error);
+          set({ 
+            error: error instanceof Error ? error.message : 'Failed to initialize app',
+            authChecked: true,
+            loading: false,
+            appInitialized: true // Marquer comme initialisé même en cas d'erreur pour éviter les boucles infinies
+          });
+        }
+      },
       
       login: async (email: string, password: string) => {
         logAction('login attempt', { email });
@@ -102,45 +211,43 @@ export const useStore = create<AppState>()(
       
       logout: async () => {
         logAction('logout attempt');
+        set({ loading: true, error: null });
         
-        // Clear all state immediately
-        set({ 
-          user: null,
-          userProfile: null,
-          sessions: [],
-          loading: true,
-          error: null,
-          authChecked: false
-        });
-
         try {
-          // Force clear storage first
-          if (typeof window !== 'undefined') {
-            window.localStorage.clear();
-            window.sessionStorage.clear();
+          // Capture l'état actuel pour vérifier plus tard si la déconnexion a fonctionné
+          const initialUser = get().user;
+          if (!initialUser) {
+            logAction('logout skipped', 'No user found');
+            set({ loading: false });
+            return;
           }
-
-          // Attempt to sign out from Supabase
-          await signOut();
           
-          logAction('logout successful');
+          console.log('🔵 [STORE] Starting logout process');
           
-          // Clear any remaining state
-          set({ 
-            user: null,
-            userProfile: null,
-            sessions: [],
-            loading: false,
-            error: null,
-            authChecked: false
-          });
-
-          // Force clear persisted state again
+          // Suspendre toutes les connexions en temps réel
           if (typeof window !== 'undefined') {
-            window.localStorage.clear();
-            window.sessionStorage.clear();
+            try {
+              // Récupérer et fermer toutes les souscriptions actives
+              const channels = supabase.getChannels();
+              if (channels.length > 0) {
+                console.log(`🔵 [STORE] Closing ${channels.length} active channel(s)`);
+                for (const channel of channels) {
+                  console.log(`🔵 [STORE] Removing channel: ${channel.topic}`);
+                  supabase.removeChannel(channel);
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to close realtime connections', e);
+            }
+          }
+          
+          // Nettoyage préventif du localStorage et sessionStorage
+          if (typeof window !== 'undefined') {
+            console.log('🔵 [STORE] Clearing storage items before logout');
+            localStorage.clear();
+            sessionStorage.clear();
             
-            // Remove specific items
+            // Nettoyage spécifique des éléments liés à Supabase
             const items = ['supabase.auth.token', 'supabase.auth.refreshToken', 'app-storage'];
             items.forEach(item => {
               try {
@@ -151,11 +258,41 @@ export const useStore = create<AppState>()(
               }
             });
           }
-        } catch (err) {
-          logAction('logout error', err);
           
-          // Clear state even on error
-          set({ 
+          // Déconnexion avec Supabase
+          console.log('🔵 [STORE] Calling signOut API');
+          const { error: signOutError } = await signOut();
+          
+          if (signOutError) {
+            console.error('🔴 [STORE] Supabase signOut error:', signOutError);
+            
+            // Même en cas d'erreur, forcer la déconnexion côté client
+            console.log('🔵 [STORE] Forcing client-side logout due to API error');
+          }
+          
+          // Vérification de la session après déconnexion
+          console.log('🔵 [STORE] Verifying logout was successful');
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.warn('🟡 [STORE] Session still exists after logout, forcing removal');
+            
+            // Forcer l'expiration de la session
+            try {
+              await supabase.auth.setSession({
+                access_token: '',
+                refresh_token: ''
+              });
+            } catch (e) {
+              console.error('Failed to force session expiration', e);
+            }
+          } else {
+            console.log('✅ [STORE] Session successfully removed');
+          }
+          
+          // Reset state
+          console.log('🔵 [STORE] Resetting application state');
+          set({
             user: null,
             userProfile: null,
             sessions: [],
@@ -164,8 +301,31 @@ export const useStore = create<AppState>()(
             error: null
           });
           
+          console.log('✅ [STORE] Logout process completed successfully');
+          
+          // Vérifier que la redirection sera faite après
+          if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
+            console.log('🔵 [STORE] Logout completed, ready for redirect');
+          }
+        } catch (err) {
+          logAction('logout error', err);
+          
+          // Nettoyage forcé en cas d'erreur
+          console.error('🔴 [STORE] Error during logout:', err);
+          
+          // Clear state even on error
+          set({ 
+            user: null,
+            userProfile: null,
+            sessions: [],
+            loading: false,
+            authChecked: false,
+            error: err instanceof Error ? err.message : 'Logout failed'
+          });
+          
           // Force clear storage on error
           if (typeof window !== 'undefined') {
+            console.log('🔵 [STORE] Forcing storage clear due to error');
             window.localStorage.clear();
             window.sessionStorage.clear();
           }
@@ -240,7 +400,7 @@ export const useStore = create<AppState>()(
               message: error,
               details: 'No user found in store',
               code: 'AUTH_ERROR'
-            } as PostgrestError 
+            } as SupabaseError 
           };
         }
         
@@ -258,7 +418,7 @@ export const useStore = create<AppState>()(
               message: 'Invalid role',
               details: 'Role must be one of: user, admin, premium',
               code: 'VALIDATION_ERROR'
-            } as PostgrestError;
+            } as SupabaseError;
             logError('updateProfile', error);
             return { data: null, error };
           }
@@ -270,7 +430,7 @@ export const useStore = create<AppState>()(
               message: 'Invalid subscription status',
               details: 'Status must be one of: free, basic, premium, enterprise',
               code: 'VALIDATION_ERROR'
-            } as PostgrestError;
+            } as SupabaseError;
             logError('updateProfile', error);
             return { data: null, error };
           }
@@ -295,7 +455,7 @@ export const useStore = create<AppState>()(
               message: 'Failed to update profile',
               details: 'No profile data returned',
               code: 'UPDATE_FAILED'
-            } as PostgrestError;
+            } as SupabaseError;
             logError('updateProfile', error);
             set({ 
               error: error.message, 
@@ -346,7 +506,7 @@ export const useStore = create<AppState>()(
               message: err instanceof Error ? err.message : 'An unexpected error occurred',
               details: 'Unexpected error in updateProfile',
               code: 'INTERNAL_ERROR'
-            } as PostgrestError 
+            } as SupabaseError 
           };
         } finally {
           if (get().loading) {
@@ -356,7 +516,7 @@ export const useStore = create<AppState>()(
         }
       },
       
-      uploadAvatar: async (file: File): Promise<{ url: string | null; error: PostgrestError | null }> => {
+      uploadAvatar: async (file: File): Promise<{ url: string | null; error: SupabaseError | null }> => {
         const { user } = get();
         if (!user) {
           return { url: null, error: null };
@@ -372,7 +532,7 @@ export const useStore = create<AppState>()(
             const genericError = error as unknown as GenericError;
             logAction('uploadAvatar failed', { error: genericError.message });
             set({ error: genericError.message, loading: false });
-            return { url: null, error: error as unknown as PostgrestError };
+            return { url: null, error: error as unknown as SupabaseError };
           }
           
           // Update user profile with new avatar URL if needed
@@ -401,7 +561,7 @@ export const useStore = create<AppState>()(
           const genericError = err as unknown as GenericError;
           logAction('uploadAvatar unexpected error', { error: genericError.message });
           set({ error: genericError.message || 'An unexpected error occurred', loading: false });
-          return { url: null, error: err as unknown as PostgrestError };
+          return { url: null, error: err as unknown as SupabaseError };
         }
       },
       

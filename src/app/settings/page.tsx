@@ -171,9 +171,36 @@ export default function SettingsPage() {
       
       if (error) {
         console.error('🔴 [SETTINGS] Profile update failed:', error);
+        let errorMessage = error.message || 'Erreur lors de la mise à jour du profil';
+        
+        // Handle specific error cases
+        if (typeof error === 'object' && error !== null && 'code' in error) {
+          switch (error.code) {
+            case 'UPDATE_ERROR':
+              errorMessage = 'Erreur lors de la mise à jour. Veuillez réessayer.';
+              break;
+            case 'VALIDATION_ERROR':
+              errorMessage = 'details' in error && error.details ? 
+                error.details : 'Données invalides';
+              break;
+            case 'NOT_FOUND':
+              errorMessage = 'Profil non trouvé. Veuillez vous reconnecter.';
+              // Redirect to login
+              window.location.href = '/auth/login';
+              break;
+            case 'AUTH_ERROR':
+              errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+              // Redirect to login
+              window.location.href = '/auth/login';
+              break;
+            default:
+              errorMessage = error.message || 'Une erreur inattendue est survenue';
+          }
+        }
+        
         setMessage({
           type: 'error',
-          text: error.message || 'Erreur lors de la mise à jour du profil'
+          text: errorMessage
         });
         setIsLoading(false);
         return;
@@ -216,6 +243,16 @@ export default function SettingsPage() {
             expected: updateData,
             actual: currentProfile
           });
+          
+          // If there are mismatches, try updating again
+          console.log('🔵 [SETTINGS] Retrying update due to mismatches');
+          const retryResult = await updateProfile(updateData);
+          if (retryResult.error) {
+            console.warn('🟡 [SETTINGS] Retry update failed:', retryResult.error);
+          } else {
+            console.log('✅ [SETTINGS] Retry update successful');
+            await fetchUserProfile();
+          }
         }
       }
       
@@ -248,18 +285,53 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
+      console.log('🔵 [SETTINGS] Uploading avatar image:', file.name);
+      
+      // Vérifier le type de fichier
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        console.error('🔴 [SETTINGS] Invalid file type:', file.type);
+        throw new Error('Type de fichier non supporté. Utilisez JPG, PNG, GIF ou WEBP.');
+      }
+      
+      // Vérifier la taille du fichier (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        console.error('🔴 [SETTINGS] File too large:', file.size);
+        throw new Error('Fichier trop volumineux. La taille maximale est de 5MB.');
+      }
+
+      console.log('🔵 [SETTINGS] Calling uploadAvatarToStore');
       const { url, error } = await uploadAvatarToStore(file);
       
       if (error) {
-        throw new Error(error.message);
+        console.error('🔴 [SETTINGS] Avatar upload failed:', error);
+        throw new Error(error.message || 'Erreur lors du téléchargement de l\'image');
       }
       
+      if (!url) {
+        console.error('🔴 [SETTINGS] No URL returned from avatar upload');
+        throw new Error('Aucune URL retournée pour l\'image téléchargée');
+      }
+      
+      console.log('✅ [SETTINGS] Avatar uploaded successfully:', url);
+      
+      // Actualiser le profil pour voir les changements
+      console.log('🔵 [SETTINGS] Refreshing profile after avatar update');
       await fetchUserProfile();
+      
       setMessage({
         type: 'success',
         text: 'Image mise à jour avec succès'
       });
+      
+      // Mettre à jour le formulaire avec la nouvelle URL
+      setFormData(prev => ({
+        ...prev,
+        avatar_url: url
+      }));
     } catch (err) {
+      console.error('🔴 [SETTINGS] Error uploading avatar:', err);
       setMessage({
         type: 'error',
         text: err instanceof Error ? err.message : 'Erreur lors du téléchargement de l\'image'
@@ -277,24 +349,88 @@ export default function SettingsPage() {
       setIsLoading(true);
       setMessage({ type: '', text: '' });
       
-      console.log('Starting logout process');
+      console.log('🔵 [SETTINGS] Starting logout process');
       
-      // Force clear local storage first
+      // Sauvegarder l'état actuel avant la déconnexion
+      const currentEmail = user?.email;
+      console.log(`🔵 [SETTINGS] Logging out user: ${currentEmail}`);
+      
+      // Nettoyage synchrone du stockage local
       if (typeof window !== 'undefined') {
-        localStorage.clear();
-        sessionStorage.clear();
+        console.log('🔵 [SETTINGS] Clearing local storage');
+        try {
+          // Sauvegarder certaines préférences non sensibles si nécessaire
+          // const savedPreferences = localStorage.getItem('user-preferences');
+          
+          // Vider complètement le stockage
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Supprimer spécifiquement les cookies liés à l'authentification
+          document.cookie.split(';').forEach(cookie => {
+            const [name] = cookie.trim().split('=');
+            if (name.includes('supabase') || name.includes('sb-') || name.includes('auth')) {
+              document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            }
+          });
+          
+          // Restaurer certaines préférences non sensibles si nécessaire
+          // if (savedPreferences) localStorage.setItem('user-preferences', savedPreferences);
+        } catch (e) {
+          console.error('🔴 [SETTINGS] Error clearing storage:', e);
+        }
       }
       
-      // Attempt to sign out
-      await logout();
+      // Réinitialisation des données de formulaire
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        institution: '',
+        title: '',
+        bio: '',
+        avatar_url: '',
+        openai_api_key: ''
+      });
       
-      // Force redirect to login page
-      window.location.href = '/auth/login';
+      try {
+        // Attendre que le store effectue la déconnexion
+        console.log('🔵 [SETTINGS] Calling store logout');
+        await logout();
+        console.log('✅ [SETTINGS] Store logout completed');
+      } catch (logoutError) {
+        console.error('🔴 [SETTINGS] Store logout error:', logoutError);
+        // Continuer la redirection même en cas d'erreur
+      }
+      
+      // Redirection forcée vers la page de connexion
+      console.log('🔵 [SETTINGS] Redirecting to login page');
+      if (typeof window !== 'undefined') {
+        // Utiliser replaceState pour éviter les retours en arrière vers les pages protégées
+        window.history.replaceState(null, '', '/auth/login');
+        // Forcer un rechargement complet pour s'assurer que tout état est réinitialisé
+        window.location.href = '/auth/login';
+      } else {
+        // Fallback si window n'est pas disponible
+        router.replace('/auth/login');
+      }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('🔴 [SETTINGS] Logout error:', error);
+      setMessage({
+        type: 'error',
+        text: 'Erreur lors de la déconnexion. Veuillez réessayer.'
+      });
       
-      // Force redirect even on error
-      window.location.href = '/auth/login';
+      // En cas d'erreur, forcer quand même la redirection
+      console.log('🔵 [SETTINGS] Forcing redirect after error');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login';
+      } else {
+        router.replace('/auth/login');
+      }
+    } finally {
+      // Réinitialiser l'état de chargement au cas où la redirection échoue
+      setIsLoading(false);
     }
   };
 
