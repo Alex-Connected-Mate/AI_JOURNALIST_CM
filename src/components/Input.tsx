@@ -1,49 +1,54 @@
-import React from 'react';
+import React, { ChangeEvent } from 'react';
 
-interface InputProps {
+export interface InputProps {
   label: string;
-  value: string | null | undefined;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  required?: boolean;
-  icon?: React.ReactNode;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   type?: string;
+  placeholder?: string;
   disabled?: boolean;
+  required?: boolean;
+  error?: string;
 }
 
-const Input: React.FC<InputProps> = ({ 
-  label, 
-  value = '', 
-  onChange, 
-  placeholder, 
-  required, 
-  icon, 
-  type = "text",
-  disabled
-}) => (
-  <div className="mb-4">
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
+const InputComponent: React.FC<InputProps> = ({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder = '',
+  disabled = false,
+  required = false,
+  error = ''
+}) => {
+  return (
     <div className="relative">
-      {icon && (
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          {icon}
-        </div>
-      )}
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
       <input
         type={type}
-        value={value || ''}
+        value={value}
         onChange={onChange}
         placeholder={placeholder}
-        required={required}
         disabled={disabled}
-        className={`block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 ${
-          icon ? 'pl-10' : ''
-        } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+        required={required}
+        className={`
+          block w-full px-3 py-2 border rounded-md shadow-sm 
+          ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+          ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 
+                   'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'}
+          placeholder-gray-400
+          focus:outline-none focus:ring-2
+          transition duration-150 ease-in-out
+        `}
       />
+      {error && (
+        <p className="mt-1 text-sm text-red-600">{error}</p>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
-export default Input;
+export default InputComponent;

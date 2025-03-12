@@ -91,80 +91,120 @@ export async function signOut() {
   });
 }
 
-// Profile management functions with retry logic
+// Helper function to ensure user record exists and is synchronized
+async function ensureUserRecord(userId: string, email: string): Promise<{ data: UserProfile | null; error: PostgrestError | null }> {
+  console.log('Ensuring user record exists:', { userId, email });
+  try {
+    // Check if user exists in public.users
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error('Error checking user existence:', checkError);
+      return { data: null, error: checkError };
+    }
+
+    if (!existingUser) {
+      console.log('User not found in public.users, creating new record');
+      const now = new Date().toISOString();
+      const newUser = {
+        id: userId,
+        email: email,
+        created_at: now,
+        updated_at: now,
+        subscription_status: 'free',
+        role: 'user',
+        subscription_end_date: '2099-12-31T23:59:59.999Z'
+      };
+
+      const { data: insertedUser, error: insertError } = await supabase
+        .from('users')
+        .insert(newUser)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating user record:', insertError);
+        return { data: null, error: insertError };
+      }
+
+      console.log('User record created successfully:', insertedUser);
+      return { data: insertedUser, error: null };
+    }
+
+    // Update last_login if needed
+    if (!existingUser.last_login) {
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error updating last_login:', updateError);
+        return { data: existingUser, error: null }; // Return existing user even if update fails
+      }
+
+      return { data: updatedUser, error: null };
+    }
+
+    return { data: existingUser, error: null };
+  } catch (err) {
+    console.error('Unexpected error in ensureUserRecord:', err);
+    return { 
+      data: null, 
+      error: {
+        message: err instanceof Error ? err.message : 'Failed to ensure user record',
+        details: 'Unexpected error in ensureUserRecord function',
+        code: 'SYNC_ERROR'
+      } as PostgrestError
+    };
+  }
+}
+
+// Update the getUserProfile function to use ensureUserRecord
 export async function getUserProfile(userId: string) {
   return withRetry(async () => {
     try {
-      // First check if user exists and get the most recent profile
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .eq('deleted_at', null)  // Only get non-deleted profiles
-        .order('updated_at', { ascending: false })  // Get the most recent profile
-        .limit(1)  // Ensure we only get one row
-        .maybeSingle();  // Use maybeSingle instead of single to handle no rows gracefully
-        
-      if (error) {
-        console.error('Get user profile error:', error.message);
-        throw error;
+      // Get the user's email from auth.users
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Error getting auth user:', authError);
+        throw authError;
       }
       
-      if (!data) {
-        // Create a default profile if none exists
-        const now = new Date().toISOString();
-        const defaultProfile = {
-          id: userId,
-          email: '',  // This will be updated when we get the user email
-          full_name: null,
-          institution: null,
-          title: null,
-          bio: null,
-          avatar_url: null,
-          openai_api_key: null,
-          subscription_status: 'enterprise',
-          subscription_end_date: '2099-12-31T23:59:59.999Z',  // Use explicit timestamp string
-          stripe_customer_id: null,
-          role: 'user',
-          created_at: now,
-          updated_at: now,
-          deleted_at: null,
-          last_login: null
-        };
+      if (!user || user.id !== userId) {
+        throw new Error('User not authenticated or ID mismatch');
+      }
 
-        // Insert the default profile
-        const { data: newProfile, error: insertError } = await supabase
-          .from('users')
-          .insert(defaultProfile)
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('Error creating default profile:', insertError.message);
-          throw insertError;
-        }
-
-        return { data: newProfile, error: null };
+      // Ensure user record exists and is synchronized
+      const { data: profile, error: syncError } = await ensureUserRecord(userId, user.email || '');
+      
+      if (syncError) {
+        console.error('Error ensuring user record:', syncError);
+        throw syncError;
       }
       
-      // Enrich existing profile with default values and ensure valid timestamps
-      const enrichedProfile = {
-        ...data,
-        subscription_status: data.subscription_status || 'enterprise',
-        subscription_end_date: data.subscription_end_date || '2099-12-31T23:59:59.999Z',
-        stripe_customer_id: data.stripe_customer_id || null,
-        role: data.role || 'user',
-        deleted_at: data.deleted_at || null,
-        last_login: data.last_login || null,
-        openai_api_key: data.openai_api_key || null,
-        created_at: data.created_at || new Date().toISOString(),
-        updated_at: data.updated_at || new Date().toISOString()
-      };
-        
-      return { data: enrichedProfile, error: null };
+      if (!profile) {
+        throw new Error('Failed to get or create user profile');
+      }
+
+      return { data: profile, error: null };
     } catch (err) {
       console.error('Unexpected error in getUserProfile:', err);
-      throw err;
+      return { 
+        data: null, 
+        error: { 
+          message: err instanceof Error ? err.message : 'Failed to get user profile',
+          details: 'Error in getUserProfile function',
+          code: 'PROFILE_ERROR'
+        } as PostgrestError 
+      };
     }
   });
 }
@@ -176,51 +216,47 @@ interface UserProfileWithSubscription extends Partial<UserProfile> {
   stripe_customer_id?: string | null;
 }
 
+// Update the updateUserProfile function to validate data against DB constraints
 export async function updateUserProfile(userId: string, profileData: Partial<UserProfile>) {
   console.log('Starting profile update process:', { userId, profileData });
   
   return withRetry(async () => {
     try {
-      // Validate input data
-      if (!userId) {
-        console.error('Update failed: No user ID provided');
+      // Validate role if provided
+      if (profileData.role && !['user', 'admin', 'premium'].includes(profileData.role)) {
         return {
           data: null,
           error: {
-            message: 'User ID is required',
-            details: 'No user ID provided for profile update',
-            code: 'INVALID_INPUT'
+            message: 'Invalid role',
+            details: 'Role must be one of: user, admin, premium',
+            code: 'VALIDATION_ERROR'
           } as PostgrestError
         };
       }
 
-      if (!profileData || Object.keys(profileData).length === 0) {
-        console.error('Update failed: No profile data provided');
+      // Validate subscription_status if provided
+      if (profileData.subscription_status && 
+          !['free', 'basic', 'premium', 'enterprise'].includes(profileData.subscription_status)) {
         return {
           data: null,
           error: {
-            message: 'Profile data is required',
-            details: 'No profile data provided for update',
-            code: 'INVALID_INPUT'
+            message: 'Invalid subscription status',
+            details: 'Status must be one of: free, basic, premium, enterprise',
+            code: 'VALIDATION_ERROR'
           } as PostgrestError
         };
       }
 
-      console.log('Checking if user exists...');
-      // Check if user exists
+      // Ensure user record exists
       const { data: existingUser, error: checkError } = await supabase
         .from('users')
-        .select('*')  // Select all fields to get current timestamps
+        .select('*')
         .eq('id', userId)
         .maybeSingle();
         
       if (checkError) {
         console.error('User check failed:', checkError);
-        return { data: null, error: {
-          ...checkError,
-          details: `Failed to check user existence: ${checkError.message}`,
-          code: 'USER_CHECK_FAILED'
-        }};
+        return { data: null, error: checkError };
       }
       
       if (!existingUser) {
@@ -235,21 +271,21 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
 
-      console.log('User found, preparing update data...');
       // Prepare update data with proper timestamp handling
       const now = new Date().toISOString();
       const updateData = {
         ...profileData,
         updated_at: now,
-        // Preserve existing timestamps if not being updated
+        // Preserve existing timestamps and values
         created_at: existingUser.created_at || now,
-        deleted_at: existingUser.deleted_at || null,
-        last_login: existingUser.last_login || null,
-        subscription_end_date: existingUser.subscription_end_date || '2099-12-31T23:59:59.999Z'
+        deleted_at: existingUser.deleted_at,
+        last_login: existingUser.last_login,
+        subscription_end_date: existingUser.subscription_end_date || '2099-12-31T23:59:59.999Z',
+        role: profileData.role || existingUser.role || 'user',
+        subscription_status: profileData.subscription_status || existingUser.subscription_status || 'free'
       };
 
       console.log('Performing update with data:', updateData);
-      // Perform update
       const { data, error } = await supabase
         .from('users')
         .update(updateData)
@@ -259,11 +295,7 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         
       if (error) {
         console.error('Update failed:', error);
-        return { data: null, error: {
-          ...error,
-          details: `Failed to update user profile: ${error.message}`,
-          code: 'UPDATE_FAILED'
-        }};
+        return { data: null, error };
       }
       
       if (!data) {
@@ -278,34 +310,16 @@ export async function updateUserProfile(userId: string, profileData: Partial<Use
         };
       }
 
-      console.log('Update successful, enriching profile data...');
-      // Enrich profile with default values
-      const enrichedProfile: UserProfile = {
-        ...data,
-        subscription_status: data.subscription_status || 'enterprise',
-        subscription_end_date: data.subscription_end_date || '2099-12-31T23:59:59.999Z',
-        stripe_customer_id: data.stripe_customer_id || null,
-        role: data.role || 'user',
-        deleted_at: data.deleted_at || null,
-        last_login: data.last_login || null,
-        openai_api_key: data.openai_api_key || null,
-        created_at: data.created_at || now,
-        updated_at: data.updated_at || now
-      };
-      
-      console.log('Profile update completed successfully:', enrichedProfile);
-      return { data: enrichedProfile, error: null };
+      console.log('Profile update completed successfully:', data);
+      return { data, error: null };
     } catch (err) {
       console.error('Unexpected error in updateUserProfile:', err);
-      // Log the full error object for debugging
-      console.error('Full error details:', JSON.stringify(err, null, 2));
       return { 
         data: null, 
         error: { 
           message: err instanceof Error ? err.message : 'An unexpected error occurred',
           details: 'Error in updateUserProfile function',
-          code: 'INTERNAL_ERROR',
-          hint: err instanceof Error ? err.stack : undefined
+          code: 'INTERNAL_ERROR'
         } as PostgrestError 
       };
     }

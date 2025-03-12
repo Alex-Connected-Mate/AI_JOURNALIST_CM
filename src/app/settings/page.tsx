@@ -143,6 +143,15 @@ export default function SettingsPage() {
       console.log('Starting profile update...');
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       
+      // Validate required fields
+      if (!fullName) {
+        setMessage({
+          type: 'error',
+          text: 'Le nom est requis'
+        });
+        return;
+      }
+      
       const updateData = {
         full_name: fullName,
         institution: formData.institution,
@@ -156,7 +165,29 @@ export default function SettingsPage() {
       
       if (error) {
         console.error('Profile update failed:', error);
-        throw new Error(error.message);
+        let errorMessage = 'Erreur lors de la mise à jour du profil';
+        
+        // Handle specific error cases
+        switch (error.code) {
+          case 'VALIDATION_ERROR':
+            errorMessage = error.details || 'Données invalides';
+            break;
+          case 'AUTH_ERROR':
+            errorMessage = 'Vous devez être connecté pour effectuer cette action';
+            router.push('/auth/login');
+            break;
+          case 'UPDATE_FAILED':
+            errorMessage = 'La mise à jour a échoué, veuillez réessayer';
+            break;
+          default:
+            errorMessage = error.message || 'Une erreur inattendue est survenue';
+        }
+        
+        setMessage({
+          type: 'error',
+          text: errorMessage
+        });
+        return;
       }
       
       console.log('Profile updated successfully:', data);
@@ -299,11 +330,22 @@ export default function SettingsPage() {
         {message.text && (
           <div 
             className={`mb-4 p-4 rounded ${
-              message.type === 'success' ? 'bg-green-100 text-green-700' : 
-              message.type === 'error' ? 'bg-red-100 text-red-700' : ''
+              message.type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' : 
+              message.type === 'error' ? 'bg-red-100 text-red-700 border border-red-200' : ''
             }`}
           >
-            {message.text}
+            <div className="flex items-center">
+              {message.type === 'success' ? (
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : message.type === 'error' ? (
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              ) : null}
+              {message.text}
+            </div>
           </div>
         )}
 
@@ -326,6 +368,7 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange('firstName', e.target.value)}
                   placeholder="Votre prénom"
                   required
+                  error={!formData.firstName ? 'Le prénom est requis' : ''}
                 />
                 
                 <InputComponent
@@ -334,6 +377,7 @@ export default function SettingsPage() {
                   onChange={(e) => handleChange('lastName', e.target.value)}
                   placeholder="Votre nom"
                   required
+                  error={!formData.lastName ? 'Le nom est requis' : ''}
                 />
                 
                 <InputComponent
@@ -371,7 +415,7 @@ export default function SettingsPage() {
                   <button
                     onClick={handleSubmit}
                     className="cm-button-primary px-6 py-2 relative flex items-center justify-center min-w-[150px]"
-                    disabled={isLoading}
+                    disabled={isLoading || !formData.firstName || !formData.lastName}
                   >
                     {isLoading ? (
                       <>
