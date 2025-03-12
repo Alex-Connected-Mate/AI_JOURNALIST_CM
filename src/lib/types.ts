@@ -7,6 +7,7 @@ export interface UserProfile {
   bio: string | null;
   avatar_url: string | null;
   openai_api_key: string | null;
+  use_own_api_key: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

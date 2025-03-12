@@ -58,7 +58,8 @@ export default function SettingsPage() {
     title: '',
     bio: '',
     avatar_url: '',
-    openai_api_key: ''
+    openai_api_key: '',
+    use_own_api_key: false
   });
   
   // UI state
@@ -119,13 +120,14 @@ export default function SettingsPage() {
         title: userProfile.title || '',
         bio: userProfile.bio || '',
         avatar_url: userProfile.avatar_url || '',
-        openai_api_key: userProfile.openai_api_key || ''
+        openai_api_key: userProfile.openai_api_key || '',
+        use_own_api_key: userProfile.use_own_api_key || false
       });
     }
   }, [userProfile, user]);
 
   // Handle form changes
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -163,7 +165,8 @@ export default function SettingsPage() {
         institution: formData.institution || null,
         title: formData.title || null,
         bio: formData.bio || null,
-        openai_api_key: formData.openai_api_key || null
+        openai_api_key: formData.openai_api_key || null,
+        use_own_api_key: formData.use_own_api_key
       };
       
       console.log('🔵 [SETTINGS] Updating profile with data:', updateData);
@@ -390,7 +393,8 @@ export default function SettingsPage() {
         title: '',
         bio: '',
         avatar_url: '',
-        openai_api_key: ''
+        openai_api_key: '',
+        use_own_api_key: false
       });
       
       try {
@@ -614,13 +618,62 @@ export default function SettingsPage() {
             <div className="second-level-block p-6 rounded-xl mt-8">
               <h2 className="text-xl font-semibold mb-6">Configuration API</h2>
               <div className="space-y-4">
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-blue-700">
+                        Vous pouvez utiliser votre propre clé API OpenAI pour les fonctionnalités d'IA, ou utiliser celle fournie par le service.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between px-2 py-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Utiliser ma propre clé API</p>
+                    <p className="text-sm text-gray-500">Activez cette option pour utiliser votre clé API personnelle</p>
+                  </div>
+                  <label className="relative inline-block w-14 h-7">
+                    <input
+                      type="checkbox"
+                      className="opacity-0 w-0 h-0"
+                      checked={formData.use_own_api_key}
+                      onChange={(e) => handleChange('use_own_api_key', e.target.checked)}
+                    />
+                    <span 
+                      className={`absolute cursor-pointer inset-0 rounded-full transition-all duration-300 ${
+                        formData.use_own_api_key ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span 
+                        className={`absolute h-5 w-5 top-1 bg-white rounded-full transition-all duration-300 transform ${
+                          formData.use_own_api_key ? 'translate-x-7' : 'translate-x-1'
+                        }`}
+                      ></span>
+                    </span>
+                  </label>
+                </div>
+                
                 <InputComponent
                   label="Clé API OpenAI"
                   value={formData.openai_api_key}
                   onChange={(e) => handleChange('openai_api_key', e.target.value)}
                   type="password"
                   placeholder="sk-..."
+                  disabled={!formData.use_own_api_key}
                 />
+                
+                {formData.use_own_api_key && !formData.openai_api_key && (
+                  <p className="text-yellow-600 text-sm mt-1">
+                    Vous avez activé l'utilisation de votre propre clé API mais aucune clé n'est renseignée. 
+                    Le service utilisera sa clé par défaut jusqu'à ce que vous en fournissiez une.
+                  </p>
+                )}
               </div>
             </div>
           </div>
