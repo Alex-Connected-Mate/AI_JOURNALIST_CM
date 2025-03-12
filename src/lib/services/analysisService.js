@@ -181,8 +181,10 @@ async function analyzeDiscussion(sessionId, discussionId, analysisType, config) 
     }
     
     if (!messages || messages.length === 0) {
-      logger.warn(`Aucun message trouvé pour la discussion ${discussionId}`);
-      return;
+      logger.warning(`Aucun message trouvé pour la discussion ${discussionId}`);
+      return {
+        error: 'No messages found'
+      };
     }
     
     // Simuler une pause pour l'analyse (remplacer par l'appel à l'API d'IA)

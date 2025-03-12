@@ -162,7 +162,9 @@ export async function analyzeDiscussion(discussionId, analysisType, rules) {
     
     if (!messages || messages.length === 0) {
       logger.warning(`Aucun message trouvé pour la discussion ${discussionId}`);
-      return null;
+      return {
+        error: 'No messages found'
+      };
     }
     
     // Construire le prompt pour l'analyse
@@ -236,7 +238,9 @@ export async function createGlobalAnalysis(sessionId, analysisType, rules) {
     
     if (!individualAnalyses || individualAnalyses.length === 0) {
       logger.warning(`Aucune analyse individuelle trouvée pour la session ${sessionId}`);
-      return null;
+      return {
+        error: 'No individual analyses found'
+      };
     }
     
     // Construire le prompt pour l'analyse globale
@@ -310,7 +314,9 @@ export async function runSessionAnalysis(sessionId, analysisType, config, progre
     
     if (!discussions || discussions.length === 0) {
       logger.warning(`Aucune discussion trouvée pour la session ${sessionId}`);
-      return { success: false, error: 'Aucune discussion trouvée' };
+      return {
+        error: 'No discussions found'
+      };
     }
     
     const totalDiscussions = discussions.length;

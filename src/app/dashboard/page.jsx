@@ -59,7 +59,7 @@ function DashboardContent() {
   useEffect(() => {
     if (loadingTimeout && loading) {
       setLoading(false);
-      logger.warn('Loading sessions timed out - forcing end of loading state');
+      logger.warning('Loading sessions timed out - forcing end of loading state');
     }
   }, [loadingTimeout, loading]);
 
