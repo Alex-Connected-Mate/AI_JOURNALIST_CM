@@ -13,7 +13,7 @@ import ImageSelector from '@/components/ImageSelector';
 import NumberInput from '@/components/NumberInput';
 import RadioGroup from '@/components/RadioGroup';
 import Tabs from '@/components/Tabs';
-import { createSession } from '@/lib/supabase';
+import { createSession, uploadProfileImage } from '@/lib/supabase';
 
 interface SessionError {
   message: string;
@@ -52,10 +52,11 @@ export default function CreateSessionPage() {
   const [color, setColor] = useState<string>('#3490dc');
   const [emoji, setEmoji] = useState<string>('🎓');
   const [maxParticipants, setMaxParticipants] = useState<number>(50);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   
   // États pour le contrôle de l'utilisation des informations du profil
-  const [useProfileInstitution, setUseProfileInstitution] = useState<boolean>(false);
-  const [useProfileName, setUseProfileName] = useState<boolean>(false);
+  const [useProfileInstitution, setUseProfileInstitution] = useState<boolean>(true);
+  const [useProfileName, setUseProfileName] = useState<boolean>(true);
 
   useEffect(() => {
     // If user is not logged in, redirect to login page
@@ -64,7 +65,30 @@ export default function CreateSessionPage() {
     }
   }, [user, router]);
 
-  // Effet pour mettre à jour les champs avec les informations du profil
+  // Auto-remplir les champs avec les informations du profil dès le chargement
+  useEffect(() => {
+    if (userProfile) {
+      // Auto-remplir l'institution si disponible
+      if (userProfile.institution) {
+        setInstitution(userProfile.institution);
+        setUseProfileInstitution(true);
+      }
+      
+      // Auto-remplir le nom du professeur si disponible
+      if (userProfile.full_name) {
+        setProfessorName(userProfile.full_name);
+        setUseProfileName(true);
+      }
+      
+      // Utiliser l'avatar du profil comme image de session si disponible
+      if (userProfile.avatar_url) {
+        setUploadedImageUrl(userProfile.avatar_url);
+        setSelectedImage(userProfile.avatar_url);
+      }
+    }
+  }, [userProfile]);
+
+  // Effet pour mettre à jour les champs avec les informations du profil quand les checkboxes changent
   useEffect(() => {
     if (userProfile) {
       if (useProfileInstitution && userProfile.institution) {
@@ -99,7 +123,7 @@ export default function CreateSessionPage() {
         institution,
         professorName,
         showProfessorName,
-        image: selectedImage,
+        image: uploadedImageUrl || selectedImage,
         profileMode,
         color,
         emoji,
@@ -124,7 +148,51 @@ export default function CreateSessionPage() {
   };
   
   const handleImageChange = (value: string | null) => {
-    setSelectedImage(value || 'university'); // Utiliser une valeur par défaut si null
+    // Si c'est null, revenir à la valeur par défaut
+    if (!value) {
+      setSelectedImage('university');
+      return;
+    }
+    
+    // Si c'est une URL complète (image téléchargée), préserver cette information
+    if (value.startsWith('http')) {
+      setUploadedImageUrl(value);
+    }
+    
+    setSelectedImage(value);
+  };
+  
+  const handleFileUpload = async (file: File) => {
+    if (!user) {
+      setError('You must be logged in to upload an image');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Implémenter l'upload d'image
+      const { url, error: uploadError } = await uploadProfileImage(user.id, file);
+      
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        setError('Failed to upload image. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
+      if (url) {
+        setUploadedImageUrl(url);
+        setSelectedImage(url);
+        console.log('Image uploaded successfully:', url);
+      }
+    } catch (err) {
+      console.error('Unexpected error during image upload:', err);
+      setError('An unexpected error occurred during image upload');
+    } finally {
+      setLoading(false);
+    }
   };
   
   if (!user) {
@@ -323,12 +391,9 @@ export default function CreateSessionPage() {
                   <div className="space-y-4">
                     <ImageSelector
                       label="Session Image"
-                      selectedImageId={selectedImage}
+                      selectedImageId={uploadedImageUrl || selectedImage}
                       onChange={handleImageChange}
-                      onFileUpload={async (file) => {
-                        // Gérer le téléchargement du fichier ici
-                        console.log('File upload not implemented yet:', file);
-                      }}
+                      onFileUpload={handleFileUpload}
                     />
                     
                     <ColorPicker

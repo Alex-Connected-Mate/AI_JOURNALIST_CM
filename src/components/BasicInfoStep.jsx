@@ -3,6 +3,7 @@ import Input from './Input';
 import Checkbox from './Checkbox';
 import NumberInput from './NumberInput';
 import ImageSelector from './ImageSelector';
+import { useStore } from '@/lib/store';
 
 /**
  * BasicInfoStep Component
@@ -16,6 +17,9 @@ import ImageSelector from './ImageSelector';
  * - Visibility settings for each information element
  */
 const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
+  // Get user profile from store
+  const { userProfile } = useStore();
+  
   const {
     sessionName = '',
     title = '',
@@ -29,6 +33,24 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
 
   // Use the proper title value (prefer title or fall back to sessionName)
   const displayName = title || sessionName;
+  
+  // Auto-populate fields from user profile when component mounts
+  useEffect(() => {
+    if (userProfile && !institution && userProfile.institution) {
+      // Auto-fill institution from user profile if not already set
+      handleChange('institution', userProfile.institution);
+    }
+    
+    if (userProfile && !professorName && userProfile.full_name) {
+      // Auto-fill professor name from user profile if not already set
+      handleChange('professorName', userProfile.full_name);
+    }
+    
+    if (userProfile && userProfile.avatar_url) {
+      // Use profile avatar as session image if available
+      handleChange('selectedImage', userProfile.avatar_url);
+    }
+  }, [userProfile]);
 
   // Synchronize title and sessionName whenever either changes
   useEffect(() => {
@@ -69,6 +91,25 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
     }
     
     updateSessionConfig(updates);
+  };
+  
+  // Handle file upload
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    
+    try {
+      // In a real implementation, this would upload to Supabase and get URL
+      console.log('Uploading file:', file.name);
+      
+      // For now, we'll use a placeholder URL to demonstrate the flow
+      // In production, this would be replaced with a real upload
+      // handleChange('selectedImage', uploadedImageUrl);
+      
+      // Don't do anything yet since we don't have the upload implementation here
+      // The actual upload is implemented in the src/app/sessions/create/page.tsx
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    }
   };
 
   return (
@@ -191,6 +232,7 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
               label="Logo / Image"
               selectedImageId={selectedImage}
               onChange={(value) => handleChange('selectedImage', value)}
+              onFileUpload={handleFileUpload}
             />
           </div>
           
