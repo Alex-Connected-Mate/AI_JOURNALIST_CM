@@ -5,6 +5,12 @@ import NumberInput from './NumberInput';
 import NexusAIJournalist from './NexusAIJournalist';
 import FinalAnalysisConfig from './FinalAnalysisConfig';
 
+// Import our new AI Nuggets prompt configuration
+import { AI_NUGGETS_PROMPT, DEFAULT_AI_NUGGETS_CONFIG } from '../lib/prompts';
+
+// Import useStore to access user profile
+import { useStore } from '../lib/store';
+
 /**
  * AIInteractionConfig Component
  * 
@@ -88,39 +94,45 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
   
   // Default configuration values
   const defaultNuggetsPromptConfig = {
-    agentName: "",
-    programName: "",
-    teacherName: "",
+    agentName: DEFAULT_AI_NUGGETS_CONFIG.agentName,
+    programName: DEFAULT_AI_NUGGETS_CONFIG.programName,
+    teacherName: DEFAULT_AI_NUGGETS_CONFIG.teacherName,
     location: "",
     venue: "",
-    agentPersonality: "",
+    agentPersonality: "conversational, curious and journalistic",
     rules: [
-      "Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data.",
-      "Sequential Flow: Ask each required question in order and proceed only after receiving a full response.",
-      "Clarification: If a response is incomplete or unclear, ask for additional details politely before moving on.",
-      "No Skipped Questions: All the required questions must be addressed without skipping or rephrasing unless necessary for clarity.",
-      "End of Conversation: Conclude the conversation only after confirming that all responses are complete."
+      "Acknowledge Selection: Begin by congratulating the participant for being selected by their peers for their interesting story, making them feel valued.",
+      "Sequential Storytelling: Guide participants through sharing their story chronologically, asking follow-up questions for clarity.",
+      "Business Focus: While allowing natural storytelling, direct questions toward business challenges, solutions, and insights.",
+      "Deep Diving: When participants mention interesting business points, probe deeper with follow-up questions.",
+      "Complete Picture: Ensure all key aspects of their business story are covered: origin, challenges, solutions, results, and learnings.",
+      "Confidentiality Assurance: Reassure participants that their information will be used responsibly within the program context.",
+      "Synthesis Support: Periodically summarize key points to validate understanding and help the participant refine their story."
     ],
     questions: [
       {
-        title: "Problem and Opportunity",
-        question: "What is the main problem or opportunity your business is addressing?"
+        title: "Origin Story",
+        question: "What inspired you to start this business journey? What problem or opportunity did you initially identify?"
       },
       {
-        title: "Unique Solution",
-        question: "How does your solution stand out from others in the market?"
+        title: "Challenge & Solution",
+        question: "What was the biggest challenge you faced, and how did you overcome it? What made your approach unique?"
       },
       {
-        title: "Target Audience",
-        question: "Who are your primary customers or users, and what do they value most?"
+        title: "Market & Customer Insights",
+        question: "What have you learned about your market and customers that others might not realize?"
       },
       {
-        title: "Impact and Results",
-        question: "What measurable impact have you achieved so far, or what are you aiming for?"
+        title: "Business Model Evolution",
+        question: "How has your business model or approach evolved since you started? What prompted these changes?"
       },
       {
-        title: "Scalability and Vision",
-        question: "How do you plan to scale this solution, and what is your long-term vision?"
+        title: "Key Learnings",
+        question: "What's the most valuable business lesson from your experience that could benefit others in the room?"
+      },
+      {
+        title: "Future Vision",
+        question: "Where do you see this journey taking you next? What's your vision for growth or impact?"
       }
     ]
   };
@@ -129,7 +141,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
   const defaultLightbulbsPromptConfig = {
     agentName: "",
     programName: "",
-    questionnaireName: "", 
+    questionnaireName: "Nexus X Insead questionnaire", 
     location: "Annecy",
     venue: "Palace de Menthon",
     agentPersonality: "professional, supportive, attentive",
@@ -196,12 +208,25 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     agentPersonality: { isValid: true, message: '' }
   });
   
+  // Inside component, add this near the other useState declarations
+  const { userProfile } = useStore();
+  
   // Initialize local config once when component mounts or when sessionConfig changes
   useEffect(() => {
+    // Initialize with default values
+    const initialConfig = {
+      // Always start with the default AI Nuggets config
+      ...defaultNuggetsPromptConfig
+    };
+    
+    // Auto-populate teacherName from user profile if available
+    if (userProfile && userProfile.full_name) {
+      initialConfig.teacherName = userProfile.full_name;
+    }
+    
+    // If there's saved config, use it, but ensure we have all required fields
     if (sessionConfig && sessionConfig.nuggetsPromptConfig) {
-      // Ensure all required properties exist by merging with defaults
-      setLocalConfig({
-        ...defaultNuggetsPromptConfig,
+      Object.assign(initialConfig, {
         ...sessionConfig.nuggetsPromptConfig,
         // Ensure arrays are never undefined
         rules: sessionConfig.nuggetsPromptConfig.rules || defaultNuggetsPromptConfig.rules,
@@ -209,8 +234,11 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
       });
     }
     
-    if (sessionConfig && sessionConfig.lightbulbsPromptConfig) {
-      // Ensure all required properties exist by merging with defaults
+    // Set the local config with these properly initialized values
+    setLocalConfig(initialConfig);
+
+    // Initialize lightbulbs config if we're in lightbulb mode
+    if (mode === "lightbulb" && sessionConfig && sessionConfig.lightbulbsPromptConfig) {
       setLocalConfig({
         ...defaultLightbulbsPromptConfig,
         ...sessionConfig.lightbulbsPromptConfig,
@@ -219,7 +247,26 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
         questions: sessionConfig.lightbulbsPromptConfig.questions || defaultLightbulbsPromptConfig.questions
       });
     }
-  }, [sessionConfig]);
+  }, [sessionConfig, mode, userProfile]);
+  
+  // Add useEffect to ensure rules and questions are initialized
+  useEffect(() => {
+    // Ensure rules are properly initialized
+    if (!localConfig.rules || localConfig.rules.length === 0) {
+      setLocalConfig(prev => ({
+        ...prev,
+        rules: defaultNuggetsPromptConfig.rules
+      }));
+    }
+    
+    // Ensure questions are properly initialized
+    if (!localConfig.questions || localConfig.questions.length === 0) {
+      setLocalConfig(prev => ({
+        ...prev,
+        questions: defaultNuggetsPromptConfig.questions
+      }));
+    }
+  }, [localConfig.rules, localConfig.questions]);
   
   const {
     // AI Nuggets (mandatory for top-voted participants)
@@ -302,8 +349,8 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
       [field]: value
     }));
     
-    // Don't clear validation state immediately, let the Input component handle it
-    handleChange(field, value);
+    // Remove this problematic call that's causing auto-submission on each keystroke
+    // handleChange(field, value);
   };
 
   // Validate a single field
@@ -339,7 +386,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     let isValid = true;
     const newValidationState = {};
 
-    // Valider tous les champs lors de la soumission
+    // Validate all fields on submission
     await Promise.all(
       fields.map(async (field) => {
         const result = await validateField(field, localConfig[field]);
@@ -351,10 +398,19 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     setValidationState(newValidationState);
 
     if (isValid) {
+      // Update session config with ALL current localConfig values
       updateSessionConfig({
         ...sessionConfig,
-        ...localConfig
+        nuggetsPromptConfig: {
+          ...localConfig,
+          // Make sure we include rules and questions
+          rules: localConfig.rules || defaultNuggetsPromptConfig.rules,
+          questions: localConfig.questions || defaultNuggetsPromptConfig.questions
+        }
       });
+      
+      // Show success message
+      alert("AI configuration saved successfully!");
       return true;
     }
     return false;
@@ -370,38 +426,24 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
       questions: (localConfig && localConfig.questions) || defaultNuggetsPromptConfig.questions
     };
     
-    // Generate rules section with safe access
-    const rulesSection = (config.rules || []).map((rule, index) => 
-      `${index + 1}. ${rule.startsWith("**") ? rule : `**${(rule.split(":")[0] || "Rule")}**: ${(rule.split(":")[1] || rule)}`}`
-    ).join("\n");
+    // Use the imported AI_NUGGETS_PROMPT as the base template
+    let prompt = AI_NUGGETS_PROMPT;
     
-    // Generate questions section with safe access
-    const questionsSection = (config.questions || []).map((q, index) => 
-      `${index + 1}. **${q.title || `Question ${index + 1}`}**:  \n   "${q.question || "No question provided"}"\n   `
-    ).join("\n");
+    // Replace template variables
+    prompt = prompt.replace(/\{programName\}/g, config.programName || "Workshop");
+    prompt = prompt.replace(/\{teacherName\}/g, config.teacherName || "the facilitator");
     
-    return `# Objective
-You are a dedicated support agent named "${config.agentName || "AI Agent"}" responsible for engaging participants in the "${config.programName || "Workshop"}" event questionnaire. Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
-
-# Style
-"Maintain a ${config.agentPersonality || "professional, friendly"} tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional."
-
-# Rules
-
-${rulesSection}
-
-# Interaction Example
-
-### Step 1: Identification
-- Start the conversation: 
-  "Hi! Welcome to "${config.programName || "Workshop"}". Participants told ole that your had a great story ! Im your AI Journalist for today. So tell me what's your famous story !  😊"
-
-### Step 2: Required Questions (this question are template)
-${questionsSection}
-
-### Step 3: Closing the Discussion
-- End on a positive and engaging note:  
-  "Ok, now let's refocus back on "${config.teacherName || "the facilitator"}", and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
+    // If agentName is provided, customize the agent name in the introduction
+    if (config.agentName && config.agentName !== DEFAULT_AI_NUGGETS_CONFIG.agentName) {
+      prompt = prompt.replace(
+        "I'm AI Nuggets, your AI Journalist",
+        `I'm ${config.agentName}, your AI Journalist`
+      );
+    }
+    
+    // For advanced configuration, we could override the rules and questions sections here
+    
+    return prompt;
   };
 
   // Generate the complete prompt based on the template and configuration for Lightbulbs
@@ -1176,15 +1218,22 @@ Begin by introducing yourself and asking the first question.`;
                 </div>
                 
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 transition-all duration-200 hover:shadow-md">
-                  <Input
-                    label="Agent Personality"
-                    value={localConfig.agentPersonality || ""}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Agent Personality
+                  </label>
+                  <select
+                    value={localConfig.agentPersonality || "conversational, curious and journalistic"}
                     onChange={(e) => handleLocalChange('agentPersonality', e.target.value)}
-                    placeholder="Enter personality traits (e.g., professional, friendly, energetic, young)"
-                    className="focus:ring-2 focus:ring-purple-400"
-                  />
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white transition duration-150 ease-in-out"
+                  >
+                    <option value="conversational, curious and journalistic">Conversational Journalist (Default)</option>
+                    <option value="professional, analytical, thorough">Professional Analyst</option>
+                    <option value="friendly, enthusiastic, supportive">Friendly Supporter</option>
+                    <option value="direct, concise, practical">Direct Interviewer</option>
+                    <option value="warm, empathetic, understanding">Empathetic Listener</option>
+                  </select>
                   <p className="text-sm text-gray-600 mt-2">
-                    Personality traits that define how the AI agent communicates (comma-separated).
+                    Personality traits that define how the AI agent communicates with participants.
                   </p>
                 </div>
               </div>
@@ -1205,7 +1254,7 @@ Begin by introducing yourself and asking the first question.`;
                 <h4 className="font-medium text-gray-800 text-lg">Conversation Rules</h4>
                 <button
                   onClick={() => {
-                    const newRules = [...localConfig.rules, "New rule: Description of the rule"];
+                    const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules), "New rule: Description of the rule"];
                     handleLocalChange('rules', newRules);
                   }}
                   className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
@@ -1214,44 +1263,35 @@ Begin by introducing yourself and asking the first question.`;
                 </button>
               </div>
               
-              <div className="space-y-6 mb-6">
-                {(localConfig.rules || []).map((rule, index) => (
-                  <div key={index} className="flex items-start gap-4 bg-white p-5 rounded-xl shadow-sm border border-gray-200 transition-all duration-200 hover:shadow-md">
-                    <div className="flex-grow">
-              <textarea
-                        value={rule}
-                        onChange={(e) => {
-                          const newRules = [...localConfig.rules];
-                          newRules[index] = e.target.value;
-                          handleLocalChange('rules', newRules);
-                        }}
-                        className="input w-full h-28 p-3 border rounded-lg focus:ring-2 focus:ring-purple-400 transition-shadow duration-200"
-                        placeholder="Rule description..."
-                      />
-                      <p className="text-xs text-gray-600 mt-2">
-                        Tip: Use "Title: Description" format for better formatting.
-              </p>
-            </div>
-                    <button
-                      onClick={() => {
-                        const newRules = localConfig.rules.filter((_, i) => i !== index);
+              <div className="space-y-4">
+                {(localConfig.rules || defaultNuggetsPromptConfig.rules).map((rule, index) => (
+                  <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
+                    <Input
+                      label={`Rule ${index + 1}`}
+                      value={rule}
+                      onChange={(e) => {
+                        const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules)];
+                        newRules[index] = e.target.value;
                         handleLocalChange('rules', newRules);
                       }}
-                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm hover:shadow-md"
+                      placeholder="Enter rule description"
+                      className="focus:ring-2 focus:ring-purple-400"
+                    />
+                    
+                    <button
+                      onClick={() => {
+                        const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules)];
+                        newRules.splice(index, 1);
+                        handleLocalChange('rules', newRules);
+                      }}
+                      className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
                     >
-                      ✕
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
                     </button>
-          </div>
+                  </div>
                 ))}
-        </div>
-        
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={applyChanges}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 active:translate-y-0"
-                >
-                  Save Rules
-                </button>
               </div>
             </div>
             
@@ -1261,7 +1301,12 @@ Begin by introducing yourself and asking the first question.`;
                 <h4 className="font-medium text-gray-800 text-lg">Template Questions</h4>
                 <button
                   onClick={() => {
-                    const newQuestions = [...localConfig.questions, { title: "New Question", question: "" }];
+                    const newQuestions = [...(localConfig.questions || defaultNuggetsPromptConfig.questions), 
+                      {
+                        title: "New Question",
+                        question: "Enter your new question here?"
+                      }
+                    ];
                     handleLocalChange('questions', newQuestions);
                   }}
                   className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
@@ -1270,68 +1315,53 @@ Begin by introducing yourself and asking the first question.`;
                 </button>
               </div>
               
-              <div className="space-y-8 mb-6">
-                {(localConfig.questions || []).map((q, index) => (
-                  <div key={index} className="border-2 rounded-xl p-6 bg-gradient-to-r from-gray-50 to-white shadow-md transition-all duration-300 hover:shadow-lg">
-                    <div className="flex justify-between items-center mb-4">
-                      <h5 className="font-medium text-lg text-gray-800">Question {index + 1}</h5>
-                      <button
-                        onClick={() => {
-                          const newQuestions = localConfig.questions.filter((_, i) => i !== index);
-                          handleLocalChange('questions', newQuestions);
-                        }}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm hover:shadow-md"
-                      >
-                        Remove
-                      </button>
-                    </div>
+              <div className="space-y-6">
+                {(localConfig.questions || defaultNuggetsPromptConfig.questions).map((questionObj, index) => (
+                  <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative">
+                    <Input
+                      label={`Question ${index + 1} Title`}
+                      value={questionObj.title}
+                      onChange={(e) => {
+                        const newQuestions = [...(localConfig.questions || defaultNuggetsPromptConfig.questions)];
+                        newQuestions[index] = {
+                          ...newQuestions[index],
+                          title: e.target.value
+                        };
+                        handleLocalChange('questions', newQuestions);
+                      }}
+                      placeholder="Enter question title (e.g., Origin Story)"
+                      className="focus:ring-2 focus:ring-purple-400 mb-4"
+                    />
                     
-                    <div className="space-y-5">
-                      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Title
-                        </label>
-                        <Input
-                          value={q.title || ""}
-                          onChange={(e) => {
-                            const newQuestions = localConfig.questions.map((q, i) =>
-                              i === index ? { ...q, title: e.target.value } : q
-                            );
-                            handleLocalChange('questions', newQuestions);
-                          }}
-                          placeholder="Question title/category"
-                          className="focus:ring-2 focus:ring-purple-400"
-                        />
-          </div>
-
-                      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Question
-              </label>
-              <textarea
-                          value={q.question || ""}
-                          onChange={(e) => {
-                            const newQuestions = localConfig.questions.map((q, i) =>
-                              i === index ? { ...q, question: e.target.value } : q
-                            );
-                            handleLocalChange('questions', newQuestions);
-                          }}
-                          className="input w-full h-28 p-3 border rounded-lg focus:ring-2 focus:ring-purple-400 transition-shadow duration-200"
-                          placeholder="The actual question text..."
-                        />
-            </div>
-          </div>
+                    <Input
+                      label="Question Text"
+                      value={questionObj.question}
+                      onChange={(e) => {
+                        const newQuestions = [...(localConfig.questions || defaultNuggetsPromptConfig.questions)];
+                        newQuestions[index] = {
+                          ...newQuestions[index],
+                          question: e.target.value
+                        };
+                        handleLocalChange('questions', newQuestions);
+                      }}
+                      placeholder="Enter the actual question text"
+                      className="focus:ring-2 focus:ring-purple-400"
+                    />
+                    
+                    <button
+                      onClick={() => {
+                        const newQuestions = [...(localConfig.questions || defaultNuggetsPromptConfig.questions)];
+                        newQuestions.splice(index, 1);
+                        handleLocalChange('questions', newQuestions);
+                      }}
+                      className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
                   </div>
                 ))}
-        </div>
-        
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={applyChanges}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-md hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 active:translate-y-0"
-                >
-                  Save Questions
-                </button>
               </div>
             </div>
             
