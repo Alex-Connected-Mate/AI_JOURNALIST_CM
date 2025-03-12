@@ -103,8 +103,17 @@ export const useStore = create<AppState>()(
       logout: async () => {
         logAction('logout attempt');
         set({ loading: true, error: null });
+        
         try {
-          const { error } = await signOut() as AuthResponse;
+          // Clear all state first
+          set({ 
+            sessions: [],
+            userProfile: null,
+            error: null
+          });
+
+          // Attempt to sign out
+          const { error } = await signOut();
           
           if (error) {
             logAction('logout failed', { error: error.message });
@@ -112,12 +121,28 @@ export const useStore = create<AppState>()(
             return;
           }
           
+          // Clear remaining state and ensure user is null
+          set({ 
+            user: null,
+            loading: false,
+            authChecked: false // Reset auth check
+          });
+
+          // Force clear persisted state
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('app-storage');
+          }
+          
           logAction('logout successful');
-          set({ user: null, userProfile: null, sessions: [], loading: false });
         } catch (err) {
           const error = err as AuthError;
           logAction('logout unexpected error', { error: error.message });
-          set({ error: error.message || 'An unexpected error occurred', loading: false });
+          set({ 
+            error: error.message || 'An unexpected error occurred', 
+            loading: false,
+            // Keep user null to ensure they're logged out even if there's an error
+            user: null
+          });
         }
       },
       

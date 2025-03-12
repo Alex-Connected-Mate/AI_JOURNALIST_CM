@@ -241,13 +241,31 @@ export default function SettingsPage() {
     if (isLoading) return;
     
     setIsLoading(true);
+    setMessage({ type: '', text: '' });
+    
     try {
+      console.log('Starting logout process');
       await logout();
-      router.push('/auth/login');
+      
+      // Force clear any local state
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        institution: '',
+        title: '',
+        bio: '',
+        avatar_url: '',
+        openai_api_key: ''
+      });
+      
+      // Use replace instead of push to prevent back navigation
+      router.replace('/auth/login');
     } catch (error) {
+      console.error('Logout error:', error);
       setMessage({
         type: 'error',
-        text: 'Erreur lors de la déconnexion'
+        text: 'Erreur lors de la déconnexion. Veuillez réessayer.'
       });
       setIsLoading(false);
     }

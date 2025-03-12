@@ -79,15 +79,37 @@ export async function signUp(email: string, password: string) {
 }
 
 export async function signOut() {
+  console.log('Starting signOut process');
   return withRetry(async () => {
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error('Sign out error:', error.message);
-      throw error;
+    try {
+      // Attempt to sign out
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Sign out error:', error);
+        return { error };
+      }
+
+      // Clear any stored session data
+      await supabase.auth.clearSession();
+      
+      // Clear any stored data in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('app-storage');
+      }
+      
+      console.log('Sign out successful');
+      return { error: null };
+    } catch (err) {
+      console.error('Unexpected error during sign out:', err);
+      return { 
+        error: {
+          message: err instanceof Error ? err.message : 'Failed to sign out',
+          details: 'Unexpected error during sign out process'
+        }
+      };
     }
-    
-    return { error };
   });
 }
 
