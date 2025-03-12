@@ -345,29 +345,21 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
   // Add a state to track if there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Update handleLocalChange to set unsaved changes flag
+  // Mise à jour de la fonction handleLocalChange pour garantir qu'elle ne provoque pas de validation ni de perte de focus
   const handleLocalChange = (field, value) => {
-    // Update the local config
+    // Mise à jour de la configuration locale sans aucune validation
     setLocalConfig(prev => ({
       ...prev,
       [field]: value
     }));
     
-    // Set unsaved changes flag
+    // Indiquer qu'il y a des modifications non enregistrées
     setHasUnsavedChanges(true);
-    
-    // Reset validation state for this field to prevent showing errors while typing
-    if (validationState[field]?.message) {
-      setValidationState(prev => ({
-        ...prev,
-        [field]: { isValid: true, message: '' }
-      }));
-    }
   };
 
-  // Validate a single field
+  // Simplifier la fonction de validation pour qu'elle soit rapide et synchrone
   const validateField = (field, value) => {
-    // Don't validate empty fields
+    // Ne pas valider les champs vides sauf s'ils sont requis
     if (!value || value.trim() === '') {
       return { isValid: true, message: '' };
     }
@@ -384,7 +376,6 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
         isValid = value.length >= 3;
         message = isValid ? '' : 'Le nom du programme doit contenir au moins 3 caractères';
         break;
-      // Other fields don't need validation
       default:
         return { isValid: true, message: '' };
     }
@@ -392,14 +383,14 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     return { isValid, message };
   };
 
-  // Update applyChanges to reset unsaved changes flag
+  // Simplifier applyChanges pour éviter les appels asynchrones inutiles
   const applyChanges = () => {
     const fields = ['agentName', 'programName', 'teacherName', 'location', 'venue', 'agentPersonality'];
     let isValid = true;
     const newValidationState = {};
 
-    // Validate all fields on submission
-    fields.forEach((field) => {
+    // Valider tous les champs lors de la soumission (de manière synchrone)
+    fields.forEach(field => {
       const result = validateField(field, localConfig[field]);
       newValidationState[field] = result;
       if (!result.isValid) isValid = false;
@@ -408,22 +399,20 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "
     setValidationState(newValidationState);
 
     if (isValid) {
-      // Update session config with ALL current localConfig values
       updateSessionConfig({
         ...sessionConfig,
         nuggetsPromptConfig: {
           ...localConfig,
-          // Make sure we include rules and questions
           rules: localConfig.rules || defaultNuggetsPromptConfig.rules,
           questions: localConfig.questions || defaultNuggetsPromptConfig.questions
         }
       });
       
-      // Reset unsaved changes flag
+      // Réinitialiser le drapeau de modifications non enregistrées
       setHasUnsavedChanges(false);
       
-      // Show success message
-      alert("AI configuration saved successfully!");
+      // Afficher un message de succès
+      alert("Configuration AI enregistrée avec succès !");
       return true;
     }
     return false;
@@ -1187,7 +1176,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Agent Name"
                     value={localConfig.agentName}
-                    onChange={(e) => handleLocalChange('agentName', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        agentName: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-purple-400"
@@ -1201,7 +1196,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Program Name"
                     value={localConfig.programName}
-                    onChange={(e) => handleLocalChange('programName', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        programName: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     error={validationState.programName?.message}
                     placeholder="Enter your program or event name (e.g., Nuggets Workshop)"
                     className="focus:ring-2 focus:ring-purple-400"
@@ -1215,7 +1216,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Teacher Name"
                     value={localConfig.teacherName || ""}
-                    onChange={(e) => handleLocalChange('teacherName', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        teacherName: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="Enter the teacher or facilitator's name (e.g., John Doe)"
                     className="focus:ring-2 focus:ring-purple-400"
                   />
@@ -1228,7 +1235,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Location"
                     value={localConfig.location || ""}
-                    onChange={(e) => handleLocalChange('location', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        location: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="Enter the city or location (e.g., Paris, New York)"
                     className="focus:ring-2 focus:ring-purple-400"
                   />
@@ -1241,7 +1254,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Venue"
                     value={localConfig.venue || ""}
-                    onChange={(e) => handleLocalChange('venue', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        venue: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="Enter the specific venue (e.g., Conference Center, Grand Hotel)"
                     className="focus:ring-2 focus:ring-purple-400"
                   />
@@ -1256,7 +1275,13 @@ Begin by introducing yourself and asking the first question.`;
                   </label>
                   <select
                     value={localConfig.agentPersonality || "conversational, curious and journalistic"}
-                    onChange={(e) => handleLocalChange('agentPersonality', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        agentPersonality: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white transition duration-150 ease-in-out"
                   >
                     <option value="conversational, curious and journalistic">Conversational Journalist (Default)</option>
@@ -1287,8 +1312,12 @@ Begin by introducing yourself and asking the first question.`;
                 <h4 className="font-medium text-gray-800 text-lg">Conversation Rules</h4>
                 <button
                   onClick={() => {
-                    const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules), "New rule: Description of the rule"];
-                    handleLocalChange('rules', newRules);
+                    const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules), "Nouvelle règle: Description de la règle"];
+                    setLocalConfig(prev => ({
+                      ...prev,
+                      rules: newRules
+                    }));
+                    setHasUnsavedChanges(true);
                   }}
                   className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
                 >
@@ -1305,8 +1334,10 @@ Begin by introducing yourself and asking the first question.`;
                       onChange={(e) => {
                         const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules)];
                         newRules[index] = e.target.value;
-                        handleLocalChange('rules', newRules);
-                        // Set unsaved changes flag
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          rules: newRules
+                        }));
                         setHasUnsavedChanges(true);
                       }}
                       placeholder="Enter rule description"
@@ -1317,7 +1348,10 @@ Begin by introducing yourself and asking the first question.`;
                       onClick={() => {
                         const newRules = [...(localConfig.rules || defaultNuggetsPromptConfig.rules)];
                         newRules.splice(index, 1);
-                        handleLocalChange('rules', newRules);
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          rules: newRules
+                        }));
                       }}
                       className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
                     >
@@ -1338,11 +1372,15 @@ Begin by introducing yourself and asking the first question.`;
                   onClick={() => {
                     const newQuestions = [...(localConfig.questions || defaultNuggetsPromptConfig.questions), 
                       {
-                        title: "New Question",
-                        question: "Enter your new question here?"
+                        title: "Nouvelle Question",
+                        question: "Entrez votre nouvelle question ici ?"
                       }
                     ];
-                    handleLocalChange('questions', newQuestions);
+                    setLocalConfig(prev => ({
+                      ...prev,
+                      questions: newQuestions
+                    }));
+                    setHasUnsavedChanges(true);
                   }}
                   className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
                 >
@@ -1362,8 +1400,10 @@ Begin by introducing yourself and asking the first question.`;
                           ...newQuestions[index],
                           title: e.target.value
                         };
-                        handleLocalChange('questions', newQuestions);
-                        // Set unsaved changes flag
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
                         setHasUnsavedChanges(true);
                       }}
                       placeholder="Enter question title (e.g., Origin Story)"
@@ -1379,7 +1419,11 @@ Begin by introducing yourself and asking the first question.`;
                           ...newQuestions[index],
                           question: e.target.value
                         };
-                        handleLocalChange('questions', newQuestions);
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
+                        setHasUnsavedChanges(true);
                       }}
                       placeholder="Enter the actual question text"
                       className="focus:ring-2 focus:ring-purple-400"
@@ -1389,7 +1433,11 @@ Begin by introducing yourself and asking the first question.`;
                       onClick={() => {
                         const newQuestions = [...(localConfig.questions || defaultNuggetsPromptConfig.questions)];
                         newQuestions.splice(index, 1);
-                        handleLocalChange('questions', newQuestions);
+                        setLocalConfig(prev => ({
+                          ...prev,
+                          questions: newQuestions
+                        }));
+                        setHasUnsavedChanges(true);
                       }}
                       className="absolute top-4 right-4 text-red-500 hover:text-red-700 transition-colors"
                     >
@@ -1693,7 +1741,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Agent Name"
                     value={localConfig.agentName || ""}
-                    onChange={(e) => handleLocalChange('agentName', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        agentName: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     error={validationState.agentName?.message}
                     placeholder="Enter the AI agent's name (e.g., Elias, Sonia)"
                     className="focus:ring-2 focus:ring-amber-400"
@@ -1707,7 +1761,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Program Name"
                     value={localConfig.programName || ""}
-                    onChange={(e) => handleLocalChange('programName', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        programName: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     error={validationState.programName?.message}
                     placeholder="Enter your program or event name"
                     className="focus:ring-2 focus:ring-amber-400"
@@ -1721,7 +1781,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Location"
                     value={localConfig.location || ""}
-                    onChange={(e) => handleLocalChange('location', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        location: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="Enter the city or location"
                     className="focus:ring-2 focus:ring-amber-400"
                   />
@@ -1734,7 +1800,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Venue"
                     value={localConfig.venue || ""}
-                    onChange={(e) => handleLocalChange('venue', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        venue: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="Enter the specific venue"
                     className="focus:ring-2 focus:ring-amber-400"
                   />
@@ -1747,7 +1819,13 @@ Begin by introducing yourself and asking the first question.`;
                   <Input
                     label="Agent Personality"
                     value={localConfig.agentPersonality || ""}
-                    onChange={(e) => handleLocalChange('agentPersonality', e.target.value)}
+                    onChange={(e) => {
+                      setLocalConfig(prev => ({
+                        ...prev,
+                        agentPersonality: e.target.value
+                      }));
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="Enter personality traits"
                     className="focus:ring-2 focus:ring-amber-400"
                   />

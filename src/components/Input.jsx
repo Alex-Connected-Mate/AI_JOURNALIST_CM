@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 /**
- * Input Component
+ * Input Component - Simplified Version
  * 
- * A reusable input field component with optional label, icon, and error message.
- * Now with improved validation handling for better typing experience.
+ * A basic input field with no real-time validation to ensure smooth typing experience.
+ * All validation is deferred to form submission.
  */
-
 const Input = ({
   label,
   value,
@@ -17,80 +16,11 @@ const Input = ({
   error = null,
   icon = null,
   className = '',
-  validate,
   ...domProps
 }) => {
-  const [localValue, setLocalValue] = useState(value);
-  const [isFocused, setIsFocused] = useState(false);
-  const [internalError, setInternalError] = useState(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationTimeout, setValidationTimeout] = useState(null);
-
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  useEffect(() => {
-    setInternalError(error);
-  }, [error]);
-
-  useEffect(() => {
-    return () => {
-      if (validationTimeout) {
-        clearTimeout(validationTimeout);
-      }
-    };
-  }, [validationTimeout]);
-
-  const handleValidation = async (newValue) => {
-    if (!validate) return;
-
-    if (validationTimeout) {
-      clearTimeout(validationTimeout);
-    }
-
-    const timeoutId = setTimeout(async () => {
-      setIsValidating(true);
-      try {
-        const result = await validate(newValue);
-        setInternalError(result.isValid ? null : result.message);
-      } catch (err) {
-        console.error('Validation error:', err);
-        setInternalError(null);
-      } finally {
-        setIsValidating(false);
-      }
-    }, 1000);
-
-    setValidationTimeout(timeoutId);
-  };
-
+  // Simple handler that just passes the event to the parent component
   const handleChange = (e) => {
-    const newValue = e.target.value;
-    setLocalValue(newValue);
-    setInternalError(null);
     onChange(e);
-    
-    if (validate) {
-      handleValidation(newValue);
-    }
-  };
-
-  const handleBlur = (e) => {
-    setIsFocused(false);
-    if (domProps.onBlur) {
-      domProps.onBlur(e);
-    }
-    if (validate) {
-      handleValidation(localValue);
-    }
-  };
-
-  const handleFocus = (e) => {
-    setIsFocused(true);
-    if (domProps.onFocus) {
-      domProps.onFocus(e);
-    }
   };
 
   return (
@@ -112,42 +42,29 @@ const Input = ({
         <input
           {...domProps}
           type={type}
-          value={localValue}
+          value={value || ''}
           onChange={handleChange}
-          onBlur={handleBlur}
-          onFocus={handleFocus}
           placeholder={placeholder}
           required={required}
           className={`
             block w-full rounded-md shadow-sm
             transition-all duration-200
             ${icon ? 'pl-10' : 'pl-3'}
-            ${internalError 
+            ${error 
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-              : isFocused
-                ? 'border-purple-500 ring-1 ring-purple-500'
-                : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+              : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
             }
-            ${isValidating ? 'bg-gray-50' : 'bg-white'}
+            bg-white
             ${className}
           `}
-          aria-invalid={internalError ? 'true' : 'false'}
-          aria-describedby={internalError ? `${label}-error` : undefined}
+          aria-invalid={error ? 'true' : 'false'}
+          aria-describedby={error ? `${label}-error` : undefined}
         />
-        
-        {isValidating && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
-        )}
       </div>
       
-      {internalError && (
-        <p className="mt-1 text-sm text-red-600 transition-opacity duration-200" id={`${label}-error`}>
-          {internalError}
+      {error && (
+        <p className="mt-1 text-sm text-red-600" id={`${label}-error`}>
+          {error}
         </p>
       )}
     </div>
