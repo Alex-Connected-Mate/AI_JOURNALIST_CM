@@ -635,13 +635,8 @@ export async function createSession(sessionData: Partial<SessionData>) {
     // Generate a unique access code
     const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     
-    // Generate a unique UUID for the session
-    const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
-                     'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
-
     // Prepare session data with all required fields explicitly set
     const session = {
-      id: sessionId,
       user_id: sessionData.user_id,
       name: sessionData.title, // Explicitly set name to be the same as title
       title: sessionData.title,
@@ -650,109 +645,58 @@ export async function createSession(sessionData: Partial<SessionData>) {
       access_code: accessCode,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      settings: sessionData.settings || {
-        participant_settings: {
-          anonymity_level: 'anonymous',
-          require_approval: true,
-          allow_chat: true,
-          allow_reactions: true
-        },
-        ai_configuration: {
-          model: 'gpt-4',
-          temperature: 0.7,
-          max_tokens: 2000,
-          presence_penalty: 0.5,
-          frequency_penalty: 0.5,
-          custom_instructions: null
-        }
-      }
+      settings: sessionData.settings || {}
     };
 
     try {
-      console.log('Creating new session, attempting direct insertion');
+      console.log('Attempting session upsert with ON CONFLICT handling');
       
-      // Attempt a direct insert with our pre-generated ID
+      // Utiliser upsert qui s'appuiera sur la contrainte d'unicité user_id,title
+      // que vous allez configurer dans la base de données
       const { data, error } = await supabase
         .from('sessions')
-        .insert(session)
+        .upsert(session, { 
+          onConflict: 'user_id,title' 
+        })
         .select()
         .single();
       
       if (error) {
-        console.error('Session insertion error:', error);
+        console.error('Session upsert error:', error);
         
-        // If first insertion fails, try an alternative approach
-        console.log('Received ON CONFLICT error, trying alternative insertion approach');
+        // Tenter une approche alternative avec insertion explicite si l'upsert échoue
+        console.log('Trying alternative insertion approach');
         
-        // Just to be safe, check if a session with this user_id and title already exists
-        const { data: existingSessions, error: checkError } = await supabase
+        // Génération d'un ID explicite pour éviter les problèmes de contrainte
+        const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
+                         'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+        
+        const { data: insertData, error: insertError } = await supabase
           .from('sessions')
-          .select('id')
-          .eq('user_id', sessionData.user_id)
-          .eq('title', sessionData.title)
-          .limit(1);
+          .insert({
+            id: sessionId,
+            user_id: session.user_id,
+            name: session.title,
+            title: session.title,
+            description: session.description,
+            status: session.status,
+            access_code: session.access_code,
+            settings: session.settings,
+            created_at: session.created_at,
+            updated_at: session.updated_at
+          })
+          .select()
+          .single();
         
-        if (checkError) {
-          console.error('Error checking for existing session:', checkError);
-          throw checkError;
+        if (insertError) {
+          console.error('Alternative insertion also failed:', insertError);
+          throw insertError;
         }
         
-        if (existingSessions && existingSessions.length > 0) {
-          // If session exists, update it
-          const existingId = existingSessions[0].id;
-          console.log('Found existing session, updating with ID:', existingId);
-          
-          const { data: updatedData, error: updateError } = await supabase
-            .from('sessions')
-            .update({
-              description: session.description,
-              status: session.status,
-              access_code: session.access_code,
-              settings: session.settings,
-              updated_at: session.updated_at
-            })
-            .eq('id', existingId)
-            .select()
-            .single();
-          
-          if (updateError) {
-            console.error('Error updating existing session:', updateError);
-            throw updateError;
-          }
-          
-          return { data: updatedData, error: null };
-        } else {
-          // Try a third approach: Use raw upsert query with explicit columns
-          console.log('Second insertion attempt with more explicit approach');
-          
-          const { data: insertData, error: secondError } = await supabase
-            .from('sessions')
-            .insert({
-              id: crypto.randomUUID ? crypto.randomUUID() : 
-                  'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
-              user_id: session.user_id,
-              name: session.title, // Explicitly set name to ensure they match
-              title: session.title,
-              description: session.description,
-              status: session.status,
-              access_code: session.access_code,
-              settings: session.settings,
-              created_at: session.created_at,
-              updated_at: session.updated_at
-            })
-            .select()
-            .single();
-          
-          if (secondError) {
-            console.error('Second insertion attempt also failed:', secondError);
-            throw secondError;
-          }
-          
-          return { data: insertData, error: null };
-        }
+        return { data: insertData, error: null };
       }
       
-      console.log('Session created successfully:', data);
+      console.log('Session created/updated successfully:', data);
       return { data, error: null };
     } catch (error) {
       console.error('Session creation failed with critical error:', error);

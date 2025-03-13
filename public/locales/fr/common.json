@@ -1,0 +1,44 @@
+{
+  "session": {
+    "flow": {
+      "lightbulb_desc": "Capture et analyse des idées innovantes et créatives",
+      "lightbulb_short": "Ampoules",
+      "ai_interaction_desc": "Configuration de l'interaction avec l'IA",
+      "ai_nuggets_short": "Pépites IA",
+      "discussion_desc": "Configuration des paramètres de discussion",
+      "discussion_short": "Discussion",
+      "connection_desc": "Configuration des paramètres de connexion",
+      "connection_short": "Connexion",
+      "basic_info_desc": "Informations de base sur la session",
+      "basic_info_short": "Infos de base"
+    }
+  },
+  "connection": {
+    "images_note_desc": "Note concernant l'utilisation des images",
+    "images_note": "Images de profil",
+    "access_desc": "Configuration des paramètres d'accès",
+    "access_info": "Informations d'accès",
+    "best_practice_3": "Choisissez un niveau d'anonymat qui convient à l'objectif de votre session",
+    "best_practice_2": "Assurez-vous que les participants comprennent comment ils seront identifiés",
+    "best_practice_1": "L'anonymat favorise des contributions plus honnêtes",
+    "best_practices": {
+      "title": "Bonnes pratiques",
+      "description": "Conseils pour configurer vos paramètres de connexion"
+    },
+    "approval_required_desc": "Exiger l'approbation avant que les participants puissent rejoindre la session",
+    "approval_required": "Approbation requise",
+    "enable_colors_desc": "Activer les couleurs pour différencier visuellement les participants",
+    "enable_colors": "Activer les couleurs",
+    "semi_anonymous_info_desc": "Informations sur le mode semi-anonyme",
+    "semi_anonymous_info": "Mode semi-anonyme",
+    "preview_title": "Aperçu",
+    "anonymous_desc": "Les participants sont complètement anonymes",
+    "anonymous": "Anonyme",
+    "semi_anonymous_desc": "Les participants sont identifiés par un pseudonyme",
+    "semi_anonymous": "Semi-anonyme",
+    "identified_desc": "Les participants sont identifiés par leur nom complet",
+    "identified": "Identifié",
+    "anonymity_level": "Niveau d'anonymat",
+    "description": "Configurez comment les participants se connecteront à cette session"
+  }
+} 
