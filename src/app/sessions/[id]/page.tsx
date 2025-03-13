@@ -168,6 +168,12 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
       : '';
   };
   
+  // Créer une URL plus directe pour le QR code
+  const getDirectJoinUrl = () => {
+    if (typeof window === 'undefined' || !session) return '';
+    return `${window.location.origin}/join/${session.session_code}`;
+  };
+  
   // Copier l'URL dans le presse-papier
   const copyShareUrl = () => {
     navigator.clipboard.writeText(getShareUrl())
@@ -182,8 +188,8 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   
   // Générer un QR code pour rejoindre la session
   const getQRCodeUrl = () => {
-    const shareUrl = getShareUrl();
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
+    const directUrl = getDirectJoinUrl();
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(directUrl)}`;
   };
   
   if (loading) {

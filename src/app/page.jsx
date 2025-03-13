@@ -60,9 +60,14 @@ export default function HomePage() {
             <Link href="/join" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-2 border-green-100">
               <h2 className="text-xl font-semibold mb-3 text-green-700">Participer à une session</h2>
               <p className="text-gray-600">Rejoignez une session en tant que participant avec un code</p>
-              <span className="inline-block mt-3 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
-                Aucun compte requis
-              </span>
+              <div className="mt-3 space-y-2">
+                <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                  Aucun compte requis
+                </span>
+                <p className="text-xs text-gray-500">
+                  Scannez un QR code ou entrez manuellement un code de session
+                </p>
+              </div>
             </Link>
           </div>
           

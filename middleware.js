@@ -20,6 +20,12 @@ export function middleware(request) {
     return NextResponse.next();
   }
   
+  // Vérifier si c'est une route de join avec code (/join/CODE)
+  if (pathname.startsWith('/join/')) {
+    // C'est une route d'accès direct par code de session, permettre l'accès
+    return NextResponse.next();
+  }
+  
   // Vérifier si c'est un chemin de participation
   const isParticipationPath = participationPaths.some(path => {
     // Convertir le modèle de chemin en RegExp

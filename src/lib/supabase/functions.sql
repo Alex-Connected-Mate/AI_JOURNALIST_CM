@@ -88,4 +88,50 @@ END;
 $$;
 
 -- Donner les droits d'exécution à tous les utilisateurs authentifiés
-GRANT EXECUTE ON FUNCTION create_session_notification TO authenticated; 
+GRANT EXECUTE ON FUNCTION create_session_notification TO authenticated;
+
+-- Fonction pour vérifier si un code de session est valide
+-- Cette fonction est SECURITY DEFINER pour contourner les restrictions RLS
+CREATE OR REPLACE FUNCTION verify_session_code(
+  p_session_code TEXT
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_session_id UUID;
+  v_session_name TEXT;
+  v_session_status TEXT;
+BEGIN
+  -- Rechercher la session par code
+  SELECT id, name, status 
+  INTO v_session_id, v_session_name, v_session_status
+  FROM sessions
+  WHERE session_code = p_session_code;
+  
+  -- Vérifier si la session existe
+  IF v_session_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Session introuvable'
+    );
+  END IF;
+  
+  -- Vérifier si la session est active ou en brouillon
+  IF v_session_status != 'active' AND v_session_status != 'draft' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Cette session n''est plus active'
+    );
+  END IF;
+  
+  -- Session valide, retourner les informations
+  RETURN jsonb_build_object(
+    'success', true,
+    'session_id', v_session_id,
+    'session_name', v_session_name,
+    'session_status', v_session_status
+  );
+END;
+$$;
+
+-- Donner les droits d'exécution à tous les utilisateurs, même non authentifiés
+GRANT EXECUTE ON FUNCTION verify_session_code TO anon, authenticated; 
