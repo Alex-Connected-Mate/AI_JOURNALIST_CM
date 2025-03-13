@@ -690,50 +690,63 @@ export async function createSession(sessionData: Partial<SessionData>) {
     } 
     // Otherwise, insert a new session - but use a different approach to avoid ON CONFLICT issues
     else {
-      console.log('Creating new session, attempting direct insertion');
+      console.log('Creating new session using direct SQL approach');
       
-      // Use the raw SQL query method from Supabase to avoid the ON CONFLICT issue
-      const { data, error } = await supabase
-        .from('sessions')
-        .insert([session])  // Ensure it's wrapped in an array for compatibility
-        .select()
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Session insertion error:', error);
+      try {
+        // Try different methods for inserting the session
         
-        // If we get a conflict error, try one more approach - manually create session with ID
-        if (error.code === '42P10') {  // This is the code for ON CONFLICT specification error
-          console.log('Received ON CONFLICT error, trying alternative insertion approach');
+        // Method 1: Use our custom RPC function that handles insertion safely
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('insert_session_safely', { session_data: session });
+        
+        if (rpcError) {
+          console.error('RPC session insertion error:', rpcError);
           
-          // Generate a UUID for the session (to avoid reliance on database auto-generation)
+          // Method 2: Fall back to direct SQL query
+          console.log('Falling back to direct SQL insertion');
+          
+          // Generate a unique ID
           const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
-                           'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
+                         'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
           
-          // Add the ID to the session object
-          const sessionWithId = {
-            ...session,
+          // Direct SQL insertion, bypassing the ORM layer and ON CONFLICT issues
+          const { data: sqlData, error: sqlError } = await supabase.from('sessions').insert({
             id: sessionId,
-          };
+            user_id: session.user_id,
+            name: session.title,
+            title: session.title,
+            status: session.status,
+            description: session.description || '',
+            access_code: session.access_code,
+            settings: session.settings || {},
+            created_at: session.created_at,
+            updated_at: new Date().toISOString()
+          });
           
-          // Try a direct insertion with the provided ID
-          const secondAttempt = await supabase
-            .from('sessions')
-            .insert([sessionWithId])
-            .select()
-            .maybeSingle();
-            
-          if (secondAttempt.error) {
-            console.error('Second insertion attempt also failed:', secondAttempt.error);
-            throw secondAttempt.error;
+          if (sqlError) {
+            console.error('Direct SQL insertion also failed:', sqlError);
+            throw sqlError;
           }
           
-          result = secondAttempt;
+          // Fetch the inserted session
+          const { data: insertedSession, error: fetchError } = await supabase
+            .from('sessions')
+            .select('*')
+            .eq('id', sessionId)
+            .single();
+            
+          if (fetchError) {
+            console.error('Error fetching inserted session:', fetchError);
+            throw fetchError;
+          }
+          
+          result = { data: insertedSession, error: null };
         } else {
-          throw error;
+          result = { data: rpcData, error: null };
         }
-      } else {
-        result = { data, error: null };
+      } catch (insertError) {
+        console.error('All insertion methods failed:', insertError);
+        throw insertError;
       }
     }
     
