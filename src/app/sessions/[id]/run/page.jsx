@@ -109,9 +109,10 @@ export default function SessionRunPage({ params }) {
         // Générer l'URL de partage
         if (typeof window !== 'undefined') {
           // Utiliser code ou session_code selon ce qui est disponible
-          const sessionCode = sessionData?.code || sessionData?.session_code;
+          const sessionCode = sessionData?.session_code || sessionData?.code;
           if (sessionCode) {
-            setShareUrl(`${window.location.origin}/join?code=${sessionCode}`);
+            const baseUrl = window.location.origin;
+            setShareUrl(`${baseUrl}/join?code=${sessionCode}`);
           } else {
             console.error("Aucun code de session trouvé dans les données de session:", sessionData);
           }
@@ -364,8 +365,8 @@ export default function SessionRunPage({ params }) {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
         <DotPattern className="absolute inset-0 z-0" />
         <div className="text-center relative z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement de la présentation...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto"></div>
+          <p className="mt-6 text-xl text-gray-600">Chargement de la présentation...</p>
         </div>
       </div>
     );
@@ -394,253 +395,404 @@ export default function SessionRunPage({ params }) {
     switch (currentPhase) {
       case PHASES.JOIN:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8">
-              <h2 className="text-2xl font-bold text-center mb-6">Rejoindre la session</h2>
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                Rejoindre la session
+              </motion.h2>
               
-              <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
-                <div className="flex-1">
-                  <p className="text-lg mb-4">
-                    Scannez le QR code ou utilisez le code de session pour rejoindre:
-                  </p>
-                  <div className="bg-gray-50 p-6 rounded-lg text-center border">
-                    <p className="font-mono text-3xl font-bold tracking-wider">
-                      {session?.code || session?.session_code || 'CODE'}
-                    </p>
-                    <p className="mt-2 text-sm text-gray-600">
-                      Partagez l'URL: <span className="font-medium break-all">{shareUrl}</span>
-                    </p>
-                  </div>
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-600">
-                      Participants connectés: <span className="font-semibold">{participants.length} / {session?.max_participants || 30}</span>
-                    </p>
-                  </div>
-                </div>
-                
-                {shareUrl && (
-                  <div className="flex-shrink-0 bg-white p-3 border rounded-lg shadow-md">
+              <div className="flex flex-col lg:flex-row gap-12 items-center justify-center">
+                {shareUrl ? (
+                  <motion.div 
+                    className="flex-shrink-0 bg-white p-6 border-4 border-gray-200 rounded-lg shadow-lg"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                  >
+                    <div className="mb-4 text-xl font-medium">Scanner le QR code</div>
                     <QRCode 
                       value={shareUrl}
-                      size={200}
-                      fgColor="#343A46"
+                      size={300}
+                      fgColor="#000000"
                       bgColor="#ffffff"
-                      level="M"
+                      level="H"
                     />
-                  </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className="flex-shrink-0 bg-white p-6 border-4 border-gray-200 rounded-lg shadow-lg flex items-center justify-center"
+                    style={{ width: 300, height: 300 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                  >
+                    <div className="text-gray-500 text-center">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p>Génération du QR code...</p>
+                    </div>
+                  </motion.div>
                 )}
+                
+                <motion.div 
+                  className="flex-1 max-w-md"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  <div className="text-left mb-8">
+                    <p className="text-2xl mb-3 font-medium">
+                      Instructions pour rejoindre:
+                    </p>
+                    <ol className="list-decimal pl-6 text-xl space-y-4 mb-6">
+                      <li>Ouvrez votre navigateur</li>
+                      <li>Allez sur <span className="font-bold">{shareUrl ? new URL(shareUrl).origin : window.location.origin}</span></li>
+                      <li>Cliquez sur "Rejoindre une session"</li>
+                      <li>Entrez le code ci-dessous</li>
+                    </ol>
+                  </div>
+                  
+                  <div className="text-left mb-8">
+                    <p className="text-2xl mb-3 font-medium">
+                      Code de session:
+                    </p>
+                    <div className="bg-primary p-6 rounded-lg text-center border-2 border-primary shadow-md">
+                      <p className="font-mono text-5xl font-bold tracking-wider text-white">
+                        {session?.session_code || session?.code || 'CODE'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-left">
+                    <p className="text-2xl font-medium mb-3">
+                      Participants connectés:
+                    </p>
+                    <div className="flex items-baseline">
+                      <p className="text-4xl font-bold text-primary">
+                        {participants.length}
+                      </p>
+                      <span className="text-gray-500 text-2xl ml-2">/ {session?.max_participants || 30}</span>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </div>
             
-            <div className="bg-gray-50 p-6 rounded-b-lg border-t">
-              <h3 className="font-semibold mb-4">Participants ({participants.length})</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <motion.div 
+              className="bg-gray-50 p-8 rounded-b-lg border-t"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+            >
+              <h3 className="text-2xl font-semibold mb-6">Participants</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 <AnimatePresence>
                   {participants.map(participant => (
                     <motion.div 
                       key={participant.id} 
-                      className={`bg-white p-2 rounded border shadow-sm ${
-                        newParticipantIds.includes(participant.id) ? 'border-primary' : ''
+                      className={`bg-white p-3 rounded-lg border-2 ${
+                        newParticipantIds.includes(participant.id) ? 'border-primary' : 'border-gray-200'
                       }`}
                       initial={newParticipantIds.includes(participant.id) ? { scale: 0.8, opacity: 0 } : false}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${
-                          newParticipantIds.includes(participant.id) ? 'bg-primary' : 'bg-gray-400'
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg ${
+                          newParticipantIds.includes(participant.id) ? 'bg-primary' : 'bg-gray-500'
                         }`}>
-                          {participant.display_name?.charAt(0) || 'A'}
+                          {participant.display_name?.charAt(0).toUpperCase() || 'A'}
                         </div>
-                        <span className="truncate">{participant.display_name || 'Anonyme'}</span>
+                        <span className="truncate text-lg">{participant.display_name || 'Anonyme'}</span>
                       </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
                 {participants.length === 0 && (
-                  <p className="text-gray-500 col-span-4">Aucun participant pour le moment</p>
+                  <p className="text-gray-500 col-span-5 text-xl text-center py-6">En attente de participants...</p>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
         );
         
       case PHASES.INSTRUCTIONS:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <h2 className="text-3xl font-bold mb-6">Instructions</h2>
-              <div className="bg-blue-50 p-10 rounded-lg border border-blue-100">
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                Instructions
+              </motion.h2>
+              
+              <motion.div 
+                className="bg-blue-50 p-10 rounded-lg border-2 border-blue-100 mb-12"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
                 <motion.p 
-                  className="text-xl"
+                  className="text-2xl"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
                 >
                   {session?.discussion_instructions || 
                    "Les participants vont maintenant discuter entre eux. Échangez vos idées sur le sujet proposé."}
                 </motion.p>
-              </div>
+              </motion.div>
               
-              <div className="mt-8 flex justify-center">
-                <div className="inline-block bg-white p-4 rounded-lg border shadow-sm">
-                  <p className="font-mono text-lg font-semibold mb-1">Participants: {participants.length}</p>
-                  <p className="font-mono text-lg font-semibold">Durée: {formatTime(timerDuration)}</p>
+              <motion.div 
+                className="mt-12 flex justify-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <div className="inline-block bg-white p-6 rounded-lg border-2 shadow-md">
+                  <div className="flex flex-col md:flex-row gap-8 items-center">
+                    <div className="text-center">
+                      <p className="text-lg text-gray-600 mb-1">Participants</p>
+                      <p className="font-mono text-3xl font-semibold text-primary">{participants.length}</p>
+                    </div>
+                    
+                    <div className="h-12 w-px bg-gray-300 hidden md:block"></div>
+                    
+                    <div className="text-center">
+                      <p className="text-lg text-gray-600 mb-1">Durée prévue</p>
+                      <p className="font-mono text-3xl font-semibold text-primary">{formatTime(timerDuration)}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         );
         
       case PHASES.DISCUSSION:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <h2 className="text-3xl font-bold mb-6">Phase de discussion</h2>
-              
-              <motion.div 
-                className="bg-blue-50 p-10 rounded-lg border border-blue-100 mb-6"
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <p className="text-xl mb-6">
-                  {session?.discussion_instructions || 
-                   "Les participants discutent entre eux. Échangez vos idées sur le sujet proposé."}
-                </p>
+                Phase de discussion
+              </motion.h2>
+              
+              <motion.div 
+                className="bg-blue-50 p-10 rounded-lg border-2 border-blue-100 mb-8"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <motion.p 
+                  className="text-2xl mb-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  {session?.discussion_topic || 
+                   "Les participants échangent leurs idées sur le sujet de la session."}
+                </motion.p>
                 
-                <div className="bg-white rounded-lg p-6 border border-blue-200 inline-block">
-                  <div className="text-4xl font-bold text-primary mb-2">{formatTime(timer)}</div>
-                  <p className="text-sm text-gray-600">Temps restant</p>
-                </div>
+                {timerActive && (
+                  <motion.div 
+                    className="bg-white p-6 rounded-lg border-2 border-blue-200 mx-auto max-w-xs"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                  >
+                    <p className="text-center text-5xl font-bold text-primary">{formatTime(timer)}</p>
+                    <p className="text-center text-lg text-gray-600 mt-2">Temps restant</p>
+                  </motion.div>
+                )}
               </motion.div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-6">
-                {participants.map(participant => (
-                  <div key={participant.id} className="bg-white p-2 rounded border shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white bg-gray-400">
-                        {participant.display_name?.charAt(0) || 'A'}
-                      </div>
-                      <span className="truncate">{participant.display_name || 'Anonyme'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <motion.div 
+                className="bg-gray-50 p-8 rounded-lg border border-gray-200 max-w-2xl mx-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <h3 className="text-xl font-semibold mb-4">Instructions pour les participants</h3>
+                <ul className="text-left space-y-3 text-lg">
+                  <li>🗣️ <span className="font-medium">Discutez</span> ensemble du sujet proposé</li>
+                  <li>🤝 <span className="font-medium">Échangez</span> des idées et perspectives différentes</li>
+                  <li>📝 <span className="font-medium">Prenez note</span> des participants avec qui vous avez des échanges intéressants</li>
+                  <li>⭐ Vous pourrez <span className="font-medium">voter</span> pour vos interlocuteurs favoris lors de la prochaine phase</li>
+                </ul>
+              </motion.div>
             </div>
           </div>
         );
         
       case PHASES.VOTING:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <h2 className="text-3xl font-bold mb-6">Phase de vote</h2>
-              
-              <motion.div 
-                className="bg-green-50 p-10 rounded-lg border border-green-100 mb-6"
-                initial={{ opacity: 0, y: 20 }}
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <p className="text-xl mb-6">
-                  {session?.voting_instructions || 
-                   "Votez pour les participants avec lesquels vous avez eu les échanges les plus intéressants."}
-                </p>
+                Phase de vote
+              </motion.h2>
+              
+              <motion.div 
+                className="bg-purple-50 p-10 rounded-lg border-2 border-purple-100 mb-8"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <motion.p 
+                  className="text-2xl mb-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  C'est le moment de voter pour les participants qui ont apporté les meilleures contributions !
+                </motion.p>
                 
-                <div className="bg-white rounded-lg p-6 border border-green-200 inline-block">
-                  <div className="text-4xl font-bold text-primary mb-2">{formatTime(timer)}</div>
-                  <p className="text-sm text-gray-600">Temps restant pour voter</p>
-                </div>
+                {timerActive && (
+                  <motion.div 
+                    className="bg-white p-6 rounded-lg border-2 border-purple-200 mx-auto max-w-xs"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                  >
+                    <p className="text-center text-5xl font-bold text-primary">{formatTime(timer)}</p>
+                    <p className="text-center text-lg text-gray-600 mt-2">Temps restant</p>
+                  </motion.div>
+                )}
               </motion.div>
               
-              <p className="mb-4 text-gray-600">
-                Les participants peuvent voter en utilisant leur smartphone.
-                <br />
-                Maximum {session?.max_votes_per_participant || 3} votes par personne.
-              </p>
+              <motion.div 
+                className="bg-gray-50 p-8 rounded-lg border border-gray-200 max-w-2xl mx-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <h3 className="text-xl font-semibold mb-4">Instructions pour les participants</h3>
+                <ul className="text-left space-y-3 text-lg">
+                  <li>✨ <span className="font-medium">Utilisez vos votes</span> pour les participants les plus pertinents</li>
+                  <li>🔍 <span className="font-medium">Recherchez</span> les identifiants des participants que vous souhaitez soutenir</li>
+                  <li>💡 <span className="font-medium">Pensez aux participants</span> qui ont partagé des idées originales ou utiles</li>
+                  <li>⏱️ <span className="font-medium">Votez rapidement</span> avant la fin du décompte</li>
+                </ul>
+              </motion.div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-6">
-                {participants.map(participant => (
-                  <motion.div 
-                    key={participant.id} 
-                    className="bg-white p-3 rounded border shadow-sm"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 10 }}
-                  >
-                    <div className="flex flex-col items-center">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-gray-400 mb-2">
-                        {participant.display_name?.charAt(0) || 'A'}
-                      </div>
-                      <span className="truncate font-medium">{participant.display_name || 'Anonyme'}</span>
-                      <span className="text-xs text-gray-500">ID: {participant.id.substring(0, 8)}</span>
-                      <div className="mt-2 bg-gray-100 px-2 py-1 rounded text-sm">
-                        {participant.votes || 0} votes
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              <motion.div 
+                className="mt-8 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+              >
+                <p className="text-gray-600">
+                  Les participants les plus votés pourront interagir avec l'Intelligence Artificielle !
+                </p>
+              </motion.div>
             </div>
           </div>
         );
         
       case PHASES.INTERACTION:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <h2 className="text-3xl font-bold mb-6">Phase d'interaction avec l'IA</h2>
-              
-              <motion.div 
-                className="bg-indigo-50 p-10 rounded-lg border border-indigo-100 mb-6"
-                initial={{ opacity: 0, y: 20 }}
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <p className="text-xl mb-6">
-                  Les participants sélectionnés discutent maintenant avec un AI journaliste pour approfondir leurs idées.
-                </p>
+                Interaction avec l'IA
+              </motion.h2>
+              
+              <motion.div 
+                className="bg-blue-50 p-10 rounded-lg border-2 border-blue-100 mb-8"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <motion.p 
+                  className="text-2xl mb-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  Les participants sélectionnés peuvent maintenant interagir avec l'IA pour approfondir leurs idées.
+                </motion.p>
                 
                 {timerActive && (
-                  <div className="bg-white rounded-lg p-6 border border-indigo-200 inline-block">
-                    <div className="text-4xl font-bold text-primary mb-2">{formatTime(timer)}</div>
-                    <p className="text-sm text-gray-600">Temps restant pour l'interaction</p>
-                  </div>
+                  <motion.div 
+                    className="bg-white p-6 rounded-lg border-2 border-blue-200 mx-auto max-w-xs"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                  >
+                    <p className="text-center text-5xl font-bold text-primary">{formatTime(timer)}</p>
+                    <p className="text-center text-lg text-gray-600 mt-2">Temps restant</p>
+                  </motion.div>
                 )}
               </motion.div>
               
-              <h3 className="text-xl font-semibold mb-4">Participants sélectionnés</h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                {topParticipants.map((participant, index) => (
-                  <motion.div 
-                    key={participant.id} 
-                    className="bg-white p-4 rounded-lg border shadow-md"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.1, duration: 0.5 }}
-                  >
-                    <div className="flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-full flex items-center justify-center text-white bg-primary mb-3 text-2xl">
-                        {participant.display_name?.charAt(0) || 'A'}
-                      </div>
-                      <span className="font-semibold text-lg">{participant.display_name || 'Anonyme'}</span>
-                      <div className="mt-2 bg-blue-100 px-3 py-1.5 rounded-full text-blue-800">
-                        {participant.votes || 0} votes
-                      </div>
-                      <div className="mt-3 text-sm text-gray-600">
-                        Interaction avec l'IA en cours...
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+              <motion.div 
+                className="mt-8 max-w-2xl mx-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <h3 className="text-2xl font-semibold mb-6">Participants sélectionnés</h3>
                 
-                {topParticipants.length === 0 && (
-                  <div className="col-span-3 p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-gray-600">Aucun participant sélectionné pour le moment.</p>
-                  </div>
-                )}
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {topParticipants.map((participant, index) => (
+                    <motion.div 
+                      key={participant.id}
+                      className="bg-white p-4 rounded-lg border-2 shadow-md"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 + (index * 0.1) }}
+                    >
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
+                          {participant.display_name?.charAt(0).toUpperCase() || 'A'}
+                        </div>
+                        <p className="text-xl font-semibold mb-1">{participant.display_name || 'Anonyme'}</p>
+                        <p className="text-gray-500 text-sm mb-2">ID: {participant.id.substring(0, 8)}</p>
+                        <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
+                          {participant.votes || 0} votes
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                  
+                  {topParticipants.length === 0 && (
+                    <p className="text-gray-500 col-span-3 text-center py-4">Aucun participant sélectionné</p>
+                  )}
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                className="mt-10 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.8 }}
+              >
+                <p className="text-gray-600">
+                  Les participants interagissent avec l'IA sur leurs appareils mobiles.
+                </p>
+              </motion.div>
             </div>
           </div>
         );
@@ -717,47 +869,93 @@ export default function SessionRunPage({ params }) {
         
       case PHASES.CONCLUSION:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <h2 className="text-3xl font-bold mb-6">Session terminée</h2>
-              
-              <motion.div 
-                className="bg-green-50 p-10 rounded-lg border border-green-100 mb-6"
-                initial={{ opacity: 0, y: 20 }}
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center mx-auto mb-6">
+                Session terminée
+              </motion.h2>
+              
+              <motion.div 
+                className="bg-green-50 p-10 rounded-lg border-2 border-green-100 mb-10"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center mx-auto mb-6 shadow-md">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 
-                <p className="text-xl mb-4">
+                <motion.p 
+                  className="text-2xl font-medium mb-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
                   Merci à tous les participants pour cette session !
-                </p>
+                </motion.p>
                 
-                <p className="text-gray-600">
-                  Vous pouvez vous reconnecter à la session avec le même code QR pour accéder 
-                  aux analyses et aux "books" des discussions.
-                </p>
+                <motion.p 
+                  className="text-xl text-gray-600"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  Les participants peuvent se reconnecter à la session avec le même code pour accéder aux analyses et aux résultats.
+                </motion.p>
               </motion.div>
               
-              <div className="flex justify-center gap-4">
+              <motion.div 
+                className="bg-gray-50 p-8 rounded-lg border border-gray-200 max-w-2xl mx-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+              >
+                <h3 className="text-xl font-semibold mb-4">Statistiques de la session</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <p className="text-gray-600 mb-2">Participants</p>
+                    <p className="text-4xl font-bold text-primary">{participants.length}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 mb-2">Votes totaux</p>
+                    <p className="text-4xl font-bold text-primary">
+                      {participants.reduce((sum, p) => sum + (p.votes || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-gray-600 mb-2">Idées exploréees</p>
+                    <p className="text-4xl font-bold text-primary">{topParticipants.length}</p>
+                  </div>
+                </div>
+              </motion.div>
+              
+              <motion.div 
+                className="flex justify-center gap-4 mt-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+              >
                 <Link
                   href={`/sessions/${sessionId}/results`}
-                  className="px-5 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+                  className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-lg"
                 >
                   Voir les résultats détaillés
                 </Link>
                 
                 <Link
                   href={`/sessions/${sessionId}`}
-                  className="px-5 py-2 bg-white border border-gray-300 text-gray-800 rounded-md hover:bg-gray-50 transition-colors"
+                  className="px-6 py-3 bg-white border border-gray-300 text-gray-800 rounded-md hover:bg-gray-50 transition-colors text-lg"
                 >
                   Retour à la session
                 </Link>
-              </div>
+              </motion.div>
             </div>
           </div>
         );
@@ -768,7 +966,7 @@ export default function SessionRunPage({ params }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-0 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 py-8 relative overflow-hidden">
       <DotPattern className="absolute inset-0 z-0" />
       
       {/* Élément audio pour le son de fin de timer */}
@@ -777,27 +975,14 @@ export default function SessionRunPage({ params }) {
       </audio>
       
       {/* Contenu du slide actuel */}
-      <div className="container mx-auto px-4 min-h-screen flex flex-col">
-        <div className="flex-grow flex items-center justify-center py-8">
+      <div className="container mx-auto px-6 min-h-screen flex flex-col">
+        <div className="flex-grow flex items-center justify-center">
           {renderPhaseContent()}
         </div>
         
-        {/* Navigation entre phases */}
-        <div className="flex justify-between items-center p-4 bg-white border-t border-gray-200 sticky bottom-16 z-10 rounded-t-lg">
-          <div className="flex flex-col">
-            <p className="text-sm text-gray-600">Phase actuelle:</p>
-            <p className="font-medium">{
-              currentPhase === PHASES.JOIN ? 'Connexion' :
-              currentPhase === PHASES.INSTRUCTIONS ? 'Instructions' :
-              currentPhase === PHASES.DISCUSSION ? 'Discussion' :
-              currentPhase === PHASES.VOTING ? 'Vote' :
-              currentPhase === PHASES.INTERACTION ? 'Interaction IA' :
-              currentPhase === PHASES.ANALYSIS ? 'Analyse' :
-              'Conclusion'
-            }</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
+        {/* Navigation entre phases - redesigned and moved to bottom right */}
+        <div className="fixed bottom-8 right-8 flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg shadow-lg z-30">
+          <div className="flex items-center gap-2 mr-2">
             {Object.values(PHASES).map((phase) => (
               <div 
                 key={phase} 
@@ -816,16 +1001,6 @@ export default function SessionRunPage({ params }) {
               <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 010-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
-        </div>
-      </div>
-      
-      {/* Footer avec branding */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white py-3 border-t border-gray-200 shadow-md z-20">
-        <div className="container mx-auto px-4 flex justify-center items-center">
-          <div className="flex items-center">
-            <span className="font-medium text-base text-gray-700">Clipboard by </span>
-            <span className="ml-1 font-bold text-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text">ConnectedMate</span>
-          </div>
         </div>
       </div>
     </div>
