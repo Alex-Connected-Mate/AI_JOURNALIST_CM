@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
+import SessionStartedNotification from '@/components/SessionStartedNotification';
 
 interface SessionDetailPageProps {
   params: {
@@ -26,6 +27,9 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
   const [showCopiedMessage, setShowCopiedMessage] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [sessionJustStarted, setSessionJustStarted] = useState(false);
   
   // Charger les informations de la session
   useEffect(() => {
@@ -129,8 +133,12 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
         console.error('Erreur lors de la création des notifications:', notifError);
       }
       
-      // Recharger la page pour afficher le nouvel état
-      window.location.reload();
+      // Mettre à jour localement le statut de la session
+      setSession({...session, status: 'active'});
+      
+      // Afficher la notification de session démarrée
+      setSessionJustStarted(true);
+      
     } catch (err: any) {
       console.error('Error starting voting:', err);
       setError("Impossible de démarrer la phase de vote. Veuillez réessayer.");
@@ -163,8 +171,8 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   
   // Créer une URL de partage pour la session
   const getShareUrl = () => {
-    return typeof window !== 'undefined' 
-      ? `${window.location.origin}/sessions/${sessionId}/join` 
+    return typeof window !== 'undefined' && session
+      ? `${window.location.origin}/join/${session.session_code}`
       : '';
   };
   
@@ -190,6 +198,27 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   const getQRCodeUrl = () => {
     const directUrl = getDirectJoinUrl();
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(directUrl)}`;
+  };
+  
+  // Fonction pour supprimer une session
+  const handleDeleteSession = async () => {
+    if (!session || !isHost || deleteConfirmText !== session.name) return;
+    
+    try {
+      // Supprimer la session
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', sessionId);
+        
+      if (error) throw error;
+      
+      // Rediriger vers le tableau de bord
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error('Error deleting session:', err);
+      setError("Impossible de supprimer la session. Veuillez réessayer.");
+    }
   };
   
   if (loading) {
@@ -345,6 +374,17 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
                 </svg>
                 Modifier
               </Link>
+              
+              {/* Bouton de suppression */}
+              <button 
+                onClick={() => setShowDeleteConfirm(true)}
+                className="cm-button-secondary flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Supprimer
+              </button>
             </div>
           )}
         </div>
@@ -353,84 +393,105 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
       {/* Contenu principal de la session selon son statut */}
       {session.status === 'draft' && (
         <div className="bento-card">
-          <h2 className="text-xl font-semibold mb-4">Partager la session</h2>
+          <h2 className="text-xl font-semibold mb-4">Session en préparation</h2>
           <p className="text-gray-600 mb-6">
-            Partagez ce lien avec vos participants pour qu'ils puissent rejoindre la session.
+            Cette session est en cours de préparation. Cliquez sur "Démarrer la session" quand vous êtes prêt à commencer.
           </p>
           
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={getShareUrl()}
-                  readOnly
-                  className="cm-input pr-24"
-                />
-                <button
-                  onClick={copyShareUrl}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 cm-button-secondary text-sm py-1 px-3"
-                >
-                  {showCopiedMessage ? 'Copié !' : 'Copier'}
-                </button>
-              </div>
-              
-              <div className="mt-4">
-                <h3 className="font-medium mb-2">Instructions pour les participants</h3>
-                <ol className="list-decimal list-inside text-gray-700 space-y-2">
-                  <li>Cliquez sur le lien ci-dessus pour rejoindre la session</li>
-                  <li>Connectez-vous ou créez un compte si nécessaire</li>
-                  <li>Attendez que l'hôte démarre la session</li>
-                </ol>
-              </div>
-            </div>
-            
-            <div className="flex-shrink-0 flex flex-col items-center">
-              <div className="bg-white p-2 border rounded-lg shadow-sm">
-                <Image
-                  src={getQRCodeUrl()}
-                  alt="QR Code pour rejoindre la session"
-                  width={150}
-                  height={150}
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-2">Scanner pour rejoindre</p>
-            </div>
+          <div className="flex justify-center">
+            <button 
+              onClick={handleStartVoting}
+              className="cm-button flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+              </svg>
+              Démarrer la session
+            </button>
           </div>
         </div>
       )}
       
       {session.status === 'active' && (
-        <div className="bento-card">
-          <h2 className="text-xl font-semibold mb-4">Session en cours</h2>
-          <p className="text-gray-600 mb-6">
-            La session est actuellement active. Les participants peuvent contribuer et voter.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {isHost && (
+        <>
+          <div className="bento-card">
+            <h2 className="text-xl font-semibold mb-4">Session en cours</h2>
+            <p className="text-gray-600 mb-6">
+              La session est actuellement active. Les participants peuvent contribuer et voter.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {isHost && (
+                <Link 
+                  href={`/sessions/${sessionId}/run`}
+                  className="cm-button bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 flex items-center justify-center gap-2 py-3"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                  </svg>
+                  Lancer la présentation
+                </Link>
+              )}
+              
               <Link 
-                href={`/sessions/${sessionId}/run`}
-                className="cm-button bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 flex items-center justify-center gap-2 py-3"
+                href={`/sessions/${sessionId}/vote`}
+                className="cm-button flex items-center gap-2 justify-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                  <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
                 </svg>
-                Lancer la présentation
+                Participer à la session
               </Link>
-            )}
-            
-            <Link 
-              href={`/sessions/${sessionId}/vote`}
-              className="cm-button flex items-center gap-2 justify-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-              </svg>
-              Participer à la session
-            </Link>
+            </div>
           </div>
-        </div>
+          
+          <div className="bento-card mt-6">
+            <h2 className="text-xl font-semibold mb-4">Partager la session</h2>
+            <p className="text-gray-600 mb-6">
+              Partagez ce lien avec vos participants pour qu'ils puissent rejoindre la session.
+            </p>
+            
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={getShareUrl()}
+                    readOnly
+                    className="cm-input pr-24"
+                  />
+                  <button
+                    onClick={copyShareUrl}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 cm-button-secondary text-sm py-1 px-3"
+                  >
+                    {showCopiedMessage ? 'Copié !' : 'Copier'}
+                  </button>
+                </div>
+                
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">Instructions pour les participants</h3>
+                  <ol className="list-decimal list-inside text-gray-700 space-y-2">
+                    <li>Scannez le QR code ou utilisez le lien ci-dessus</li>
+                    <li>Saisissez votre nom pour rejoindre</li>
+                    <li><strong>Aucun compte n'est requis</strong> pour participer</li>
+                  </ol>
+                </div>
+              </div>
+              
+              <div className="flex-shrink-0 flex flex-col items-center">
+                <div className="bg-white p-2 border rounded-lg shadow-sm">
+                  <img
+                    src={getQRCodeUrl()}
+                    alt="QR Code pour rejoindre la session"
+                    width={150}
+                    height={150}
+                  />
+                </div>
+                <p className="text-sm text-gray-500 mt-2">Scanner pour rejoindre</p>
+              </div>
+            </div>
+          </div>
+        </>
       )}
       
       {session.status === 'ended' && (
@@ -483,6 +544,56 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
           </div>
         )}
       </div>
+      
+      {/* Notification de démarrage de session */}
+      {sessionJustStarted && <SessionStartedNotification session={session} />}
+      
+      {/* Modal de confirmation de suppression */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-red-600 mb-4">Supprimer cette session?</h2>
+            <p className="text-gray-700 mb-4">
+              Cette action est irréversible et supprimera définitivement la session 
+              <span className="font-semibold"> {session?.name}</span> ainsi que toutes les données associées.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pour confirmer, tapez le nom exact de la session:
+              </label>
+              <input
+                type="text"
+                className="cm-input w-full"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={session?.name}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText('');
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteSession}
+                disabled={deleteConfirmText !== session?.name}
+                className={`px-4 py-2 rounded ${
+                  deleteConfirmText === session?.name
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-red-200 text-red-400 cursor-not-allowed'
+                }`}
+              >
+                Supprimer définitivement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
