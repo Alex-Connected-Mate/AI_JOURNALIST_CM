@@ -141,4 +141,63 @@ La page de paramètres de profil utilisateur a été améliorée pour sauvegarde
 - Téléchargement et affichage d'une photo de profil
 - Gestion des informations d'institution et de titre
 - Ajout d'une biographie
-- Feedback visuel lors des modifications (messages de succès/erreur) 
+- Feedback visuel lors des modifications (messages de succès/erreur)
+
+# AI Journalist - Système de Sessions Interactives
+
+Cette application permet aux organisateurs de créer des sessions interactives où les participants peuvent discuter, voter les uns pour les autres, et interagir avec une IA journaliste.
+
+## Fonctionnalités
+
+- Création et gestion de sessions avec codes uniques
+- Participation anonyme via codes de session ou QR codes
+- Flow structuré en phases (JOIN, INSTRUCTIONS, DISCUSSION, VOTING, INTERACTION, ANALYSIS, CONCLUSION)
+- Système de vote entre participants
+- Interaction avec IA pour les participants les plus votés
+- Analyses générées sous forme de "books"
+- Interface responsive pour présentateurs et participants
+- Communication en temps réel via Supabase
+
+## Mise en route
+
+1. Clonez ce dépôt
+2. Installez les dépendances avec `npm install`
+3. Configurez les variables d'environnement en copiant `.env.example` vers `.env.local`
+4. Lancez le serveur de développement avec `npm run dev`
+
+## Test de l'application
+
+Pour tester le système complet de sessions interactives :
+
+1. Lancez l'application avec `npm run dev`
+2. Accédez à `http://localhost:3000` et connectez-vous
+3. Créez une nouvelle session (depuis le dashboard)
+4. Ouvrez la session et cliquez sur "Run Session" pour démarrer la présentation
+5. Dans un autre navigateur ou appareil, rejoignez la session via le code affiché ou en scannant le QR code
+6. Testez les différentes phases du flow en utilisant le bouton "Phase suivante" sur la page de présentation
+7. Observez les changements synchronisés entre les appareils
+
+### Flow de session complet
+
+1. **JOIN**: Les participants rejoignent la session
+2. **INSTRUCTIONS**: Préparation et instructions pour la discussion 
+3. **DISCUSSION**: Les participants discutent entre eux (timer configurable)
+4. **VOTING**: Les participants votent pour ceux avec qui ils ont eu les meilleurs échanges
+5. **INTERACTION**: Les participants les plus votés interagissent avec l'IA
+6. **ANALYSIS**: Analyse des discussions sous forme de "books"
+7. **CONCLUSION**: Fin de la session avec résumé
+
+## Notes importantes
+
+- Limite de participants: Le système impose un maximum de participants configurable (par défaut: 30)
+- Sons: Pour activer les sons de fin de timer, placez un fichier audio nommé "timer-end.mp3" dans le dossier `public/sounds/`
+- Mobile: L'interface a été optimisée pour une utilisation aussi bien sur desktop que sur appareils mobiles
+
+## Contribution
+
+Pour contribuer au projet:
+
+1. Créez une branche pour votre fonctionnalité (`git checkout -b feature/ma-fonctionnalite`)
+2. Committez vos changements (`git commit -m 'Ajout de ma fonctionnalité'`)
+3. Poussez vers la branche (`git push origin feature/ma-fonctionnalite`)
+4. Ouvrez une Pull Request 
