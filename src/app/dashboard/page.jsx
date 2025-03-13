@@ -192,6 +192,14 @@ function DashboardContent() {
                       Voir les détails
                     </Link>
                     
+                    {/* Bouton d'édition pour toutes les sessions */}
+                    <Link 
+                      href={`/sessions/${session.id}/edit`}
+                      className="text-indigo-600 hover:text-indigo-800 text-sm px-3 py-1 rounded-md hover:bg-indigo-50 flex-1 text-center"
+                    >
+                      Éditer
+                    </Link>
+                    
                     {/* Ajouter un bouton "Launch Session" pour toutes les sessions actives */}
                     {session.status === 'active' && (
                       <Link 
@@ -199,16 +207,6 @@ function DashboardContent() {
                         className="text-green-600 hover:text-green-800 text-sm px-3 py-1 rounded-md hover:bg-green-50 flex-1 text-center font-medium"
                       >
                         Lancer la session
-                      </Link>
-                    )}
-                    
-                    {/* Bouton d'édition pour les sessions en mode brouillon */}
-                    {session.status === 'draft' && (
-                      <Link 
-                        href={`/sessions/${session.id}/edit`}
-                        className="text-indigo-600 hover:text-indigo-800 text-sm px-3 py-1 rounded-md hover:bg-indigo-50 flex-1 text-center"
-                      >
-                        Éditer
                       </Link>
                     )}
                     

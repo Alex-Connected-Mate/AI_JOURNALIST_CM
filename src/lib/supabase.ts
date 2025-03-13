@@ -625,18 +625,24 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
 
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
-    console.log('Creating session with data:', JSON.stringify(sessionData, null, 2));
+    console.log('[SESSION] Creating session with data:', JSON.stringify(sessionData, null, 2));
     
     // Validate required fields
     if (!sessionData.user_id || !sessionData.title) {
+      console.error('[SESSION] Missing required fields: user_id and title are required');
       throw new Error('Missing required fields: user_id and title are required');
     }
 
     // Generate a unique access code
     const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     
+    // Generate a unique ID for the session
+    const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
+                     'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
+    
     // Prepare session data with all required fields explicitly set
     const session = {
+      id: sessionId,
       user_id: sessionData.user_id,
       name: sessionData.title, // Explicitly set name to be the same as title
       title: sessionData.title,
@@ -649,58 +655,53 @@ export async function createSession(sessionData: Partial<SessionData>) {
     };
 
     try {
-      console.log('Attempting session upsert with ON CONFLICT handling');
+      console.log('[SESSION] Inserting new session with explicit ID');
       
-      // Utiliser upsert qui s'appuiera sur la contrainte d'unicité user_id,title
-      // que vous allez configurer dans la base de données
+      // Utiliser une simple insertion avec un ID explicite
       const { data, error } = await supabase
         .from('sessions')
-        .upsert(session, { 
-          onConflict: 'user_id,title' 
-        })
+        .insert(session)
         .select()
         .single();
       
       if (error) {
-        console.error('Session upsert error:', error);
-        
-        // Tenter une approche alternative avec insertion explicite si l'upsert échoue
-        console.log('Trying alternative insertion approach');
-        
-        // Génération d'un ID explicite pour éviter les problèmes de contrainte
-        const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
-                         'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
-        
-        const { data: insertData, error: insertError } = await supabase
-          .from('sessions')
-          .insert({
-            id: sessionId,
-            user_id: session.user_id,
-            name: session.title,
-            title: session.title,
-            description: session.description,
-            status: session.status,
-            access_code: session.access_code,
-            settings: session.settings,
-            created_at: session.created_at,
-            updated_at: session.updated_at
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error('Alternative insertion also failed:', insertError);
-          throw insertError;
-        }
-        
-        return { data: insertData, error: null };
+        console.error('[SESSION] Session insertion error:', error);
+        throw error;
       }
       
-      console.log('Session created/updated successfully:', data);
+      console.log('[SESSION] Session created successfully:', data);
       return { data, error: null };
     } catch (error) {
-      console.error('Session creation failed with critical error:', error);
-      throw error;
+      console.error('[SESSION] Session creation failed with critical error:', error);
+      
+      // Essayer via une fonction RPC personnalisée si celle-ci existe
+      try {
+        console.log('[SESSION] Attempting to use RPC function insert_session_safely');
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('insert_session_safely', { 
+            session_data: {
+              user_id: session.user_id,
+              title: session.title,
+              description: session.description,
+              status: session.status,
+              access_code: session.access_code,
+              settings: session.settings,
+              created_at: session.created_at,
+              updated_at: session.updated_at
+            }
+          });
+
+        if (rpcError) {
+          console.error('[SESSION] RPC fallback also failed:', rpcError);
+          throw rpcError;
+        }
+        
+        console.log('[SESSION] Session created successfully via RPC:', rpcData);
+        return { data: rpcData, error: null };
+      } catch (rpcError) {
+        console.error('[SESSION] All session creation methods failed:', rpcError);
+        throw rpcError;
+      }
     }
   });
 }

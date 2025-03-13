@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import SessionCreationFlow from '@/components/SessionCreationFlow';
+import { getSessionById } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export default function EditSessionPage({ params }) {
   const sessionId = params.id;
@@ -24,28 +26,14 @@ export default function EditSessionPage({ params }) {
       try {
         setLoading(true);
         
-        // In a real implementation, this would fetch from your database
-        // For example:
-        // const { data, error } = await supabase
-        //   .from('sessions')
-        //   .select('*')
-        //   .eq('id', sessionId)
-        //   .single();
+        // Fetch the session data from Supabase
+        const { data, error } = await getSessionById(sessionId);
         
-        // If (!data) throw new Error('Session not found');
-        // setSession(data);
+        if (error) throw error;
+        if (!data) throw new Error('Session not found');
         
-        // For now, just set an empty object
-        setSession({
-          id: sessionId,
-          name: '',
-          institution: '',
-          description: '',
-          status: 'draft',
-          created_at: new Date().toISOString(),
-          user_id: user.id,
-          config: {}
-        });
+        console.log('Loaded session data:', data);
+        setSession(data);
 
       } catch (err) {
         console.error('Error loading session:', err);
@@ -66,20 +54,19 @@ export default function EditSessionPage({ params }) {
       // Merge the updated session data with the existing session
       const sessionToSave = {
         ...session,
-        ...updatedSession
+        ...updatedSession,
+        updated_at: new Date().toISOString()
       };
       
-      // In a real implementation, this would update in your database
-      // For example:
-      // const { error } = await supabase
-      //   .from('sessions')
-      //   .update(sessionToSave)
-      //   .eq('id', sessionId);
+      // Update the session in the database
+      const { error } = await supabase
+        .from('sessions')
+        .update(sessionToSave)
+        .eq('id', sessionId);
       
-      // if (error) throw error;
+      if (error) throw error;
       
-      // Log for development
-      console.log('Saving session:', sessionToSave);
+      console.log('Session updated successfully:', sessionToSave);
       
       // Redirect back to the session details page
       router.push(`/sessions/${sessionId}?success=session-updated`);
@@ -137,6 +124,17 @@ export default function EditSessionPage({ params }) {
     );
   }
   
+  // Prepare the initial config for SessionCreationFlow
+  const initialConfig = {
+    title: session.title || session.name,
+    description: session.description,
+    institution: session.institution || (session.settings?.institution),
+    professorName: session.professor_name || (session.settings?.professorName),
+    showProfessorName: session.show_professor_name !== undefined ? session.show_professor_name : (session.settings?.showProfessorName),
+    maxParticipants: session.max_participants || (session.settings?.maxParticipants) || 30,
+    ...session.settings,
+  };
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow-md">
@@ -170,8 +168,8 @@ export default function EditSessionPage({ params }) {
         
         <div className="p-6">
           <SessionCreationFlow 
-            initialSession={session}
-            onComplete={handleSave}
+            initialConfig={initialConfig}
+            onSubmit={handleSave}
             isEditing={true}
           />
         </div>
