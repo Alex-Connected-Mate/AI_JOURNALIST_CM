@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import SessionStartedNotification from '@/components/SessionStartedNotification';
+import QRCode from '@/components/QRCode';
 
 interface SessionDetailPageProps {
   params: {
@@ -171,14 +172,18 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   
   // Créer une URL de partage pour la session
   const getShareUrl = () => {
-    if (typeof window === 'undefined' || !session || !session.session_code) return '';
-    return `${window.location.origin}/join/${session.session_code}`;
+    if (typeof window === 'undefined') return '';
+    
+    // Utiliser code ou session_code selon ce qui est disponible
+    const sessionCode = session?.code || session?.session_code;
+    if (!sessionCode) return '';
+    
+    return `${window.location.origin}/join?code=${sessionCode}`;
   };
   
-  // Créer une URL plus directe pour le QR code
+  // Créer une URL plus directe pour le QR code (même format)
   const getDirectJoinUrl = () => {
-    if (typeof window === 'undefined' || !session || !session.session_code) return '';
-    return `${window.location.origin}/join/${session.session_code}`;
+    return getShareUrl(); // Utiliser la même URL pour cohérence
   };
   
   // Copier l'URL dans le presse-papier
@@ -200,7 +205,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   const getQRCodeUrl = () => {
     const directUrl = getDirectJoinUrl();
     if (!directUrl) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(directUrl)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(directUrl)}`;
   };
   
   // Fonction pour supprimer une session
@@ -348,7 +353,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
                 <>
                   <Link 
                     href={`/sessions/${sessionId}/run`}
-                    className="cm-button bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 flex items-center justify-center gap-2 py-3"
+                    className="cm-button flex items-center justify-center gap-2 py-3"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
@@ -427,7 +432,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
               {isHost && (
                 <Link 
                   href={`/sessions/${sessionId}/run`}
-                  className="cm-button bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 flex items-center justify-center gap-2 py-3"
+                  className="cm-button flex items-center justify-center gap-2 py-3"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />

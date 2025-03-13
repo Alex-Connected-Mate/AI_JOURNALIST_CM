@@ -252,7 +252,7 @@ export default function JoinSessionPage() {
             <button 
               type="button"
               onClick={() => setShowScanner(false)}
-              className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700"
+              className="mt-4 w-full flex justify-center py-2 px-4 cm-button-secondary"
             >
               Annuler le scan
             </button>
@@ -311,7 +311,7 @@ export default function JoinSessionPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                className="group relative w-full flex justify-center py-2 px-4 cm-button"
               >
                 {loading ? (
                   <span className="flex items-center">

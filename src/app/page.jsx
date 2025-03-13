@@ -10,8 +10,10 @@ export default function HomePage() {
   const { user } = useStore();
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-grow flex items-center justify-center">
+    <div className="flex flex-col min-h-screen relative">
+      <DotPattern className="absolute inset-0 z-0" />
+      
+      <main className="flex-grow flex items-center justify-center relative z-10">
         <div className="container mx-auto px-4 py-16 text-center">
           <h1 className="text-4xl font-bold mb-6">
             Plateforme d'IA Journaliste
@@ -24,7 +26,7 @@ export default function HomePage() {
             {user ? (
               <Link 
                 href="/dashboard" 
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                className="cm-button px-6 py-3 rounded-lg shadow-md"
               >
                 Accéder au tableau de bord
               </Link>
@@ -32,13 +34,13 @@ export default function HomePage() {
               <>
                 <Link 
                   href="/auth/login" 
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                  className="cm-button px-6 py-3 rounded-lg shadow-md"
                 >
                   Se connecter
                 </Link>
                 <Link 
                   href="/join" 
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                  className="cm-button-secondary px-6 py-3 rounded-lg shadow-md border-2 border-primary"
                 >
                   Rejoindre une session
                 </Link>
@@ -57,11 +59,11 @@ export default function HomePage() {
               <p className="text-gray-600">Consultez vos statistiques et résultats d'analyses</p>
             </Link>
             
-            <Link href="/join" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-2 border-green-100">
-              <h2 className="text-xl font-semibold mb-3 text-green-700">Participer à une session</h2>
+            <Link href="/join" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-2 border-primary border-opacity-20">
+              <h2 className="text-xl font-semibold mb-3 text-primary">Participer à une session</h2>
               <p className="text-gray-600">Rejoignez une session en tant que participant avec un code</p>
               <div className="mt-3 space-y-2">
-                <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                <span className="inline-block px-2 py-1 bg-gray-100 text-primary text-xs font-semibold rounded">
                   Aucun compte requis
                 </span>
                 <p className="text-xs text-gray-500">
@@ -71,7 +73,7 @@ export default function HomePage() {
             </Link>
           </div>
           
-          <div className="max-w-2xl mx-auto p-6 bg-gray-50 rounded-lg">
+          <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4">Déploiement Vercel</h2>
             <p className="mb-4">
               Cette application est déployée sur Vercel à l'adresse suivante :
@@ -80,7 +82,7 @@ export default function HomePage() {
               href="https://ai-journalist-connectedmate.vercel.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-purple-600 font-medium hover:underline"
+              className="text-primary font-medium hover:underline"
             >
               ai-journalist-connectedmate.vercel.app
             </a>
@@ -97,9 +99,9 @@ export default function HomePage() {
         </div>
       </main>
       
-      <footer className="py-6 bg-gray-100">
+      <footer className="py-6 bg-white shadow-inner relative z-10">
         <div className="container mx-auto px-4 text-center text-gray-600">
-          <p>&copy; {new Date().getFullYear()} Connected Mate - Plateforme d'IA Journaliste</p>
+          <p>Clipboard by <span className="font-semibold">ConnectedMate</span> &copy; {new Date().getFullYear()}</p>
         </div>
       </footer>
     </div>

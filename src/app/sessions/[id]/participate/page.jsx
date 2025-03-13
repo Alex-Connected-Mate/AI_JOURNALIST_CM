@@ -7,6 +7,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import DotPattern from "@/components/ui/DotPattern";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import AIAgentSelector from "@/components/AIAgentSelector";
 
 // Phases alignées avec celles de la page run
 const PHASES = {
@@ -368,7 +369,7 @@ export default function ParticipationPage() {
                 <button
                   type="submit"
                   disabled={submitting || participants.length >= (session?.max_participants || 30)}
-                  className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90 transition-colors disabled:bg-gray-400"
+                  className="w-full cm-button py-2 px-4 rounded-md disabled:opacity-50"
                 >
                   {submitting ? "Inscription en cours..." : 
                   participants.length >= (session?.max_participants || 30) ? "Session complète" : 
@@ -559,7 +560,7 @@ export default function ParticipationPage() {
                           ? 'bg-green-500 text-white cursor-default'
                           : remainingVotes <= 0
                             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                            : 'bg-primary text-white hover:bg-primary/90'
+                            : 'cm-button'
                       }`}
                     >
                       {selectedParticipants.includes(participant.id) ? 'Voté ✓' : 'Voter'}
@@ -576,77 +577,66 @@ export default function ParticipationPage() {
     
     // Phase d'interaction
     if (currentPhase === PHASES.INTERACTION) {
+      // Déterminer le type d'agent à afficher
+      let agentType = 'pause';
+      if (interactionStatus === 'selected') {
+        agentType = 'nuggets'; // Les participants sélectionnés utilisent AI Nuggets
+      } else if (interactionStatus === 'not_selected') {
+        agentType = 'lightbulb'; // Les autres participants peuvent utiliser AI Lightbulb
+      }
+      
       return (
-        <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
+        <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-xl w-full">
           <h1 className="text-2xl font-semibold text-center mb-4">Phase d'interaction</h1>
           
           {interactionStatus === 'selected' ? (
-            <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100 mb-6">
-              <div className="flex justify-center mb-4">
-                <div className="bg-indigo-100 p-3 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-              
+            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-6">
               <h2 className="text-xl font-semibold text-center mb-3">Félicitations!</h2>
               <p className="text-center mb-4">
                 Vous avez été sélectionné pour discuter avec notre IA journaliste.
                 Vos idées ont été particulièrement appréciées par les autres participants.
               </p>
-              
-              {isInteracting ? (
-                <div className="bg-white p-4 rounded-lg border border-indigo-200">
-                  <h3 className="font-medium mb-2">Conversation avec l'IA journaliste</h3>
-                  <p className="text-gray-600 text-sm mb-3">
-                    Cette fonctionnalité sera implémentée dans une prochaine version.
-                  </p>
-                  <div className="animate-pulse flex space-x-4">
-                    <div className="flex-1 space-y-3 py-1">
-                      <div className="h-2 bg-gray-200 rounded"></div>
-                      <div className="h-2 bg-gray-200 rounded"></div>
-                      <div className="h-2 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={startAIInteraction}
-                  className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  Commencer la discussion avec l'IA
-                </button>
-              )}
+            </div>
+          ) : interactionStatus === 'not_selected' ? (
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 mb-6">
+              <h2 className="text-xl font-semibold text-center mb-3">Partagez vos idées</h2>
+              <p className="text-center mb-4">
+                Même si vous n'avez pas été sélectionné pour l'interview principale,
+                vos idées sont précieuses ! Discutez avec notre AI Lightbulb pour développer
+                vos propres réflexions inspirées par les discussions.
+              </p>
             </div>
           ) : (
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-6">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+              <h2 className="text-xl font-semibold text-center mb-3">En attente</h2>
               <p className="text-center mb-4">
-                Les participants ayant reçu le plus de votes sont maintenant en interaction avec notre IA journaliste.
+                En attente de l'attribution d'un rôle dans cette phase.
+                Veuillez patienter un instant...
               </p>
-              
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                <h3 className="font-medium text-center mb-2">Que faire pendant ce temps?</h3>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-start">
-                    <span className="text-yellow-500 mr-2">•</span>
-                    Réfléchissez à vos propres idées sur le sujet
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-yellow-500 mr-2">•</span>
-                    Prenez des notes sur les discussions que vous avez eues
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-yellow-500 mr-2">•</span>
-                    Vous pourrez bientôt voir les analyses de toutes les interactions
-                  </li>
-                </ul>
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
               </div>
             </div>
           )}
           
+          {interactionStatus !== 'waiting' && (
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden mt-6" style={{ height: '500px' }}>
+              <AIAgentSelector
+                sessionId={sessionId}
+                participantName={currentParticipant?.name || participantName}
+                programName={session?.name || "Session"}
+                teacherName={session?.host_name || "Animateur"}
+                agentType={agentType}
+                onComplete={(insights) => {
+                  console.log("Interaction terminée avec succès:", insights);
+                  // Ici vous pourriez sauvegarder les insights dans la base de données
+                }}
+              />
+            </div>
+          )}
+          
           {timerActive && (
-            <div className="bg-white p-3 rounded-lg border mb-4 mx-auto max-w-xs">
+            <div className="bg-white p-3 rounded-lg border mt-4 mx-auto max-w-xs">
               <p className="text-center text-xl font-bold text-primary">{formatTime(timer)}</p>
               <p className="text-center text-xs text-gray-600">Temps restant pour cette phase</p>
             </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import DotPattern from '@/components/ui/DotPattern';
+import QRCode from '@/components/QRCode';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Constantes pour les phases de la session
@@ -106,8 +107,14 @@ export default function SessionRunPage({ params }) {
         }
 
         // Générer l'URL de partage
-        if (typeof window !== 'undefined' && sessionData?.code) {
-          setShareUrl(`${window.location.origin}/join?code=${sessionData.code}`);
+        if (typeof window !== 'undefined') {
+          // Utiliser code ou session_code selon ce qui est disponible
+          const sessionCode = sessionData?.code || sessionData?.session_code;
+          if (sessionCode) {
+            setShareUrl(`${window.location.origin}/join?code=${sessionCode}`);
+          } else {
+            console.error("Aucun code de session trouvé dans les données de session:", sessionData);
+          }
         }
 
         setLoading(false);
@@ -396,12 +403,12 @@ export default function SessionRunPage({ params }) {
                   <p className="text-lg mb-4">
                     Scannez le QR code ou utilisez le code de session pour rejoindre:
                   </p>
-                  <div className="bg-blue-50 p-6 rounded-lg text-center border border-blue-100">
-                    <p className="font-mono text-3xl font-bold text-primary tracking-wider">
-                      {session?.session_code || 'CODE'}
+                  <div className="bg-gray-50 p-6 rounded-lg text-center border">
+                    <p className="font-mono text-3xl font-bold tracking-wider">
+                      {session?.code || session?.session_code || 'CODE'}
                     </p>
                     <p className="mt-2 text-sm text-gray-600">
-                      Partagez l'URL: <span className="font-medium">{shareUrl}</span>
+                      Partagez l'URL: <span className="font-medium break-all">{shareUrl}</span>
                     </p>
                   </div>
                   <div className="mt-4">
@@ -411,14 +418,17 @@ export default function SessionRunPage({ params }) {
                   </div>
                 </div>
                 
-                <div className="flex-shrink-0 bg-white p-3 border rounded-lg shadow-md">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`}
-                    alt="QR Code pour rejoindre la session"
-                    width={200}
-                    height={200}
-                  />
-                </div>
+                {shareUrl && (
+                  <div className="flex-shrink-0 bg-white p-3 border rounded-lg shadow-md">
+                    <QRCode 
+                      value={shareUrl}
+                      size={200}
+                      fgColor="#343A46"
+                      bgColor="#ffffff"
+                      level="M"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             
@@ -798,16 +808,12 @@ export default function SessionRunPage({ params }) {
           
           <button
             onClick={goToNextPhase}
-            disabled={currentPhase === PHASES.CONCLUSION}
-            className={`px-4 py-2 rounded-md flex items-center gap-2 ${
-              currentPhase === PHASES.CONCLUSION 
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                : 'bg-primary text-white hover:bg-primary/90 shadow-sm'
-            }`}
+            disabled={loading}
+            className="cm-button flex items-center justify-center gap-2"
           >
-            {timerActive ? 'Ignorer timer' : 'Phase suivante'}
+            Phase suivante
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 010-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
         </div>
