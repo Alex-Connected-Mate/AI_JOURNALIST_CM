@@ -163,7 +163,20 @@ Cette application permet aux organisateurs de créer des sessions interactives o
 1. Clonez ce dépôt
 2. Installez les dépendances avec `npm install`
 3. Configurez les variables d'environnement en copiant `.env.example` vers `.env.local`
-4. Lancez le serveur de développement avec `npm run dev`
+4. **IMPORTANT:** Configurez votre base de données Supabase en suivant les instructions dans [DATABASE_SETUP.md](DATABASE_SETUP.md)
+5. Lancez le serveur de développement avec `npm run dev`
+
+## Configuration de Supabase
+
+Cette application nécessite une base de données Supabase pour fonctionner correctement :
+
+1. Créez un compte et un projet sur [Supabase](https://supabase.com)
+2. Suivez les instructions détaillées dans [DATABASE_SETUP.md](DATABASE_SETUP.md) pour configurer les tables nécessaires
+3. Copiez l'URL et la clé anonyme de Supabase dans votre fichier `.env.local`
+
+### Résolution des problèmes courants
+
+Si vous rencontrez l'erreur `relation "public.participants" does not exist`, cela signifie que le schéma de base de données n'est pas correctement configuré. Suivez les instructions dans [DATABASE_SETUP.md](DATABASE_SETUP.md) pour créer les tables nécessaires.
 
 ## Test de l'application
 

@@ -114,70 +114,107 @@ export default function JoinSessionPage() {
       // Vérifier d'abord si la session existe
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
-        .select('id, status, max_participants')
-        .eq('session_code', sessionCode.trim())
+        .select('id, status, max_participants, code')
+        .or(`code.eq.${sessionCode.trim()},session_code.eq.${sessionCode.trim()}`)
         .single();
+      
+      if (sessionError) {
+        if (sessionError.code === '42P01') {
+          console.error("La table 'sessions' n'existe pas dans la base de données:", sessionError);
+          setError("La base de données n'est pas correctement configurée. La table 'sessions' est manquante. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
+          setLoading(false);
+          return;
+        }
         
-      if (sessionError || !sessionData) {
         setError('Session introuvable avec ce code');
         setLoading(false);
         return;
       }
       
-      if (sessionData.status !== 'active') {
+      if (!sessionData) {
+        setError('Session introuvable avec ce code');
+        setLoading(false);
+        return;
+      }
+      
+      if (sessionData.status !== 'active' && sessionData.status !== 'draft') {
         setError('Cette session n\'est pas active actuellement');
         setLoading(false);
         return;
       }
       
-      // Vérifier le nombre actuel de participants
-      const { count, error: countError } = await supabase
-        .from('participants')
-        .select('id', { count: 'exact', head: true })
-        .eq('session_id', sessionData.id);
-        
-      if (countError) throw countError;
-      
-      // Vérifier si la session est pleine
-      if (count >= (sessionData.max_participants || 30)) {
-        setError(`Cette session est pleine (maximum ${sessionData.max_participants || 30} participants)`);
-        setLoading(false);
-        return;
-      }
-      
-      // Créer un participant anonyme
-      const { data: participantData, error: participantError } = await supabase
-        .from('participants')
-        .insert([
-          {
-            session_id: sessionData.id,
-            display_name: displayName.trim(),
-            is_anonymous: true
+      try {
+        // Vérifier le nombre actuel de participants
+        const { count, error: countError } = await supabase
+          .from('participants')
+          .select('id', { count: 'exact', head: true })
+          .eq('session_id', sessionData.id);
+          
+        if (countError) {
+          if (countError.code === '42P01') {
+            console.error("La table 'participants' n'existe pas dans la base de données:", countError);
+            setError("La base de données n'est pas correctement configurée. La table 'participants' est manquante. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
+            setLoading(false);
+            return;
           }
-        ])
-        .select();
+          throw countError;
+        }
         
-      if (participantError) throw participantError;
-      
-      if (!participantData || participantData.length === 0) {
-        throw new Error('Erreur lors de la création du participant');
+        // Vérifier si la session est pleine
+        if (count >= (sessionData.max_participants || 30)) {
+          setError(`Cette session est pleine (maximum ${sessionData.max_participants || 30} participants)`);
+          setLoading(false);
+          return;
+        }
+        
+        // Créer un ID anonyme unique pour ce participant
+        const anonymousId = `anon_${Math.random().toString(36).substring(2, 15)}`;
+        
+        // Créer un participant anonyme
+        const { data: participantData, error: participantError } = await supabase
+          .from('participants')
+          .insert([
+            { 
+              session_id: sessionData.id, 
+              name: displayName.trim(),
+              anonymous_id: anonymousId,
+              is_presenter: false,
+              status: 'active',
+              device_info: { 
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+              }
+            }
+          ])
+          .select()
+          .single();
+          
+        if (participantError) {
+          if (participantError.code === '42P01') {
+            console.error("La table 'participants' n'existe pas dans la base de données:", participantError);
+            setError("La base de données n'est pas correctement configurée. La table 'participants' est manquante. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
+            setLoading(false);
+            return;
+          }
+          throw participantError;
+        }
+        
+        // Sauvegarder les informations du participant dans le localStorage
+        localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify(participantData));
+        
+        // Rediriger vers la page de participation
+        setSuccess(true);
+        setTimeout(() => {
+          router.push(`/sessions/${sessionData.id}/participate?name=${encodeURIComponent(displayName.trim())}`);
+        }, 1500);
+        
+      } catch (err) {
+        console.error("Erreur lors de l'accès à la table participants:", err);
+        setError(`Erreur lors de la tentative de rejoindre la session: ${err.message || 'Erreur inconnue'}`);
       }
-      
-      // Stocker les informations du participant dans localStorage
-      localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify({
-        id: participantData[0].id,
-        name: displayName.trim()
-      }));
-      
-      setSuccess(true);
-      
-      // Rediriger vers la page de participation
-      setTimeout(() => {
-        router.push(`/sessions/${sessionData.id}/participate?name=${encodeURIComponent(displayName.trim())}`);
-      }, 1000);
     } catch (err) {
-      console.error('Error joining session:', err);
-      setError(err.message || 'Une erreur est survenue. Veuillez réessayer.');
+      console.error("Erreur lors de l'accès à la base de données:", err);
+      setError(`Erreur inattendue: ${err.message || 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
     }

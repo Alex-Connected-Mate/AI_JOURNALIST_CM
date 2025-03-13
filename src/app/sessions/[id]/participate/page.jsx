@@ -77,7 +77,15 @@ export default function ParticipationPage() {
           .eq("id", sessionId)
           .single();
           
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          if (sessionError.code === '42P01') {
+            console.error("La table 'sessions' n'existe pas dans la base de données:", sessionError);
+            setError("La table 'sessions' n'existe pas dans la base de données. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
+            setLoading(false);
+            return;
+          }
+          throw sessionError;
+        }
         
         if (!sessionData) {
           throw new Error("Session introuvable");
@@ -90,18 +98,34 @@ export default function ParticipationPage() {
           setRemainingVotes(sessionData.max_votes_per_participant);
         }
         
-        // Charger les participants actuels
-        const { data: participantsData, error: participantsError } = await supabase
-          .from("participants")
-          .select("*")
-          .eq("session_id", sessionId);
-          
-        if (participantsError) throw participantsError;
-        setParticipants(participantsData || []);
+        try {
+          // Charger les participants actuels
+          const { data: participantsData, error: participantsError } = await supabase
+            .from("participants")
+            .select("*")
+            .eq("session_id", sessionId);
+            
+          if (participantsError) {
+            if (participantsError.code === '42P01') {
+              console.error("La table 'participants' n'existe pas dans la base de données:", participantsError);
+              // Afficher un message mais continuer le flux
+              setError("La table 'participants' n'existe pas dans la base de données. Certaines fonctionnalités seront limitées. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer correctement la base de données.");
+              setParticipants([]);
+            } else {
+              throw participantsError;
+            }
+          } else {
+            setParticipants(participantsData || []);
+          }
+        } catch (participantsErr) {
+          console.error("Erreur lors du chargement des participants:", participantsErr);
+          // Continuer le flux sans planter l'application
+          setParticipants([]);
+        }
         
       } catch (err) {
         console.error("Erreur lors du chargement de la session:", err);
-        setError("Impossible de charger cette session. Elle n'existe peut-être plus.");
+        setError(err.message || "Impossible de charger cette session. Elle n'existe peut-être plus.");
       } finally {
         setLoading(false);
       }
@@ -214,7 +238,13 @@ export default function ParticipationPage() {
         ])
         .select();
         
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42P01') {
+          setError("La table 'participants' n'existe pas dans la base de données. Veuillez contacter l'administrateur.");
+          return;
+        }
+        throw error;
+      }
       
       if (data && data[0]) {
         // Enregistrer les informations du participant localement
