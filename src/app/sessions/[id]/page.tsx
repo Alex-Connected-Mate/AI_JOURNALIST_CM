@@ -171,20 +171,22 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   
   // Créer une URL de partage pour la session
   const getShareUrl = () => {
-    return typeof window !== 'undefined' && session
-      ? `${window.location.origin}/join/${session.session_code}`
-      : '';
+    if (typeof window === 'undefined' || !session || !session.session_code) return '';
+    return `${window.location.origin}/join/${session.session_code}`;
   };
   
   // Créer une URL plus directe pour le QR code
   const getDirectJoinUrl = () => {
-    if (typeof window === 'undefined' || !session) return '';
+    if (typeof window === 'undefined' || !session || !session.session_code) return '';
     return `${window.location.origin}/join/${session.session_code}`;
   };
   
   // Copier l'URL dans le presse-papier
   const copyShareUrl = () => {
-    navigator.clipboard.writeText(getShareUrl())
+    const url = getShareUrl();
+    if (!url) return;
+    
+    navigator.clipboard.writeText(url)
       .then(() => {
         setShowCopiedMessage(true);
         setTimeout(() => setShowCopiedMessage(false), 2000);
@@ -197,6 +199,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   // Générer un QR code pour rejoindre la session
   const getQRCodeUrl = () => {
     const directUrl = getDirectJoinUrl();
+    if (!directUrl) return '';
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(directUrl)}`;
   };
   

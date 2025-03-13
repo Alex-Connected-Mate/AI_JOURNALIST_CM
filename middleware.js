@@ -9,8 +9,11 @@ const publicPaths = [
   '/join',
 ];
 
-// Chemins de participation qui utilisent l'authentification par token
-const participationPaths = ['/sessions/:id/participate'];
+// Chemins de participation qui sont toujours publics sans authentification
+const participationPaths = [
+  '/sessions/:id/participate',
+  '/sessions/:id/run'
+];
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -35,11 +38,9 @@ export function middleware(request) {
   });
   
   if (isParticipationPath) {
-    // Vérifier si le token est présent dans l'URL
-    const token = request.nextUrl.searchParams.get('token');
-    if (token) {
-      return NextResponse.next();
-    }
+    // Ces chemins sont toujours accessibles, même sans token
+    // pour la présentation et la participation anonyme
+    return NextResponse.next();
   }
   
   // Pour tous les autres chemins, vérifier si l'utilisateur est authentifié

@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
-import QrScanner from '@/components/QrScanner'; // Composant à créer pour scanner les QR codes
+import DotPattern from '@/components/ui/DotPattern'; 
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 export default function JoinSessionPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function JoinSessionPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [scannerInitialized, setScannerInitialized] = useState(false);
 
   // Vérifier si on a un code dans l'URL au chargement
   useEffect(() => {
@@ -25,6 +27,48 @@ export default function JoinSessionPage() {
       document.getElementById('display-name')?.focus();
     }
   }, [codeFromUrl]);
+
+  // Initialiser le scanner quand showScanner devient true
+  useEffect(() => {
+    let scanner;
+    
+    if (showScanner && !scannerInitialized) {
+      setScannerInitialized(true);
+      
+      // Initialiser le scanner QR code
+      scanner = new Html5QrcodeScanner('qr-reader', 
+        { 
+          fps: 10, 
+          qrbox: 250,
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [0] // QRCode only
+        }, 
+        false // ne pas commencer immédiatement
+      );
+      
+      scanner.render((decodedText) => {
+        // Gérer le résultat du scan
+        handleQrScanned(decodedText);
+        setShowScanner(false);
+      }, (error) => {
+        console.warn(`Code scan error = ${error}`);
+      });
+      
+      // Démarrer après rendu
+      setTimeout(() => {
+        const startButton = document.getElementById('qr-reader__start-button');
+        if (startButton) startButton.click();
+      }, 100);
+    }
+    
+    // Cleanup
+    return () => {
+      if (scanner && showScanner === false && scannerInitialized) {
+        scanner.clear();
+        setScannerInitialized(false);
+      }
+    };
+  }, [showScanner, scannerInitialized]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,11 +81,8 @@ export default function JoinSessionPage() {
     
     try {
       const url = new URL(scannedCode);
-      // Si le QR contient une URL, chercher le paramètre code ou le dernier segment
-      const codeParam = url.searchParams.get('code');
-      if (codeParam) {
-        extractedCode = codeParam;
-      } else if (url.pathname.includes('/join/')) {
+      // Si le QR contient une URL, chercher le dernier segment
+      if (url.pathname.includes('/join/')) {
         // Extraire le code du chemin /join/CODE
         const pathParts = url.pathname.split('/');
         extractedCode = pathParts[pathParts.length - 1];
@@ -70,30 +111,69 @@ export default function JoinSessionPage() {
     setError(null);
 
     try {
-      // Appeler la fonction Supabase pour rejoindre anonymement
-      const { data, error } = await supabase.rpc('join_session_anonymously', {
-        p_session_code: sessionCode.trim(),
-        p_display_name: displayName.trim()
-      });
-
-      if (error) throw error;
-      
-      if (!data || !data.success) {
-        setError(data?.error || 'Session introuvable ou inactive');
+      // Vérifier d'abord si la session existe
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('sessions')
+        .select('id, status, max_participants')
+        .eq('session_code', sessionCode.trim())
+        .single();
+        
+      if (sessionError || !sessionData) {
+        setError('Session introuvable avec ce code');
         setLoading(false);
         return;
       }
-
+      
+      if (sessionData.status !== 'active') {
+        setError('Cette session n\'est pas active actuellement');
+        setLoading(false);
+        return;
+      }
+      
+      // Vérifier le nombre actuel de participants
+      const { count, error: countError } = await supabase
+        .from('participants')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', sessionData.id);
+        
+      if (countError) throw countError;
+      
+      // Vérifier si la session est pleine
+      if (count >= (sessionData.max_participants || 30)) {
+        setError(`Cette session est pleine (maximum ${sessionData.max_participants || 30} participants)`);
+        setLoading(false);
+        return;
+      }
+      
+      // Créer un participant anonyme
+      const { data: participantData, error: participantError } = await supabase
+        .from('participants')
+        .insert([
+          {
+            session_id: sessionData.id,
+            display_name: displayName.trim(),
+            is_anonymous: true
+          }
+        ])
+        .select();
+        
+      if (participantError) throw participantError;
+      
+      if (!participantData || participantData.length === 0) {
+        throw new Error('Erreur lors de la création du participant');
+      }
+      
       // Stocker les informations du participant dans localStorage
-      localStorage.setItem('anonymousParticipantId', data.participant_id);
-      localStorage.setItem('anonymousSessionId', data.session_id);
-      localStorage.setItem('anonymousToken', data.token);
+      localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify({
+        id: participantData[0].id,
+        name: displayName.trim()
+      }));
       
       setSuccess(true);
       
-      // Rediriger vers la page de la session
+      // Rediriger vers la page de participation
       setTimeout(() => {
-        router.push(`/sessions/${data.session_id}/participate?token=${data.token}`);
+        router.push(`/sessions/${sessionData.id}/participate?name=${encodeURIComponent(displayName.trim())}`);
       }, 1000);
     } catch (err) {
       console.error('Error joining session:', err);
@@ -104,8 +184,9 @@ export default function JoinSessionPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8 relative">
+      <DotPattern className="absolute inset-0 z-0" />
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md relative z-10">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">Rejoindre une session</h2>
           <p className="mt-2 text-sm text-gray-600">
@@ -130,7 +211,7 @@ export default function JoinSessionPage() {
 
         {showScanner ? (
           <div className="mt-6">
-            <QrScanner onScan={handleQrScanned} />
+            <div id="qr-reader" style={{ width: '100%' }}></div>
             <button 
               type="button"
               onClick={() => setShowScanner(false)}
@@ -153,7 +234,7 @@ export default function JoinSessionPage() {
                     type="text"
                     autoComplete="off"
                     required
-                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary"
                     placeholder="ABC123"
                     value={sessionCode}
                     onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
@@ -161,7 +242,7 @@ export default function JoinSessionPage() {
                   <button
                     type="button"
                     onClick={() => setShowScanner(true)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-primary"
                     aria-label="Scanner un QR code"
                     title="Scanner un QR code"
                   >
@@ -181,7 +262,7 @@ export default function JoinSessionPage() {
                   type="text"
                   autoComplete="name"
                   required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary"
                   placeholder="Jean Dupont"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
@@ -193,7 +274,7 @@ export default function JoinSessionPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 {loading ? (
                   <span className="flex items-center">
@@ -212,9 +293,13 @@ export default function JoinSessionPage() {
         )}
 
         <div className="text-center text-sm mt-4">
-          <Link href="/" className="text-blue-600 hover:text-blue-800">
+          <Link href="/" className="text-primary hover:text-primary/90">
             Retour à l'accueil
           </Link>
+        </div>
+        
+        <div className="text-center text-xs text-gray-500 mt-8">
+          <p>Clipboard by ConnectedMate</p>
         </div>
       </div>
     </div>
