@@ -8,7 +8,8 @@ const PUBLIC_ROUTES = [
   '/auth/login', 
   '/auth/signup',
   '/auth/reset-password',
-  '/auth/callback'
+  '/auth/callback',
+  '/join'
 ]
 
 export async function middleware(request: NextRequest) {

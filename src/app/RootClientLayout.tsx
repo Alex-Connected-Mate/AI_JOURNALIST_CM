@@ -37,13 +37,16 @@ const RootClientLayout = ({ children }: RootClientLayoutProps) => {
   const pathname = usePathname();
   
   // Liste des chemins qui ne nécessitent pas d'authentification
-  const publicPaths = ['/', '/auth/login', '/auth/register', '/auth/reset-password'];
+  const publicPaths = ['/', '/auth/login', '/auth/register', '/auth/reset-password', '/join'];
   
   // Vérifier si la page actuelle est une page d'authentification
   const isAuthPage = publicPaths.some(path => 
     pathname === path || 
     pathname?.startsWith('/auth/')
   );
+  
+  // Vérifier si la page actuelle est une page de présentation
+  const isPresentationPage = pathname?.includes('/sessions/') && pathname?.includes('/run');
   
   return (
     <LocaleProvider>
@@ -55,7 +58,7 @@ const RootClientLayout = ({ children }: RootClientLayoutProps) => {
         <AuthChecker />
         
         {/* En-tête */}
-        {!isAuthPage && user && <Header />}
+        {!isAuthPage && !isPresentationPage && user && <Header />}
         
         {/* Protection des routes qui nécessitent une authentification */}
         <ProtectedRoute excludedPaths={publicPaths}>

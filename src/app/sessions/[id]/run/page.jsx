@@ -403,7 +403,7 @@ export default function SessionRunPage({ params }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                Rejoindre la session
+                Join Session
               </motion.h2>
               
               <div className="flex flex-col lg:flex-row gap-8 items-center justify-center">
@@ -414,7 +414,7 @@ export default function SessionRunPage({ params }) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                   >
-                    <div className="mb-3 text-base font-medium">Scanner le QR code</div>
+                    <div className="mb-3 text-base font-medium">Scan QR code</div>
                     <QRCode 
                       value={shareUrl}
                       size={200}
@@ -433,7 +433,7 @@ export default function SessionRunPage({ params }) {
                   >
                     <div className="text-gray-500 text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-                      <p>Génération du QR code...</p>
+                      <p>Generating QR code...</p>
                     </div>
                   </motion.div>
                 )}
@@ -446,19 +446,20 @@ export default function SessionRunPage({ params }) {
                 >
                   <div className="text-left mb-6">
                     <p className="text-xl mb-2 font-medium">
-                      Instructions pour rejoindre:
+                      Join Instructions:
                     </p>
                     <ol className="list-decimal pl-6 text-base space-y-3 mb-4">
-                      <li>Ouvrez votre navigateur</li>
-                      <li>Allez sur <span className="font-bold">{shareUrl ? new URL(shareUrl).origin : window.location.origin}</span></li>
-                      <li>Cliquez sur "Rejoindre une session"</li>
-                      <li>Entrez le code ci-dessous</li>
+                      <li>Open your browser</li>
+                      <li>Go to <span className="font-bold bg-yellow-100 p-1 rounded">
+                        {shareUrl ? (new URL(shareUrl).origin + "/join") : (window.location.origin + "/join")}
+                      </span></li>
+                      <li>Enter the session code below</li>
                     </ol>
                   </div>
                   
                   <div className="text-left mb-6">
                     <p className="text-xl mb-2 font-medium">
-                      Code de session:
+                      Session Code:
                     </p>
                     <div className="bg-primary p-4 rounded-lg text-center border-2 border-primary shadow-md">
                       <p className="font-mono text-3xl font-bold tracking-wider text-white">
@@ -469,7 +470,7 @@ export default function SessionRunPage({ params }) {
                   
                   <div className="text-left">
                     <p className="text-xl mb-2 font-medium">
-                      Participants connectés:
+                      Connected Participants:
                     </p>
                     <div className="flex items-baseline">
                       <p className="text-3xl font-bold text-primary">
@@ -482,41 +483,26 @@ export default function SessionRunPage({ params }) {
               </div>
             </div>
             
-            <motion.div 
-              className="bg-gray-50 p-6 rounded-b-lg border-t"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-            >
-              <h3 className="text-xl font-semibold mb-4">Participants</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                <AnimatePresence>
-                  {participants.map(participant => (
-                    <motion.div 
-                      key={participant.id} 
-                      className={`bg-white p-2 rounded-lg border-2 ${
-                        newParticipantIds.includes(participant.id) ? 'border-primary' : 'border-gray-200'
-                      }`}
-                      initial={newParticipantIds.includes(participant.id) ? { scale: 0.8, opacity: 0 } : false}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-base ${
-                          newParticipantIds.includes(participant.id) ? 'bg-primary' : 'bg-gray-500'
-                        }`}>
-                          {participant.display_name?.charAt(0).toUpperCase() || 'A'}
-                        </div>
-                        <span className="truncate text-sm">{participant.display_name || 'Anonyme'}</span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                {participants.length === 0 && (
-                  <p className="text-gray-500 col-span-6 text-base text-center py-4">En attente de participants...</p>
-                )}
+            {/* Afficher l'URL complète de manière plus visible */}
+            <div className="p-6 bg-yellow-50 border-t border-yellow-100">
+              <div className="max-w-2xl mx-auto">
+                <h3 className="text-lg font-medium mb-3 text-center">Can't scan the QR code?</h3>
+                <div className="flex items-center justify-center space-x-4">
+                  <div className="text-center">
+                    <p className="text-sm mb-2">Go to this URL:</p>
+                    <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                      <p className="font-mono font-bold text-lg">{shareUrl ? (new URL(shareUrl).origin + "/join") : (window.location.origin + "/join")}</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm mb-2">Enter this code:</p>
+                    <div className="bg-primary p-3 rounded-lg shadow-sm">
+                      <p className="font-mono font-bold text-lg text-white">{session?.session_code || session?.code || session?.access_code || 'CODE'}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         );
         
@@ -996,7 +982,7 @@ export default function SessionRunPage({ params }) {
             disabled={loading}
             className="cm-button flex items-center justify-center gap-1 text-sm py-1 px-2"
           >
-            Phase suivante
+            Next Phase
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 010-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
