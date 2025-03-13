@@ -1,13 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import DotPattern from '@/components/ui/DotPattern'; 
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-export default function JoinSessionPage() {
+// Loading component that will be shown while the page is suspended
+function JoinPageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8 relative">
+      <DotPattern className="absolute inset-0 z-0" />
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md relative z-10">
+        <div className="text-center">
+          <div className="w-12 h-12 border-t-4 border-primary border-solid rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-medium text-gray-700">Loading...</h2>
+          <p className="text-sm text-gray-500 mt-2">
+            Please wait while we prepare the session joining page
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component with search params functionality
+function JoinSessionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get('code');
@@ -249,7 +268,7 @@ export default function JoinSessionPage() {
         {showScanner ? (
           <div className="mt-6">
             <div id="qr-reader" style={{ width: '100%' }}></div>
-            <button 
+            <button
               type="button"
               onClick={() => setShowScanner(false)}
               className="mt-4 w-full flex justify-center py-2 px-4 cm-button-secondary"
@@ -328,17 +347,16 @@ export default function JoinSessionPage() {
             </div>
           </form>
         )}
-
-        <div className="text-center text-sm mt-4">
-          <Link href="/" className="text-primary hover:text-primary/90">
-            Retour à l'accueil
-          </Link>
-        </div>
-        
-        <div className="text-center text-xs text-gray-500 mt-8">
-          <p>Clipboard by ConnectedMate</p>
-        </div>
       </div>
     </div>
+  );
+}
+
+// Main page component wrapped in Suspense
+export default function JoinSessionPage() {
+  return (
+    <Suspense fallback={<JoinPageLoading />}>
+      <JoinSessionContent />
+    </Suspense>
   );
 } 

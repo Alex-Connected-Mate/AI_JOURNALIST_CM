@@ -31,7 +31,7 @@
  * @module ParticipationPage
  */
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
@@ -224,7 +224,22 @@ class SessionContextManager {
   }
 }
 
-export default function ParticipationPage() {
+// Loading component for Suspense
+function ParticipationLoading() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 relative">
+      <DotPattern className="absolute inset-0 z-0" />
+      <div className="bg-white p-8 rounded-lg shadow-md relative z-10 text-center">
+        <div className="w-16 h-16 border-t-4 border-primary border-solid rounded-full animate-spin mx-auto mb-6"></div>
+        <h2 className="text-2xl font-medium text-gray-700">Loading Session...</h2>
+        <p className="text-gray-500 mt-2">Preparing your participation experience</p>
+      </div>
+    </div>
+  );
+}
+
+// Main component with useSearchParams
+function ParticipationContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1532,15 +1547,7 @@ export default function ParticipationPage() {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 relative">
-        <DotPattern className="absolute inset-0 z-0" />
-        <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-          <h1 className="text-xl font-semibold text-center mb-4">Chargement de la session...</h1>
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </div>
+      <ParticipationLoading />
     );
   }
   
@@ -1581,5 +1588,14 @@ export default function ParticipationPage() {
         <p className="text-sm text-gray-500">Clipboard by ConnectedMate</p>
       </div>
     </div>
+  );
+}
+
+// Main exported component wrapped in Suspense
+export default function ParticipationPage() {
+  return (
+    <Suspense fallback={<ParticipationLoading />}>
+      <ParticipationContent />
+    </Suspense>
   );
 } 
