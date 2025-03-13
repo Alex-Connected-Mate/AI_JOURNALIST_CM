@@ -658,12 +658,41 @@ export async function createSession(sessionData: Partial<SessionData>) {
       }
     };
 
-    // Insert session into database
-    const { data, error } = await supabase
+    // Check if a session with the same user_id and title already exists
+    const { data: existingSessions, error: checkError } = await supabase
       .from('sessions')
-      .insert(session)
-      .select()
-      .single();
+      .select('id')
+      .eq('user_id', sessionData.user_id)
+      .eq('title', sessionData.title)
+      .limit(1);
+
+    if (checkError) {
+      console.error('Error checking for existing session:', checkError);
+      throw checkError;
+    }
+
+    let result;
+    
+    // If session exists, update it
+    if (existingSessions && existingSessions.length > 0) {
+      const sessionId = existingSessions[0].id;
+      result = await supabase
+        .from('sessions')
+        .update(session)
+        .eq('id', sessionId)
+        .select()
+        .single();
+    } 
+    // Otherwise, insert a new session
+    else {
+      result = await supabase
+        .from('sessions')
+        .insert(session)
+        .select()
+        .single();
+    }
+    
+    const { data, error } = result;
 
     if (error) {
       console.error('Create session error:', error);
