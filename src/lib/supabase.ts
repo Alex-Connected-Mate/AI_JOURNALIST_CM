@@ -625,6 +625,8 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
 
 export async function createSession(sessionData: Partial<SessionData>) {
   return withRetry(async () => {
+    console.log('Creating session with data:', JSON.stringify(sessionData, null, 2));
+    
     // Validate required fields
     if (!sessionData.user_id || !sessionData.title) {
       throw new Error('Missing required fields: user_id and title are required');
@@ -676,6 +678,8 @@ export async function createSession(sessionData: Partial<SessionData>) {
     // If session exists, update it
     if (existingSessions && existingSessions.length > 0) {
       const sessionId = existingSessions[0].id;
+      console.log('Updating existing session with ID:', sessionId);
+      
       result = await supabase
         .from('sessions')
         .update(session)
@@ -683,23 +687,62 @@ export async function createSession(sessionData: Partial<SessionData>) {
         .select()
         .single();
     } 
-    // Otherwise, insert a new session
+    // Otherwise, insert a new session - but use a different approach to avoid ON CONFLICT issues
     else {
-      result = await supabase
+      console.log('Creating new session, attempting direct insertion');
+      
+      // Use the raw SQL query method from Supabase to avoid the ON CONFLICT issue
+      const { data, error } = await supabase
         .from('sessions')
-        .insert(session)
+        .insert([session])  // Ensure it's wrapped in an array for compatibility
         .select()
-        .single();
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Session insertion error:', error);
+        
+        // If we get a conflict error, try one more approach - manually create session with ID
+        if (error.code === '42P10') {  // This is the code for ON CONFLICT specification error
+          console.log('Received ON CONFLICT error, trying alternative insertion approach');
+          
+          // Generate a UUID for the session (to avoid reliance on database auto-generation)
+          const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
+                           'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
+          
+          // Add the ID to the session object
+          const sessionWithId = {
+            ...session,
+            id: sessionId,
+          };
+          
+          // Try a direct insertion with the provided ID
+          const secondAttempt = await supabase
+            .from('sessions')
+            .insert([sessionWithId])
+            .select()
+            .maybeSingle();
+            
+          if (secondAttempt.error) {
+            console.error('Second insertion attempt also failed:', secondAttempt.error);
+            throw secondAttempt.error;
+          }
+          
+          result = secondAttempt;
+        } else {
+          throw error;
+        }
+      } else {
+        result = { data, error: null };
+      }
     }
     
-    const { data, error } = result;
-
-    if (error) {
-      console.error('Create session error:', error);
-      throw error;
+    if (result.error) {
+      console.error('Session creation failed:', result.error);
+      throw result.error;
     }
 
-    return { data, error: null };
+    console.log('Session created/updated successfully:', result.data);
+    return { data: result.data, error: null };
   });
 }
 
