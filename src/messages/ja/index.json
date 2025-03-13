@@ -7,18 +7,18 @@
     "copy": "コピー",
     "copied": "コピーしました！",
     "scan_to_join": "スキャンして参加",
-    "join": "参加する",
+    "join": "参加",
     "logout": "ログアウト",
     "appName": "AIジャーナリスト",
     "login": "ログイン",
-    "signup": "新規登録",
+    "signup": "サインアップ",
     "home": "ホーム",
     "settings": "設定"
   },
   "session": {
     "name": "セッション名",
     "description": "説明",
-    "institution": "機関/会社",
+    "institution": "機関/企業",
     "professor_name": "教授名",
     "max_participants": "最大参加者数",
     "status": {
@@ -33,7 +33,7 @@
       "share": "セッションを共有",
       "join": "セッションに参加",
       "participate": "セッションに参加する",
-      "view_results": "結果を見る"
+      "view_results": "結果を表示"
     },
     "participant_instructions": {
       "title": "参加者向け指示",
@@ -43,13 +43,27 @@
     },
     "flow": {
       "basic_info": "基本情報",
+      "basic_info_short": "基本情報",
+      "basic_info_desc": "セッションの基本情報",
       "connection": "ユーザー接続",
+      "connection_short": "接続",
+      "connection_desc": "接続パラメータの設定",
       "discussion": "ディスカッション＆投票",
+      "discussion_short": "ディスカッション",
+      "discussion_desc": "ディスカッションパラメータの設定",
       "ai_interaction": "AIジャーナリスト",
+      "ai_nuggets_short": "AIナゲット",
+      "ai_interaction_desc": "AI対話の設定",
       "break": "休憩",
       "lightbulb": "アイデア",
+      "lightbulb_short": "電球",
+      "lightbulb_desc": "革新的なアイデアの捕捉と分析",
       "reading": "読書",
+      "reading_short": "読書",
+      "reading_desc": "AIが生成したインサイトブックの読書フェーズ",
       "analysis": "最終分析",
+      "analysis_short": "分析",
+      "analysis_desc": "セッション結果の最終分析と合成",
       "overall_analysis_desc": "すべての会話を組み合わせたセッション全体の分析。",
       "overall_analysis_short": "3. 総合分析",
       "overall_analysis": "総合分析",
@@ -58,7 +72,9 @@
       "lightbulbs_analysis": "ライトバルブ分析",
       "nuggets_analysis_desc": "AIナゲットとの会話の分析。",
       "nuggets_analysis_short": "1. ナゲット",
-      "nuggets_analysis": "ナゲット分析"
+      "nuggets_analysis": "ナゲット分析",
+      "break_short": "休憩",
+      "break_desc": "セッションの異なるフェーズ間の休憩時間"
     }
   },
   "connection": {

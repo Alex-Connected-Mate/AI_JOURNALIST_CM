@@ -43,13 +43,27 @@
     },
     "flow": {
       "basic_info": "Basic Information",
+      "basic_info_short": "Basic Info",
+      "basic_info_desc": "Basic information about the session",
       "connection": "User Connection",
+      "connection_short": "Connection",
+      "connection_desc": "Configure connection parameters",
       "discussion": "Discussion & Votes",
+      "discussion_short": "Discussion",
+      "discussion_desc": "Configure discussion parameters",
       "ai_interaction": "AI Journalist",
+      "ai_nuggets_short": "AI Nuggets",
+      "ai_interaction_desc": "Configure AI interaction",
       "break": "Break",
       "lightbulb": "Ideas",
+      "lightbulb_short": "Lightbulbs",
+      "lightbulb_desc": "Capture and analyze innovative ideas",
       "reading": "Reading",
+      "reading_short": "Reading",
+      "reading_desc": "Reading phase for AI-generated insight books",
       "analysis": "Final Analysis",
+      "analysis_short": "Analysis",
+      "analysis_desc": "Final analysis and synthesis of session results",
       "overall_analysis_desc": "Overall session analysis combining all conversations.",
       "overall_analysis_short": "3. Overall Analysis",
       "overall_analysis": "Overall Analysis",
@@ -58,7 +72,9 @@
       "lightbulbs_analysis": "Lightbulbs Analysis",
       "nuggets_analysis_desc": "Analysis of AI Nuggets conversations.",
       "nuggets_analysis_short": "1. Nuggets",
-      "nuggets_analysis": "Nuggets Analysis"
+      "nuggets_analysis": "Nuggets Analysis",
+      "break_short": "Break",
+      "break_desc": "Break period between different session phases"
     }
   },
   "connection": {
