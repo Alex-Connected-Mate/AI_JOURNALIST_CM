@@ -638,6 +638,7 @@ export async function createSession(sessionData: Partial<SessionData>) {
     // Prepare session data
     const session = {
       ...sessionData,
+      name: sessionData.title,
       status: 'draft',
       access_code: accessCode,
       created_at: new Date().toISOString(),
