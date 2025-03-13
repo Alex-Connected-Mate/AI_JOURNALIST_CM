@@ -108,8 +108,8 @@ export default function SessionRunPage({ params }) {
 
         // Générer l'URL de partage
         if (typeof window !== 'undefined') {
-          // Utiliser code ou session_code selon ce qui est disponible
-          const sessionCode = sessionData?.session_code || sessionData?.code;
+          // Utiliser session_code, code ou access_code selon ce qui est disponible
+          const sessionCode = sessionData?.session_code || sessionData?.code || sessionData?.access_code;
           if (sessionCode) {
             const baseUrl = window.location.origin;
             setShareUrl(`${baseUrl}/join?code=${sessionCode}`);
@@ -395,10 +395,10 @@ export default function SessionRunPage({ params }) {
     switch (currentPhase) {
       case PHASES.JOIN:
         return (
-          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-12 text-center">
+          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-8 text-center">
               <motion.h2 
-                className="text-4xl font-bold mb-10"
+                className="text-3xl font-bold mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -406,18 +406,18 @@ export default function SessionRunPage({ params }) {
                 Rejoindre la session
               </motion.h2>
               
-              <div className="flex flex-col lg:flex-row gap-12 items-center justify-center">
+              <div className="flex flex-col lg:flex-row gap-8 items-center justify-center">
                 {shareUrl ? (
                   <motion.div 
-                    className="flex-shrink-0 bg-white p-6 border-4 border-gray-200 rounded-lg shadow-lg"
+                    className="flex-shrink-0 bg-white p-4 border-3 border-gray-200 rounded-lg shadow-lg"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                   >
-                    <div className="mb-4 text-xl font-medium">Scanner le QR code</div>
+                    <div className="mb-3 text-base font-medium">Scanner le QR code</div>
                     <QRCode 
                       value={shareUrl}
-                      size={300}
+                      size={200}
                       fgColor="#000000"
                       bgColor="#ffffff"
                       level="H"
@@ -425,14 +425,14 @@ export default function SessionRunPage({ params }) {
                   </motion.div>
                 ) : (
                   <motion.div
-                    className="flex-shrink-0 bg-white p-6 border-4 border-gray-200 rounded-lg shadow-lg flex items-center justify-center"
-                    style={{ width: 300, height: 300 }}
+                    className="flex-shrink-0 bg-white p-4 border-3 border-gray-200 rounded-lg shadow-lg flex items-center justify-center"
+                    style={{ width: 200, height: 200 }}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                   >
                     <div className="text-gray-500 text-center">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
                       <p>Génération du QR code...</p>
                     </div>
                   </motion.div>
@@ -444,11 +444,11 @@ export default function SessionRunPage({ params }) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  <div className="text-left mb-8">
-                    <p className="text-2xl mb-3 font-medium">
+                  <div className="text-left mb-6">
+                    <p className="text-xl mb-2 font-medium">
                       Instructions pour rejoindre:
                     </p>
-                    <ol className="list-decimal pl-6 text-xl space-y-4 mb-6">
+                    <ol className="list-decimal pl-6 text-base space-y-3 mb-4">
                       <li>Ouvrez votre navigateur</li>
                       <li>Allez sur <span className="font-bold">{shareUrl ? new URL(shareUrl).origin : window.location.origin}</span></li>
                       <li>Cliquez sur "Rejoindre une session"</li>
@@ -456,26 +456,26 @@ export default function SessionRunPage({ params }) {
                     </ol>
                   </div>
                   
-                  <div className="text-left mb-8">
-                    <p className="text-2xl mb-3 font-medium">
+                  <div className="text-left mb-6">
+                    <p className="text-xl mb-2 font-medium">
                       Code de session:
                     </p>
-                    <div className="bg-primary p-6 rounded-lg text-center border-2 border-primary shadow-md">
-                      <p className="font-mono text-5xl font-bold tracking-wider text-white">
-                        {session?.session_code || session?.code || 'CODE'}
+                    <div className="bg-primary p-4 rounded-lg text-center border-2 border-primary shadow-md">
+                      <p className="font-mono text-3xl font-bold tracking-wider text-white">
+                        {session?.session_code || session?.code || session?.access_code || 'CODE'}
                       </p>
                     </div>
                   </div>
                   
                   <div className="text-left">
-                    <p className="text-2xl font-medium mb-3">
+                    <p className="text-xl mb-2 font-medium">
                       Participants connectés:
                     </p>
                     <div className="flex items-baseline">
-                      <p className="text-4xl font-bold text-primary">
+                      <p className="text-3xl font-bold text-primary">
                         {participants.length}
                       </p>
-                      <span className="text-gray-500 text-2xl ml-2">/ {session?.max_participants || 30}</span>
+                      <span className="text-gray-500 text-xl ml-2">/ {session?.max_participants || 30}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -483,37 +483,37 @@ export default function SessionRunPage({ params }) {
             </div>
             
             <motion.div 
-              className="bg-gray-50 p-8 rounded-b-lg border-t"
+              className="bg-gray-50 p-6 rounded-b-lg border-t"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
             >
-              <h3 className="text-2xl font-semibold mb-6">Participants</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              <h3 className="text-xl font-semibold mb-4">Participants</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                 <AnimatePresence>
                   {participants.map(participant => (
                     <motion.div 
                       key={participant.id} 
-                      className={`bg-white p-3 rounded-lg border-2 ${
+                      className={`bg-white p-2 rounded-lg border-2 ${
                         newParticipantIds.includes(participant.id) ? 'border-primary' : 'border-gray-200'
                       }`}
                       initial={newParticipantIds.includes(participant.id) ? { scale: 0.8, opacity: 0 } : false}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg ${
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-base ${
                           newParticipantIds.includes(participant.id) ? 'bg-primary' : 'bg-gray-500'
                         }`}>
                           {participant.display_name?.charAt(0).toUpperCase() || 'A'}
                         </div>
-                        <span className="truncate text-lg">{participant.display_name || 'Anonyme'}</span>
+                        <span className="truncate text-sm">{participant.display_name || 'Anonyme'}</span>
                       </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
                 {participants.length === 0 && (
-                  <p className="text-gray-500 col-span-5 text-xl text-center py-6">En attente de participants...</p>
+                  <p className="text-gray-500 col-span-6 text-base text-center py-4">En attente de participants...</p>
                 )}
               </div>
             </motion.div>
@@ -522,10 +522,10 @@ export default function SessionRunPage({ params }) {
         
       case PHASES.INSTRUCTIONS:
         return (
-          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-12 text-center">
+          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-8 text-center">
               <motion.h2 
-                className="text-4xl font-bold mb-10"
+                className="text-3xl font-bold mb-6"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -534,13 +534,13 @@ export default function SessionRunPage({ params }) {
               </motion.h2>
               
               <motion.div 
-                className="bg-blue-50 p-10 rounded-lg border-2 border-blue-100 mb-12"
+                className="bg-blue-50 p-8 rounded-lg border-2 border-blue-100 mb-8"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
                 <motion.p 
-                  className="text-2xl"
+                  className="text-xl"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
@@ -551,23 +551,23 @@ export default function SessionRunPage({ params }) {
               </motion.div>
               
               <motion.div 
-                className="mt-12 flex justify-center"
+                className="mt-8 flex justify-center"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
               >
-                <div className="inline-block bg-white p-6 rounded-lg border-2 shadow-md">
-                  <div className="flex flex-col md:flex-row gap-8 items-center">
+                <div className="inline-block bg-white p-4 rounded-lg border-2 shadow-md">
+                  <div className="flex flex-col md:flex-row gap-6 items-center">
                     <div className="text-center">
-                      <p className="text-lg text-gray-600 mb-1">Participants</p>
-                      <p className="font-mono text-3xl font-semibold text-primary">{participants.length}</p>
+                      <p className="text-base text-gray-600 mb-1">Participants</p>
+                      <p className="font-mono text-2xl font-semibold text-primary">{participants.length}</p>
                     </div>
                     
-                    <div className="h-12 w-px bg-gray-300 hidden md:block"></div>
+                    <div className="h-10 w-px bg-gray-300 hidden md:block"></div>
                     
                     <div className="text-center">
-                      <p className="text-lg text-gray-600 mb-1">Durée prévue</p>
-                      <p className="font-mono text-3xl font-semibold text-primary">{formatTime(timerDuration)}</p>
+                      <p className="text-base text-gray-600 mb-1">Durée prévue</p>
+                      <p className="font-mono text-2xl font-semibold text-primary">{formatTime(timerDuration)}</p>
                     </div>
                   </div>
                 </div>
@@ -966,7 +966,7 @@ export default function SessionRunPage({ params }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 py-6 relative overflow-hidden">
       <DotPattern className="absolute inset-0 z-0" />
       
       {/* Élément audio pour le son de fin de timer */}
@@ -975,18 +975,18 @@ export default function SessionRunPage({ params }) {
       </audio>
       
       {/* Contenu du slide actuel */}
-      <div className="container mx-auto px-6 min-h-screen flex flex-col">
+      <div className="container mx-auto px-4 min-h-screen flex flex-col">
         <div className="flex-grow flex items-center justify-center">
           {renderPhaseContent()}
         </div>
         
         {/* Navigation entre phases - redesigned and moved to bottom right */}
-        <div className="fixed bottom-8 right-8 flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg shadow-lg z-30">
-          <div className="flex items-center gap-2 mr-2">
+        <div className="fixed bottom-6 right-6 flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-30">
+          <div className="flex items-center gap-1 mr-2">
             {Object.values(PHASES).map((phase) => (
               <div 
                 key={phase} 
-                className={`h-3 w-3 rounded-full ${currentPhase === phase ? 'bg-primary' : 'bg-gray-300'}`}
+                className={`h-2 w-2 rounded-full ${currentPhase === phase ? 'bg-primary' : 'bg-gray-300'}`}
               ></div>
             ))}
           </div>
@@ -994,10 +994,10 @@ export default function SessionRunPage({ params }) {
           <button
             onClick={goToNextPhase}
             disabled={loading}
-            className="cm-button flex items-center justify-center gap-2"
+            className="cm-button flex items-center justify-center gap-1 text-sm py-1 px-2"
           >
             Phase suivante
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 010-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
