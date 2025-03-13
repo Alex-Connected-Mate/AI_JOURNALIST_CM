@@ -1,9 +1,49 @@
 import { NextResponse } from 'next/server';
 
-// This middleware doesn't actively do anything by itself
-// But it tells Next.js that we want to handle our own 404 responses
-// rather than relying on its built-in fallbacks
+// Pages qui ne nécessitent pas d'authentification
+const publicPaths = [
+  '/',
+  '/auth/login',
+  '/auth/register',
+  '/auth/reset-password',
+  '/join',
+];
+
+// Chemins de participation qui utilisent l'authentification par token
+const participationPaths = ['/sessions/:id/participate'];
+
 export function middleware(request) {
+  const { pathname } = request.nextUrl;
+  
+  // Vérifier si le chemin est public
+  if (publicPaths.includes(pathname)) {
+    return NextResponse.next();
+  }
+  
+  // Vérifier si c'est un chemin de participation
+  const isParticipationPath = participationPaths.some(path => {
+    // Convertir le modèle de chemin en RegExp
+    const pathPattern = path.replace(/:id/, '[^/]+');
+    const regex = new RegExp(`^${pathPattern}$`);
+    return regex.test(pathname);
+  });
+  
+  if (isParticipationPath) {
+    // Vérifier si le token est présent dans l'URL
+    const token = request.nextUrl.searchParams.get('token');
+    if (token) {
+      return NextResponse.next();
+    }
+  }
+  
+  // Pour tous les autres chemins, vérifier si l'utilisateur est authentifié
+  const authSession = request.cookies.get('supabase-auth-token');
+  
+  if (!authSession) {
+    // Rediriger vers la page de connexion si aucune session n'est trouvée
+    return NextResponse.redirect(new URL('/auth/login', request.url));
+  }
+  
   return NextResponse.next();
 }
 

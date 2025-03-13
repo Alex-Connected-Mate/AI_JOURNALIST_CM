@@ -20,6 +20,32 @@ export default function HomePage() {
             Une plateforme interactive permettant aux professeurs de créer des sessions d'analyse de discussions avec des agents IA.
           </p>
           
+          <div className="flex justify-center space-x-4 mb-12">
+            {user ? (
+              <Link 
+                href="/dashboard" 
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+              >
+                Accéder au tableau de bord
+              </Link>
+            ) : (
+              <>
+                <Link 
+                  href="/auth/login" 
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  Se connecter
+                </Link>
+                <Link 
+                  href="/join" 
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                >
+                  Rejoindre une session
+                </Link>
+              </>
+            )}
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
             <Link href="/sessions" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
               <h2 className="text-xl font-semibold mb-3">Sessions</h2>
@@ -31,11 +57,11 @@ export default function HomePage() {
               <p className="text-gray-600">Consultez vos statistiques et résultats d'analyses</p>
             </Link>
             
-            <Link href="/admin/diagnostics" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-2 border-purple-100">
-              <h2 className="text-xl font-semibold mb-3 text-purple-700">Diagnostics système</h2>
-              <p className="text-gray-600">Vérifiez l'état du système et résolvez les problèmes</p>
-              <span className="inline-block mt-3 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded">
-                Administrateur
+            <Link href="/join" className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-2 border-green-100">
+              <h2 className="text-xl font-semibold mb-3 text-green-700">Participer à une session</h2>
+              <p className="text-gray-600">Rejoignez une session en tant que participant avec un code</p>
+              <span className="inline-block mt-3 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                Aucun compte requis
               </span>
             </Link>
           </div>

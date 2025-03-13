@@ -113,6 +113,22 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
         
       if (settingsError) throw settingsError;
       
+      // Utiliser une procédure stockée ou une procédure côté serveur pour créer la notification
+      // Cela évite les problèmes de politique RLS
+      try {
+        // Créer une notification pour tous les participants sans utiliser directement la table des notifications
+        // Cette fonction procédurale gère correctement les autorisations RLS
+        await supabase.rpc('create_session_notification', {
+          p_session_id: sessionId,
+          p_title: 'Session démarrée',
+          p_message: 'La phase de vote a commencé. Vous pouvez maintenant voter pour les autres participants.',
+          p_type: 'session_started'
+        });
+      } catch (notifError) {
+        // Log l'erreur mais continuer (non bloquant)
+        console.error('Erreur lors de la création des notifications:', notifError);
+      }
+      
       // Recharger la page pour afficher le nouvel état
       window.location.reload();
     } catch (err: any) {
