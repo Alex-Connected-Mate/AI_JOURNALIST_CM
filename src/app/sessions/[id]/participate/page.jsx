@@ -354,40 +354,38 @@ function ParticipationContent() {
           throw sessionError;
         }
         
-        if (!sessionData) {
-          throw new Error("Session introuvable");
-        }
-        
-        setSession(sessionData);
-        
-        // Définir le nombre de votes en fonction des paramètres de la session
-        if (sessionData.max_votes_per_participant) {
-          setRemainingVotes(sessionData.max_votes_per_participant);
-        }
-        
-        try {
-          // Charger les participants actuels
-          const { data: participantsData, error: participantsError } = await supabase
-            .from("participants")
-            .select("*")
-            .eq("session_id", sessionId);
-            
-          if (participantsError) {
-            if (participantsError.code === '42P01') {
-              console.error("La table 'participants' n'existe pas dans la base de données:", participantsError);
-              // Afficher un message mais continuer le flux
-              setError("La table 'participants' n'existe pas dans la base de données. Certaines fonctionnalités seront limitées. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer correctement la base de données.");
-              setParticipants([]);
-            } else {
-              throw participantsError;
-            }
-          } else {
-            setParticipants(participantsData || []);
+        if (sessionData) {
+          setSession(sessionData);
+          
+          // Définir le nombre de votes en fonction des paramètres de la session
+          if (sessionData.max_votes_per_participant) {
+            setRemainingVotes(sessionData.max_votes_per_participant);
           }
-        } catch (participantsErr) {
-          console.error("Erreur lors du chargement des participants:", participantsErr);
-          // Continuer le flux sans planter l'application
-          setParticipants([]);
+          
+          try {
+            // Charger les participants actuels
+            const { data: participantsData, error: participantsError } = await supabase
+              .from("participants")
+              .select("*")
+              .eq("session_id", sessionId);
+              
+            if (participantsError) {
+              if (participantsError.code === '42P01') {
+                console.error("La table 'participants' n'existe pas dans la base de données:", participantsError);
+                // Afficher un message mais continuer le flux
+                setError("La table 'participants' n'existe pas dans la base de données. Certaines fonctionnalités seront limitées. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer correctement la base de données.");
+                setParticipants([]);
+              } else {
+                throw participantsError;
+              }
+            } else {
+              setParticipants(participantsData || []);
+            }
+          } catch (participantsErr) {
+            console.error("Erreur lors du chargement des participants:", participantsErr);
+            // Continuer le flux sans planter l'application
+            setParticipants([]);
+          }
         }
         
       } catch (err) {
@@ -915,12 +913,12 @@ function ParticipationContent() {
               
               {session && (
                 <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-center">{session.name}</h2>
-                  <p className="text-center text-gray-600">Organisé par {session.host_name}</p>
+                  <h2 className="text-xl font-semibold text-center">{session.title || session.name}</h2>
+                  <p className="text-center text-gray-600">Organisé par {session.settings?.professorName || 'Professeur'}</p>
                   <div className="mt-2 text-center">
-                    <span className="text-sm font-semibold">Code: <span className="font-mono text-primary">{session.session_code}</span></span>
+                    <span className="text-sm font-semibold">Code: <span className="font-mono text-primary">{session.session_code || session.code}</span></span>
                     <p className="text-xs text-gray-600 mt-1">
-                      Participants: {participants.length} / {session.max_participants || 30}
+                      Participants: {participants.length} / {session.max_participants || session.settings?.maxParticipants || 30}
                     </p>
                   </div>
                 </div>
@@ -987,7 +985,7 @@ function ParticipationContent() {
               
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 w-full">
                 <p className="text-sm text-center text-gray-600 mb-2">
-                  Participants connectés: <span className="font-semibold">{participants.length} / {session.max_participants || 30}</span>
+                  Participants connectés: <span className="font-semibold">{participants.length} / {session.max_participants || session.settings?.maxParticipants || 30}</span>
                 </p>
               </div>
             </div>
@@ -1227,8 +1225,8 @@ function ParticipationContent() {
                 <AIAgentSelector
                   sessionId={sessionId}
                   participantName={currentParticipant?.name || participantName}
-                  programName={session?.name || "Session"}
-                  teacherName={session?.host_name || "Animateur"}
+                  programName={session?.title || session?.name || "Session"}
+                  teacherName={session?.settings?.professorName || "Professeur"}
                   agentType={agentType}
                   sessionContext={getFormattedContext()}
                   onClose={() => {
@@ -1238,16 +1236,7 @@ function ParticipationContent() {
                   }}
                   onComplete={handleAICompletion}
                   onError={handleAIError}
-                  onSaveNote={(note) => {
-                    if (note && note.trim()) {
-                      sessionContextRef.current.addSessionNote(note);
-                      sessionContextRef.current.saveToLocalStorage(sessionId);
-                      
-                      // Afficher un message de confirmation
-                      setError("Note automatique sauvegardée!");
-                      setTimeout(() => setError(null), 2000);
-                    }
-                  }}
+                  onSaveNote={saveSessionNote}
                 />
               )}
             </div>

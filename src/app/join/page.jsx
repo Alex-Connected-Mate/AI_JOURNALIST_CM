@@ -38,6 +38,8 @@ function JoinSessionContent() {
   const [success, setSuccess] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [scannerInitialized, setScannerInitialized] = useState(false);
+  const [session, setSession] = useState(null);
+  const [participants, setParticipants] = useState([]);
 
   // Vérifier si on a un code dans l'URL au chargement
   useEffect(() => {
@@ -133,7 +135,7 @@ function JoinSessionContent() {
       // Vérifier d'abord si la session existe
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
-        .select('id, status, max_participants, code')
+        .select('id, status, max_participants, code, session_code, title, settings')
         .or(`code.eq.${sessionCode.trim()},session_code.eq.${sessionCode.trim()}`)
         .single();
       
@@ -187,7 +189,8 @@ function JoinSessionContent() {
         }
         
         // Créer un ID anonyme unique pour ce participant
-        const anonymousId = `anon_${Math.random().toString(36).substring(2, 15)}`;
+        const anonymityLevel = sessionData.settings?.connection?.anonymityLevel || 'semi-anonymous';
+        const isAnonymous = anonymityLevel !== 'not-anonymous';
         
         // Créer un participant anonyme
         const { data: participantData, error: participantError } = await supabase
@@ -196,7 +199,9 @@ function JoinSessionContent() {
             { 
               session_id: sessionData.id, 
               name: displayName.trim(),
-              anonymous_id: anonymousId,
+              display_name: displayName.trim(),
+              anonymous_id: isAnonymous ? `anon_${Math.random().toString(36).substring(2, 15)}` : null,
+              is_anonymous: isAnonymous,
               is_presenter: false,
               status: 'active',
               device_info: { 
@@ -346,6 +351,19 @@ function JoinSessionContent() {
               </button>
             </div>
           </form>
+        )}
+
+        {session && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-center">{session.title || session.name}</h2>
+            <p className="text-center text-gray-600">Organisé par {session.settings?.professorName || 'Professeur'}</p>
+            <div className="mt-2 text-center">
+              <span className="text-sm font-semibold">Code: <span className="font-mono text-primary">{session.session_code || session.code}</span></span>
+              <p className="text-xs text-gray-600 mt-1">
+                Participants: {participants.length} / {session.max_participants || session.settings?.maxParticipants || 30}
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </div>
