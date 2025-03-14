@@ -53,12 +53,12 @@ const PHASES = {
 
 // Textes pour l'accessibilité
 const ACCESSIBILITY_TEXTS = {
-  LOADING: "Chargement de la session en cours. Veuillez patienter.",
-  AI_LOADING: "Initialisation de l'agent d'intelligence artificielle. Cela peut prendre quelques instants.",
-  MODERATION: "Vérification du contenu pour assurer la conformité aux règles de modération. Cela prendra un instant.",
-  ERROR: "Une erreur est survenue. Veuillez réessayer ou contacter l'assistance.",
-  TIMER_END: "Attention, le temps est écoulé.",
-  PHASE_CHANGE: "La phase de session a changé. Nouvelle phase: "
+  LOADING: "Loading session. Please wait.",
+  AI_LOADING: "Initializing AI agent. This may take a moment.",
+  MODERATION: "Verifying content for compliance with moderation rules. This will take a moment.",
+  ERROR: "An error occurred. Please try again or contact support.",
+  TIMER_END: "Time's up.",
+  PHASE_CHANGE: "Session phase has changed. New phase: "
 };
 
 // Fonction pour appeler l'API de modération d'OpenAI
@@ -909,12 +909,12 @@ function ParticipationContent() {
         <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
           {!joiningComplete ? (
             <>
-              <h1 className="text-2xl font-semibold text-center mb-6">Rejoindre la session</h1>
+              <h1 className="text-2xl font-semibold text-center mb-6">Join Session</h1>
               
               {session && (
                 <div className="mb-6">
                   <h2 className="text-xl font-semibold text-center">{session.title || session.name}</h2>
-                  <p className="text-center text-gray-600">Organisé par {session.settings?.professorName || 'Professeur'}</p>
+                  <p className="text-center text-gray-600">Hosted by {session.settings?.professorName || 'Professor'}</p>
                   <div className="mt-2 text-center">
                     <span className="text-sm font-semibold">Code: <span className="font-mono text-primary">{session.session_code || session.code}</span></span>
                     <p className="text-xs text-gray-600 mt-1">
@@ -927,7 +927,7 @@ function ParticipationContent() {
               <form onSubmit={joinSession} className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Votre nom
+                    Your Name
                   </label>
                   <input
                     type="text"
@@ -935,7 +935,7 @@ function ParticipationContent() {
                     value={participantName}
                     onChange={(e) => setParticipantName(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-                    placeholder="Entrez votre nom"
+                    placeholder="Enter your name"
                     required
                   />
                 </div>
@@ -945,14 +945,14 @@ function ParticipationContent() {
                   disabled={submitting || participants.length >= (session?.max_participants || 30)}
                   className="w-full cm-button py-2 px-4 rounded-md disabled:opacity-50"
                 >
-                  {submitting ? "Inscription en cours..." : 
-                  participants.length >= (session?.max_participants || 30) ? "Session complète" : 
-                  "Rejoindre la session"}
+                  {submitting ? "Joining..." : 
+                  participants.length >= (session?.max_participants || 30) ? "Session Full" : 
+                  "Join Session"}
                 </button>
                 
                 {participants.length >= (session?.max_participants || 30) && (
                   <p className="text-xs text-center text-red-500">
-                    Cette session est complète ({session?.max_participants || 30} participants maximum)
+                    This session is full (maximum {session?.max_participants || 30} participants)
                   </p>
                 )}
               </form>
@@ -964,28 +964,28 @@ function ParticipationContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-semibold text-center mb-2">Participation confirmée !</h1>
+              <h1 className="text-2xl font-semibold text-center mb-2">Participation Confirmed!</h1>
               <p className="text-gray-600 text-center mb-6">
-                Vous avez rejoint la session <span className="font-semibold">{session.name}</span>.
+                You've joined the session <span className="font-semibold">{session.name}</span>.
               </p>
               
               {currentParticipant && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6 w-full">
-                  <p className="text-center font-medium mb-1">Votre identifiant pour cette session:</p>
+                  <p className="text-center font-medium mb-1">Your identifier for this session:</p>
                   <p className="text-center font-mono text-lg font-bold">{currentParticipant.id.substring(0, 8)}</p>
                   <p className="text-xs text-center text-gray-500 mt-1">
-                    Les autres participants pourront vous retrouver grâce à cet identifiant
+                    Other participants can find you with this identifier
                   </p>
                 </div>
               )}
               
               <p className="text-center mb-4">
-                En attente du démarrage de la session. Gardez cette page ouverte !
+                Waiting for the session to start. Keep this page open!
               </p>
               
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 w-full">
                 <p className="text-sm text-center text-gray-600 mb-2">
-                  Participants connectés: <span className="font-semibold">{participants.length} / {session.max_participants || session.settings?.maxParticipants || 30}</span>
+                  Connected participants: <span className="font-semibold">{participants.length} / {session.max_participants || session.settings?.maxParticipants || 30}</span>
                 </p>
               </div>
             </div>
@@ -1003,23 +1003,23 @@ function ParticipationContent() {
           <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 mb-6">
             <p className="text-center font-medium">
               {session?.discussion_instructions || 
-               "Les participants doivent maintenant discuter entre eux. Échangez vos idées sur le sujet proposé."}
+               "Participants should now discuss among themselves. Exchange your ideas on the proposed topic."}
             </p>
           </div>
           
           <p className="text-center text-gray-600 mb-4">
-            La phase de discussion va commencer très bientôt.
+            The discussion phase will begin shortly.
             <br />
-            Préparez-vous à échanger avec les autres participants.
+            Prepare to exchange ideas with other participants.
           </p>
           
           {currentParticipant && (
             <div className="bg-gray-100 p-3 rounded-lg mb-4">
               <p className="text-sm text-center text-gray-700">
-                Votre identifiant: <span className="font-mono font-bold">{currentParticipant.id.substring(0, 8)}</span>
+                Your identifier: <span className="font-mono font-bold">{currentParticipant.id.substring(0, 8)}</span>
               </p>
               <p className="text-xs text-center text-gray-500 mt-1">
-                Gardez cette page ouverte pendant toute la session
+                Keep this page open during the entire session
               </p>
             </div>
           )}
@@ -1031,35 +1031,35 @@ function ParticipationContent() {
     if (currentPhase === PHASES.DISCUSSION) {
       return (
         <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-          <h1 className="text-2xl font-semibold text-center mb-4">Discussion en cours</h1>
+          <h1 className="text-2xl font-semibold text-center mb-4">Discussion in Progress</h1>
           
           <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 mb-6">
             <p className="text-center font-medium mb-4">
               {session?.discussion_instructions || 
-               "Échangez vos idées sur le sujet proposé avec les autres participants."}
+               "Share your ideas on the proposed topic with other participants."}
             </p>
             
             {timerActive && (
               <div className="bg-white p-4 rounded-lg border border-blue-200 mx-auto max-w-xs">
                 <p className="text-center text-3xl font-bold text-primary">{formatTime(timer)}</p>
-                <p className="text-center text-sm text-gray-600">Temps restant</p>
+                <p className="text-center text-sm text-gray-600">Time remaining</p>
               </div>
             )}
           </div>
           
           <p className="text-center text-gray-600 mb-6">
-            Prenez note des participants avec lesquels vous avez des échanges intéressants.
+            Take note of participants with whom you have interesting exchanges.
             <br />
-            Vous pourrez voter pour eux lors de la prochaine phase.
+            You'll be able to vote for them in the next phase.
           </p>
           
           {currentParticipant && (
             <div className="bg-gray-100 p-3 rounded-lg">
               <p className="text-sm text-center text-gray-700">
-                Votre identifiant: <span className="font-mono font-bold">{currentParticipant.id.substring(0, 8)}</span>
+                Your identifier: <span className="font-mono font-bold">{currentParticipant.id.substring(0, 8)}</span>
               </p>
               <p className="text-xs text-center text-gray-500 mt-1">
-                Partagez cet identifiant avec les autres participants
+                Share this identifier with other participants
               </p>
             </div>
           )}
@@ -1071,30 +1071,30 @@ function ParticipationContent() {
     if (currentPhase === PHASES.VOTING) {
       return (
         <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-          <h1 className="text-2xl font-semibold text-center mb-4">Votez maintenant</h1>
+          <h1 className="text-2xl font-semibold text-center mb-4">Vote Now</h1>
           
           <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-6">
             <p className="text-center font-medium mb-3">
               {session?.voting_instructions || 
-               "Votez pour les participants avec lesquels vous avez eu les échanges les plus intéressants."}
+               "Vote for participants with whom you had the most interesting exchanges."}
             </p>
             
             {timerActive && (
               <div className="bg-white p-3 rounded-lg border border-green-200 mx-auto max-w-xs mb-2">
                 <p className="text-center text-2xl font-bold text-primary">{formatTime(timer)}</p>
-                <p className="text-center text-xs text-gray-600">Temps restant pour voter</p>
+                <p className="text-center text-xs text-gray-600">Time remaining to vote</p>
               </div>
             )}
             
             <p className="text-center text-sm">
-              Votes restants: <span className="font-bold">{remainingVotes}</span> sur {session?.max_votes_per_participant || 3}
+              Votes remaining: <span className="font-bold">{remainingVotes}</span> of {session?.max_votes_per_participant || 3}
             </p>
           </div>
           
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Rechercher par nom ou identifiant..."
+              placeholder="Search by name or identifier..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary"
@@ -1104,7 +1104,7 @@ function ParticipationContent() {
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {filteredParticipants.length > 0 ? (
               filteredParticipants
-                .filter(p => p.id !== currentParticipant?.id) // Exclure le participant actuel
+                .filter(p => p.id !== currentParticipant?.id) // Exclude current participant
                 .map(participant => (
                   <motion.div
                     key={participant.id}
@@ -1137,12 +1137,12 @@ function ParticipationContent() {
                             : 'cm-button'
                       }`}
                     >
-                      {selectedParticipants.includes(participant.id) ? 'Voté ✓' : 'Voter'}
+                      {selectedParticipants.includes(participant.id) ? 'Voted ✓' : 'Vote'}
                     </button>
                   </motion.div>
                 ))
             ) : (
-              <p className="text-center text-gray-600 py-4">Aucun participant trouvé</p>
+              <p className="text-center text-gray-600 py-4">No participants found</p>
             )}
           </div>
         </div>
@@ -1151,41 +1151,41 @@ function ParticipationContent() {
     
     // Phase d'interaction
     if (currentPhase === PHASES.INTERACTION) {
-      // Déterminer le type d'agent à afficher
+      // Determine which agent type to display
       let agentType = 'pause';
       if (interactionStatus === 'selected') {
-        agentType = 'nuggets'; // Les participants sélectionnés utilisent AI Nuggets
+        agentType = 'nuggets'; // Selected participants use AI Nuggets
       } else if (interactionStatus === 'not_selected') {
-        agentType = 'lightbulb'; // Les autres participants peuvent utiliser AI Lightbulb
+        agentType = 'lightbulb'; // Other participants can use AI Lightbulb
       }
       
       return (
         <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-xl w-full">
-          <h1 className="text-2xl font-semibold text-center mb-4" id="interaction-title">Phase d'interaction</h1>
+          <h1 className="text-2xl font-semibold text-center mb-4" id="interaction-title">Interaction Phase</h1>
           
           {interactionStatus === 'selected' ? (
             <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-6" role="status" aria-labelledby="selected-status">
-              <h2 className="text-xl font-semibold text-center mb-3" id="selected-status">Félicitations!</h2>
+              <h2 className="text-xl font-semibold text-center mb-3" id="selected-status">Congratulations!</h2>
               <p className="text-center mb-4">
-                Vous avez été sélectionné pour discuter avec notre IA journaliste.
-                Vos idées ont été particulièrement appréciées par les autres participants.
+                You've been selected to talk with our AI journalist.
+                Your ideas were particularly appreciated by other participants.
               </p>
             </div>
           ) : interactionStatus === 'not_selected' ? (
             <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100 mb-6" role="status" aria-labelledby="not-selected-status">
-              <h2 className="text-xl font-semibold text-center mb-3" id="not-selected-status">Partagez vos idées</h2>
+              <h2 className="text-xl font-semibold text-center mb-3" id="not-selected-status">Share Your Ideas</h2>
               <p className="text-center mb-4">
-                Même si vous n'avez pas été sélectionné pour l'interview principale,
-                vos idées sont précieuses ! Discutez avec notre AI Lightbulb pour développer
-                vos propres réflexions inspirées par les discussions.
+                Even though you weren't selected for the main interview,
+                your ideas are valuable! Chat with our AI Lightbulb to develop
+                your own insights inspired by the discussions.
               </p>
             </div>
           ) : (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6" role="status" aria-live="polite">
-              <h2 className="text-xl font-semibold text-center mb-3">En attente</h2>
+              <h2 className="text-xl font-semibold text-center mb-3">Waiting</h2>
               <p className="text-center mb-4">
-                En attente de l'attribution d'un rôle dans cette phase.
-                Veuillez patienter un instant...
+                Waiting for role assignment in this phase.
+                Please wait a moment...
               </p>
               <div className="flex justify-center" aria-hidden="true">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
@@ -1201,9 +1201,9 @@ function ParticipationContent() {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                   </div>
                   <p className="text-gray-600 text-center">
-                    Initialisation de l'agent IA en cours...
+                    Initializing AI agent...
                     <br />
-                    <span className="text-sm">Cela peut prendre quelques instants</span>
+                    <span className="text-sm">This may take a moment</span>
                   </p>
                 </div>
               ) : moderationActive ? (
@@ -1216,9 +1216,9 @@ function ParticipationContent() {
                     </div>
                   </div>
                   <p className="text-gray-600 text-center">
-                    Vérification du contenu en cours...
+                    Verifying content...
                     <br />
-                    <span className="text-sm">Cela ne prendra qu'un instant</span>
+                    <span className="text-sm">This will only take a moment</span>
                   </p>
                 </div>
               ) : (
@@ -1226,13 +1226,13 @@ function ParticipationContent() {
                   sessionId={sessionId}
                   participantName={currentParticipant?.name || participantName}
                   programName={session?.title || session?.name || "Session"}
-                  teacherName={session?.settings?.professorName || "Professeur"}
+                  teacherName={session?.settings?.professorName || "Professor"}
                   agentType={agentType}
                   sessionContext={getFormattedContext()}
                   onClose={() => {
-                    // Fermeture de l'interaction
+                    // Close interaction
                     setIsInteracting(false);
-                    console.log("Interaction fermée par l'utilisateur");
+                    console.log("Interaction closed by user");
                   }}
                   onComplete={handleAICompletion}
                   onError={handleAIError}
@@ -1242,26 +1242,26 @@ function ParticipationContent() {
             </div>
           )}
           
-          {/* Bouton de feedback */}
+          {/* Feedback button */}
           {!feedbackOpen && !aiAgentLoading && !moderationActive && (
             <div className="mt-4 text-center">
               <button
                 onClick={() => setFeedbackOpen(true)}
                 className="text-sm text-blue-600 hover:text-blue-800 underline"
-                aria-label="Donner votre avis sur l'interaction avec l'IA"
+                aria-label="Give feedback on AI interaction"
               >
-                Signaler un problème ou donner votre avis
+                Report an issue or provide feedback
               </button>
             </div>
           )}
           
-          {/* Formulaire de feedback */}
+          {/* Feedback form */}
           {feedbackOpen && (
             <div className="bg-white p-4 rounded-lg border border-gray-200 mt-4">
-              <h3 className="font-medium text-gray-800 mb-2">Votre avis nous intéresse</h3>
+              <h3 className="font-medium text-gray-800 mb-2">We value your feedback</h3>
               
               <div className="mb-3">
-                <label className="block text-sm text-gray-600 mb-1">Type de feedback</label>
+                <label className="block text-sm text-gray-600 mb-1">Feedback type</label>
                 <div className="flex space-x-4">
                   <label className="inline-flex items-center">
                     <input
@@ -1272,7 +1272,7 @@ function ParticipationContent() {
                       checked={feedbackType === 'issue'}
                       onChange={() => setFeedbackType('issue')}
                     />
-                    <span className="ml-2 text-sm text-gray-700">Problème</span>
+                    <span className="ml-2 text-sm text-gray-700">Issue</span>
                   </label>
                   <label className="inline-flex items-center">
                     <input
@@ -1294,14 +1294,14 @@ function ParticipationContent() {
                       checked={feedbackType === 'praise'}
                       onChange={() => setFeedbackType('praise')}
                     />
-                    <span className="ml-2 text-sm text-gray-700">Compliment</span>
+                    <span className="ml-2 text-sm text-gray-700">Praise</span>
                   </label>
                 </div>
               </div>
               
               <div className="mb-3">
                 <label htmlFor="feedbackMessage" className="block text-sm text-gray-600 mb-1">
-                  Votre message
+                  Your message
                 </label>
                 <textarea
                   id="feedbackMessage"
@@ -1309,7 +1309,7 @@ function ParticipationContent() {
                   onChange={(e) => setFeedbackMessage(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   rows="3"
-                  placeholder="Décrivez votre expérience ou le problème rencontré..."
+                  placeholder="Describe your experience or the issue encountered..."
                 ></textarea>
               </div>
               
@@ -1320,7 +1320,7 @@ function ParticipationContent() {
                   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
                   disabled={feedbackSubmitting}
                 >
-                  Annuler
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1328,29 +1328,29 @@ function ParticipationContent() {
                   disabled={feedbackSubmitting || !feedbackMessage.trim()}
                   className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
                 >
-                  {feedbackSubmitting ? 'Envoi...' : 'Envoyer'}
+                  {feedbackSubmitting ? 'Sending...' : 'Send'}
                 </button>
               </div>
             </div>
           )}
           
-          {/* Prise de notes */}
+          {/* Note taking */}
           {!showNoteInput && !feedbackOpen && !aiAgentLoading && !moderationActive && (
             <div className="mt-2 text-center">
               <button
                 onClick={() => setShowNoteInput(true)}
                 className="text-sm text-gray-600 hover:text-gray-800 underline"
-                aria-label="Prendre une note sur cette session"
+                aria-label="Take a note about this session"
               >
-                Prendre une note
+                Take a note
               </button>
             </div>
           )}
           
-          {/* Formulaire de prise de notes */}
+          {/* Note form */}
           {showNoteInput && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-2">
-              <h3 className="font-medium text-gray-800 mb-2">Prendre une note</h3>
+              <h3 className="font-medium text-gray-800 mb-2">Take a note</h3>
               
               <div className="mb-3">
                 <textarea
@@ -1358,7 +1358,7 @@ function ParticipationContent() {
                   onChange={(e) => setSessionNote(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   rows="2"
-                  placeholder="Notez un point important de la discussion..."
+                  placeholder="Note an important point from the discussion..."
                 ></textarea>
               </div>
               
@@ -1368,7 +1368,7 @@ function ParticipationContent() {
                   onClick={() => setShowNoteInput(false)}
                   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
                 >
-                  Annuler
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1376,7 +1376,7 @@ function ParticipationContent() {
                   disabled={!sessionNote.trim()}
                   className="px-3 py-1 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:bg-gray-300"
                 >
-                  Sauvegarder
+                  Save
                 </button>
               </div>
             </div>
@@ -1384,12 +1384,12 @@ function ParticipationContent() {
           
           {cachedInsights && cachedInsights.length > 0 && !aiAgentLoading && !isInteracting && (
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mt-4">
-              <h3 className="text-center font-medium text-blue-800 mb-2">Précédentes idées sauvegardées</h3>
+              <h3 className="text-center font-medium text-blue-800 mb-2">Previous saved ideas</h3>
               <p className="text-sm text-blue-700 text-center">
-                Vous avez déjà interagi avec l'IA dans cette session.
+                You've already interacted with the AI in this session.
                 {cachedInsights.length > 1 
-                  ? ` ${cachedInsights.length} messages ont été sauvegardés.` 
-                  : " Un message a été sauvegardé."}
+                  ? ` ${cachedInsights.length} messages have been saved.` 
+                  : " One message has been saved."}
               </p>
               <div className="flex justify-center mt-2">
                 <button
@@ -1400,7 +1400,7 @@ function ParticipationContent() {
                   }}
                   className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
                 >
-                  Nouvelle interaction
+                  New interaction
                 </button>
               </div>
             </div>
@@ -1414,7 +1414,7 @@ function ParticipationContent() {
                   onClick={() => setError(null)}
                   className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
                 >
-                  Fermer
+                  Close
                 </button>
               </div>
             </div>
@@ -1423,7 +1423,7 @@ function ParticipationContent() {
           {timerActive && (
             <div className="bg-white p-3 rounded-lg border mt-4 mx-auto max-w-xs">
               <p className="text-center text-xl font-bold text-primary">{formatTime(timer)}</p>
-              <p className="text-center text-xs text-gray-600">Temps restant pour cette phase</p>
+              <p className="text-center text-xs text-gray-600">Time remaining for this phase</p>
             </div>
           )}
         </div>
@@ -1490,7 +1490,7 @@ function ParticipationContent() {
     if (currentPhase === PHASES.CONCLUSION) {
       return (
         <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-          <h1 className="text-2xl font-semibold text-center mb-4">Session terminée</h1>
+          <h1 className="text-2xl font-semibold text-center mb-4">Session ended</h1>
           
           <div className="bg-green-50 p-6 rounded-lg border border-green-100 mb-6">
             <div className="flex justify-center mb-4">
@@ -1501,16 +1501,16 @@ function ParticipationContent() {
               </div>
             </div>
             
-            <h2 className="text-xl font-semibold text-center mb-2">Merci pour votre participation!</h2>
+            <h2 className="text-xl font-semibold text-center mb-2">Thank you for your participation!</h2>
             <p className="text-center text-gray-600">
-              Cette session est maintenant terminée. Vous pouvez vous reconnecter à tout moment
-              pour accéder aux analyses et aux "books" des discussions.
+              This session is now ended. You can reconnect at any time
+              to access analyses and "books" of discussions.
             </p>
           </div>
           
           <div className="text-center">
             <p className="text-gray-600 mb-4">
-              N'hésitez pas à garder le code de session pour y revenir plus tard.
+              Don't hesitate to keep the session code for later access.
             </p>
             <div className="bg-gray-100 p-3 rounded-lg inline-block">
               <p className="font-mono font-bold text-primary">{session.session_code}</p>
@@ -1523,9 +1523,9 @@ function ParticipationContent() {
     // Par défaut, afficher un message d'attente
     return (
       <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-        <h1 className="text-xl font-semibold text-center mb-4">En attente</h1>
+        <h1 className="text-xl font-semibold text-center mb-4">Waiting</h1>
         <p className="text-center text-gray-600">
-          En attente de la prochaine phase de la session...
+          Waiting for the next phase of the session...
         </p>
         <div className="flex justify-center mt-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1545,14 +1545,14 @@ function ParticipationContent() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 relative">
         <DotPattern className="absolute inset-0 z-0" />
         <div className="z-10 p-8 bg-white rounded-lg shadow-md max-w-md w-full">
-          <h1 className="text-xl font-semibold text-center mb-4">Erreur</h1>
+          <h1 className="text-xl font-semibold text-center mb-4">Error</h1>
           <p className="text-center text-red-500">{error}</p>
           <div className="flex justify-center mt-4">
             <button
               onClick={() => router.push("/join")}
               className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition"
             >
-              Retour
+              Return
             </button>
           </div>
         </div>
@@ -1574,7 +1574,7 @@ function ParticipationContent() {
       
       {/* Footer */}
       <div className="mt-8 text-center">
-        <p className="text-sm text-gray-500">Clipboard by ConnectedMate</p>
+        {/* Remove the "Clipboard by ConnectedMate" text */}
       </div>
     </div>
   );

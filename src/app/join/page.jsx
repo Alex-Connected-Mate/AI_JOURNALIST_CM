@@ -1,380 +1,344 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
-import Link from 'next/link';
-import DotPattern from '@/components/ui/DotPattern'; 
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import Image from "next/image";
+import Logo from "@/components/ui/Logo";
+import DotPattern from "@/components/ui/DotPattern";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
-// Loading component that will be shown while the page is suspended
-function JoinPageLoading() {
+// Loading fallback for Suspense
+function LoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8 relative">
-      <DotPattern className="absolute inset-0 z-0" />
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md relative z-10">
-        <div className="text-center">
-          <div className="w-12 h-12 border-t-4 border-primary border-solid rounded-full animate-spin mx-auto mb-4"></div>
-          <h2 className="text-xl font-medium text-gray-700">Loading...</h2>
-          <p className="text-sm text-gray-500 mt-2">
-            Please wait while we prepare the session joining page
-          </p>
+    <div className="flex h-screen flex-col items-center justify-center">
+      <div className="relative mb-4 h-16 w-16">
+        <Logo />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <LoadingSpinner />
         </div>
       </div>
+      <p className="text-gray-600">Loading session...</p>
     </div>
   );
 }
 
-// Main component with search params functionality
-function JoinSessionContent() {
+// Main content component
+function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const codeFromUrl = searchParams.get('code');
+  const supabase = createClientComponentClient();
   
-  const [sessionCode, setSessionCode] = useState(codeFromUrl || '');
-  const [displayName, setDisplayName] = useState('');
+  // State variables
+  const [sessionCode, setSessionCode] = useState(searchParams.get("code") || "");
+  const [participantName, setParticipantName] = useState("");
+  const [email, setEmail] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
-  const [scannerInitialized, setScannerInitialized] = useState(false);
-  const [session, setSession] = useState(null);
-  const [participants, setParticipants] = useState([]);
-
-  // Vérifier si on a un code dans l'URL au chargement
-  useEffect(() => {
-    if (codeFromUrl) {
-      // Focus automatiquement sur le champ nom si un code est déjà présent
-      document.getElementById('display-name')?.focus();
-    }
-  }, [codeFromUrl]);
-
-  // Initialiser le scanner quand showScanner devient true
-  useEffect(() => {
-    let scanner;
-    
-    if (showScanner && !scannerInitialized) {
-      setScannerInitialized(true);
-      
-      // Initialiser le scanner QR code
-      scanner = new Html5QrcodeScanner('qr-reader', 
-        { 
-          fps: 10, 
-          qrbox: 250,
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [0] // QRCode only
-        }, 
-        false // ne pas commencer immédiatement
-      );
-      
-      scanner.render((decodedText) => {
-        // Gérer le résultat du scan
-        handleQrScanned(decodedText);
-        setShowScanner(false);
-      }, (error) => {
-        console.warn(`Code scan error = ${error}`);
-      });
-      
-      // Démarrer après rendu
-      setTimeout(() => {
-        const startButton = document.getElementById('qr-reader__start-button');
-        if (startButton) startButton.click();
-      }, 100);
-    }
-    
-    // Cleanup
-    return () => {
-      if (scanner && showScanner === false && scannerInitialized) {
-        scanner.clear();
-        setScannerInitialized(false);
-      }
-    };
-  }, [showScanner, scannerInitialized]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await joinSession();
-  };
+  const [sessionData, setSessionData] = useState(null);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [step, setStep] = useState(1); // 1: Enter code, 2: Enter profile info
   
-  const handleQrScanned = (scannedCode) => {
-    // Extraire le code de session du QR si c'est une URL
-    let extractedCode = scannedCode;
-    
-    try {
-      const url = new URL(scannedCode);
-      // Si le QR contient une URL, chercher le dernier segment
-      if (url.pathname.includes('/join/')) {
-        // Extraire le code du chemin /join/CODE
-        const pathParts = url.pathname.split('/');
-        extractedCode = pathParts[pathParts.length - 1];
-      }
-    } catch (e) {
-      // Ce n'est pas une URL valide, on utilise le contenu brut
-      console.log('Code scanné non-URL:', scannedCode);
-    }
-    
-    setSessionCode(extractedCode);
-    setShowScanner(false);
-  };
-
-  const joinSession = async () => {
+  // Verify the session code
+  const verifySessionCode = async (e) => {
+    e?.preventDefault();
     if (!sessionCode.trim()) {
-      setError('Le code de session est requis');
+      setError("Please enter a session code");
       return;
     }
-
-    if (!displayName.trim()) {
-      setError('Votre nom est requis');
-      return;
-    }
-
-    setLoading(true);
+    
+    setIsVerifyingCode(true);
     setError(null);
-
+    
     try {
-      // Vérifier d'abord si la session existe
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('sessions')
-        .select('id, status, max_participants, code, session_code, title, settings')
-        .or(`code.eq.${sessionCode.trim()},session_code.eq.${sessionCode.trim()}`)
+      const { data: sessions, error: sessionError } = await supabase
+        .from("sessions")
+        .select("id, title, name, status, settings, max_participants, session_code, code")
+        .or(`session_code.eq.${sessionCode},code.eq.${sessionCode}`)
+        .eq("status", "active")
+        .limit(1)
         .single();
       
-      if (sessionError) {
-        if (sessionError.code === '42P01') {
-          console.error("La table 'sessions' n'existe pas dans la base de données:", sessionError);
-          setError("La base de données n'est pas correctement configurée. La table 'sessions' est manquante. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
-          setLoading(false);
-          return;
-        }
-        
-        setError('Session introuvable avec ce code');
+      if (sessionError || !sessions) {
+        setError("No session found with this code. Please check and try again.");
+        setIsVerifyingCode(false);
+        return;
+      }
+      
+      // Session found, proceed to step 2
+      setSessionData(sessions);
+      setStep(2);
+      setIsVerifyingCode(false);
+    } catch (error) {
+      console.error("Error verifying session code:", error);
+      setError("An error occurred while verifying the session code. Please try again.");
+      setIsVerifyingCode(false);
+    }
+  };
+  
+  // Effect to auto-verify code if provided in URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setSessionCode(codeFromUrl);
+      verifySessionCode();
+    }
+  }, [searchParams]);
+  
+  // Join the session
+  const joinSession = async (e) => {
+    e.preventDefault();
+    
+    if (!participantName.trim()) {
+      setError("Please enter your name");
+      return;
+    }
+    
+    // Additional validations based on anonymity level
+    const anonymityLevel = sessionData?.settings?.connection?.anonymityLevel || "anonymous";
+    
+    if (anonymityLevel === "not_anonymous" || anonymityLevel === "semi_anonymous") {
+      if (!email.trim()) {
+        setError("Please enter your email");
+        return;
+      }
+    }
+    
+    if (anonymityLevel === "not_anonymous") {
+      if (!organization.trim()) {
+        setError("Please enter your organization");
+        return;
+      }
+      
+      if (!role.trim()) {
+        setError("Please enter your role");
+        return;
+      }
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Determine participant fields based on anonymity level
+      const participantData = {
+        session_id: sessionData.id,
+        name: participantName,
+        display_name: participantName,
+        is_anonymous: anonymityLevel === "anonymous",
+      };
+      
+      // Add additional fields for semi-anonymous and not-anonymous levels
+      if (anonymityLevel === "semi_anonymous" || anonymityLevel === "not_anonymous") {
+        participantData.email = email;
+      }
+      
+      if (anonymityLevel === "not_anonymous") {
+        participantData.organization = organization;
+        participantData.role = role;
+      }
+      
+      // Create participant
+      const { data: participant, error: participantError } = await supabase
+        .from("participants")
+        .insert(participantData)
+        .select()
+        .single();
+      
+      if (participantError) {
+        console.error("Error creating participant:", participantError);
+        setError("Failed to join the session. Please try again.");
         setLoading(false);
         return;
       }
       
-      if (!sessionData) {
-        setError('Session introuvable avec ce code');
-        setLoading(false);
-        return;
-      }
-      
-      if (sessionData.status !== 'active' && sessionData.status !== 'draft') {
-        setError('Cette session n\'est pas active actuellement');
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        // Vérifier le nombre actuel de participants
-        const { count, error: countError } = await supabase
-          .from('participants')
-          .select('id', { count: 'exact', head: true })
-          .eq('session_id', sessionData.id);
-          
-        if (countError) {
-          if (countError.code === '42P01') {
-            console.error("La table 'participants' n'existe pas dans la base de données:", countError);
-            setError("La base de données n'est pas correctement configurée. La table 'participants' est manquante. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
-            setLoading(false);
-            return;
-          }
-          throw countError;
-        }
-        
-        // Vérifier si la session est pleine
-        if (count >= (sessionData.max_participants || 30)) {
-          setError(`Cette session est pleine (maximum ${sessionData.max_participants || 30} participants)`);
-          setLoading(false);
-          return;
-        }
-        
-        // Créer un ID anonyme unique pour ce participant
-        const anonymityLevel = sessionData.settings?.connection?.anonymityLevel || 'semi-anonymous';
-        const isAnonymous = anonymityLevel !== 'not-anonymous';
-        
-        // Créer un participant anonyme
-        const { data: participantData, error: participantError } = await supabase
-          .from('participants')
-          .insert([
-            { 
-              session_id: sessionData.id, 
-              name: displayName.trim(),
-              display_name: displayName.trim(),
-              anonymous_id: isAnonymous ? `anon_${Math.random().toString(36).substring(2, 15)}` : null,
-              is_anonymous: isAnonymous,
-              is_presenter: false,
-              status: 'active',
-              device_info: { 
-                userAgent: navigator.userAgent,
-                timestamp: new Date().toISOString()
-              }
-            }
-          ])
-          .select()
-          .single();
-          
-        if (participantError) {
-          if (participantError.code === '42P01') {
-            console.error("La table 'participants' n'existe pas dans la base de données:", participantError);
-            setError("La base de données n'est pas correctement configurée. La table 'participants' est manquante. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
-            setLoading(false);
-            return;
-          }
-          throw participantError;
-        }
-        
-        // Sauvegarder les informations du participant dans le localStorage
-        localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify(participantData));
-        
-        // Rediriger vers la page de participation
-        setSuccess(true);
-        setTimeout(() => {
-          router.push(`/sessions/${sessionData.id}/participate?name=${encodeURIComponent(displayName.trim())}`);
-        }, 1500);
-        
-      } catch (err) {
-        console.error("Erreur lors de l'accès à la table participants:", err);
-        setError(`Erreur lors de la tentative de rejoindre la session: ${err.message || 'Erreur inconnue'}`);
-      }
-    } catch (err) {
-      console.error("Erreur lors de l'accès à la base de données:", err);
-      setError(`Erreur inattendue: ${err.message || 'Erreur inconnue'}`);
-    } finally {
+      // Redirect to participate page
+      router.push(`/sessions/${sessionData.id}/participate?participantId=${participant.id}`);
+    } catch (error) {
+      console.error("Error joining session:", error);
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
   };
-
+  
+  // Render based on current step
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8 relative">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-50 p-4">
       <DotPattern className="absolute inset-0 z-0" />
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md relative z-10">
-        <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">Rejoindre une session</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Entrez le code de session ou scannez le QR code
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Aucun compte n'est requis pour participer
-          </p>
+      
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-center bg-primary p-6">
+          <Logo className="h-8 w-auto" light />
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative">
-            Vous avez rejoint la session avec succès! Redirection en cours...
-          </div>
-        )}
-
-        {showScanner ? (
-          <div className="mt-6">
-            <div id="qr-reader" style={{ width: '100%' }}></div>
-            <button
-              type="button"
-              onClick={() => setShowScanner(false)}
-              className="mt-4 w-full flex justify-center py-2 px-4 cm-button-secondary"
-            >
-              Annuler le scan
-            </button>
-          </div>
-        ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="rounded-md shadow-sm space-y-4">
-              <div>
-                <label htmlFor="session-code" className="block text-sm font-medium text-gray-700 mb-1">
-                  Code de session
-                </label>
-                <div className="relative">
+        
+        <div className="p-6">
+          {step === 1 ? (
+            // Step 1: Enter session code
+            <>
+              <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
+                Join a Session
+              </h1>
+              
+              <form onSubmit={verifySessionCode} className="space-y-4">
+                <div>
+                  <label htmlFor="sessionCode" className="block text-sm font-medium text-gray-700">
+                    Session Code
+                  </label>
                   <input
-                    id="session-code"
-                    name="sessionCode"
+                    id="sessionCode"
                     type="text"
-                    autoComplete="off"
-                    required
-                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="ABC123"
                     value={sessionCode}
                     onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    placeholder="Enter the session code"
+                    required
                   />
+                </div>
+                
+                {error && (
+                  <div className="rounded-md bg-red-50 p-3">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+                
+                <button
+                  type="submit"
+                  disabled={isVerifyingCode || !sessionCode.trim()}
+                  className="w-full rounded-md bg-primary px-4 py-2 text-center text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+                >
+                  {isVerifyingCode ? "Verifying..." : "Continue"}
+                </button>
+              </form>
+            </>
+          ) : (
+            // Step 2: Enter participant info
+            <>
+              <h1 className="mb-4 text-center text-2xl font-bold text-gray-900">
+                Join Session
+              </h1>
+              
+              {sessionData && (
+                <div className="mb-6 text-center">
+                  <h2 className="text-xl font-semibold">{sessionData.title || sessionData.name}</h2>
+                  <p className="text-gray-600">
+                    Hosted by {sessionData.settings?.professorName || 'Professor'}
+                  </p>
+                </div>
+              )}
+              
+              <form onSubmit={joinSession} className="space-y-4">
+                <div>
+                  <label htmlFor="participantName" className="block text-sm font-medium text-gray-700">
+                    Your Name *
+                  </label>
+                  <input
+                    id="participantName"
+                    type="text"
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    placeholder="Enter your name"
+                    required
+                  />
+                </div>
+                
+                {/* Show email field for semi-anonymous and not-anonymous sessions */}
+                {(sessionData?.settings?.connection?.anonymityLevel === "semi_anonymous" || 
+                  sessionData?.settings?.connection?.anonymityLevel === "not_anonymous") && (
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                      Email Address *
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+                )}
+                
+                {/* Show organization and role fields for not-anonymous sessions */}
+                {sessionData?.settings?.connection?.anonymityLevel === "not_anonymous" && (
+                  <>
+                    <div>
+                      <label htmlFor="organization" className="block text-sm font-medium text-gray-700">
+                        Organization *
+                      </label>
+                      <input
+                        id="organization"
+                        type="text"
+                        value={organization}
+                        onChange={(e) => setOrganization(e.target.value)}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                        placeholder="Enter your organization"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                        Role *
+                      </label>
+                      <input
+                        id="role"
+                        type="text"
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                        placeholder="Enter your role"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+                
+                {error && (
+                  <div className="rounded-md bg-red-50 p-3">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+                
+                <div className="flex space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowScanner(true)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-primary"
-                    aria-label="Scanner un QR code"
-                    title="Scanner un QR code"
+                    onClick={() => setStep(1)}
+                    className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 text-center text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                    </svg>
+                    Back
+                  </button>
+                  
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 rounded-md bg-primary px-4 py-2 text-center text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+                  >
+                    {loading ? "Joining..." : "Join Session"}
                   </button>
                 </div>
-              </div>
-              <div>
-                <label htmlFor="display-name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Votre nom
-                </label>
-                <input
-                  id="display-name"
-                  name="displayName"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary"
-                  placeholder="Jean Dupont"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 cm-button"
-              >
-                {loading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Chargement...
-                  </span>
-                ) : (
-                  'Rejoindre la session'
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {session && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-center">{session.title || session.name}</h2>
-            <p className="text-center text-gray-600">Organisé par {session.settings?.professorName || 'Professeur'}</p>
-            <div className="mt-2 text-center">
-              <span className="text-sm font-semibold">Code: <span className="font-mono text-primary">{session.session_code || session.code}</span></span>
-              <p className="text-xs text-gray-600 mt-1">
-                Participants: {participants.length} / {session.max_participants || session.settings?.maxParticipants || 30}
-              </p>
-            </div>
-          </div>
-        )}
+              </form>
+            </>
+          )}
+        </div>
+        
+        <div className="border-t border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-600">
+          Need help? Contact your session organizer
+        </div>
       </div>
     </div>
   );
 }
 
-// Main page component wrapped in Suspense
-export default function JoinSessionPage() {
+// Main page component with Suspense
+export default function JoinPage() {
   return (
-    <Suspense fallback={<JoinPageLoading />}>
-      <JoinSessionContent />
+    <Suspense fallback={<LoadingFallback />}>
+      <JoinContent />
     </Suspense>
   );
 } 
