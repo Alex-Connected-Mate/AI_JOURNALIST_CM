@@ -250,16 +250,21 @@ function JoinContent() {
     
     // Additional validations based on anonymity level
     const anonymityLevel = sessionData?.settings?.connection?.anonymityLevel || "anonymous";
+    console.log("Anonymity level from session:", anonymityLevel);
     
-    if (anonymityLevel === "not_anonymous" || anonymityLevel === "semi_anonymous" || 
-        anonymityLevel === "semi-anonymous") { // Add support for hyphenated format
+    const isSemiAnonymous = anonymityLevel === "semi_anonymous" || 
+                           anonymityLevel === "semi-anonymous";
+    const isNotAnonymous = anonymityLevel === "not_anonymous" || 
+                           anonymityLevel === "non-anonymous";
+    
+    if (isSemiAnonymous || isNotAnonymous) {
       if (!email.trim()) {
         setError("Please enter your email");
         return;
       }
     }
     
-    if (anonymityLevel === "not_anonymous") {
+    if (isNotAnonymous) {
       if (!organization.trim()) {
         setError("Please enter your organization");
         return;
@@ -275,6 +280,18 @@ function JoinContent() {
     setError(null);
     
     try {
+      // Verify session data exists
+      if (!sessionData || !sessionData.id) {
+        throw new Error("Session data is missing or invalid");
+      }
+      
+      console.log("Session data available:", {
+        id: sessionData.id,
+        title: sessionData.title,
+        name: sessionData.name,
+        status: sessionData.status
+      });
+      
       // Check max participants
       const maxParticipants = sessionData?.max_participants || 
                              sessionData?.settings?.maxParticipants || 
@@ -294,24 +311,38 @@ function JoinContent() {
         session_id: sessionData.id,
         nickname: participantName,
         display_name: participantName,
-        anonymous: anonymityLevel === "anonymous"
+        full_name: participantName,
+        anonymous: anonymityLevel === "anonymous" || anonymityLevel === "semi_anonymous" || anonymityLevel === "semi-anonymous"
       };
       
       // Add additional fields for semi-anonymous and not-anonymous levels
-      if (anonymityLevel === "semi_anonymous" || anonymityLevel === "not_anonymous" || 
-          anonymityLevel === "semi-anonymous") {
+      if (isSemiAnonymous || isNotAnonymous) {
         participantData.email = email;
       }
       
       // Store additional fields in links JSON if needed
-      if (anonymityLevel === "not_anonymous") {
+      if (isNotAnonymous) {
         participantData.links = {
           organization: organization,
           role: role
         };
       }
       
-      console.log("Creating participant with data:", participantData);
+      // Generate a random color and emoji for the participant if not provided
+      if (!participantData.color) {
+        const colors = ['#FF5733', '#33FF57', '#3357FF', '#F033FF', '#FF33A1', '#33FFF5'];
+        participantData.color = colors[Math.floor(Math.random() * colors.length)];
+      }
+      
+      if (!participantData.emoji) {
+        const emojis = ['😀', '😎', '🤓', '🧐', '🤔', '👨‍🎓', '👩‍🎓', '👨‍💻', '👩‍💻'];
+        participantData.emoji = emojis[Math.floor(Math.random() * emojis.length)];
+      }
+      
+      // Set joined_at timestamp
+      participantData.joined_at = new Date().toISOString();
+      
+      console.log("Creating participant with data:", JSON.stringify(participantData, null, 2));
       
       // Add debug info for troubleshooting
       setDebugInfo(prev => ({
@@ -326,11 +357,29 @@ function JoinContent() {
         }
       }));
       
+      // Check the structure of the session_participants table
+      try {
+        const { data: tableInfo, error: tableError } = await supabase
+          .from("session_participants")
+          .select("*")
+          .limit(1);
+          
+        console.log("Session participants table sample:", tableInfo);
+        console.log("Table info error:", tableError);
+      } catch (tableCheckError) {
+        console.error("Error checking table structure:", tableCheckError);
+      }
+      
       // Create participant in session_participants table
-      const { data: participant, error: participantError } = await supabase
+      console.log("Attempting to insert participant record...");
+      const insertResult = await supabase
         .from("session_participants")
         .insert([participantData])
-        .select();
+        .select('*');
+        
+      const { data: participant, error: participantError } = insertResult;
+      
+      console.log("Insert result:", insertResult);
       
       if (participantError) {
         console.error("Error creating participant:", participantError);
@@ -342,25 +391,63 @@ function JoinContent() {
         } else if (participantError.code === '23505') {
           setError("A participant with this information already exists.");
         } else {
-          setError(`Failed to join the session: ${participantError.message}`);
+          setError(`Failed to join the session: ${participantError.message || JSON.stringify(participantError)}`);
         }
+        
+        // Update debug info with error
+        setDebugInfo(prev => ({
+          ...prev,
+          insertError: participantError,
+          insertErrorTime: new Date().toISOString()
+        }));
         
         setLoading(false);
         return;
       }
       
+      // Check if we got the participant data back from the insert
       if (!participant || participant.length === 0) {
-        setError("Failed to create participant record");
-        setLoading(false);
-        return;
+        console.log("No participant data returned from insert, will query to find it");
+        
+        // Query to get the created participant
+        console.log("Querying for the created participant...");
+        const { data: createdParticipant, error: fetchError } = await supabase
+          .from("session_participants")
+          .select("*")
+          .eq("session_id", sessionData.id)
+          .eq("display_name", participantName)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1);
+          
+        console.log("Created participant query result:", { createdParticipant, fetchError });
+        
+        if (fetchError) {
+          console.error("Error fetching created participant:", fetchError);
+          setError("Participant was created but could not be retrieved. Please try again.");
+          setLoading(false);
+          return;
+        }
+        
+        if (!createdParticipant || createdParticipant.length === 0) {
+          setError("Failed to retrieve participant record");
+          setLoading(false);
+          return;
+        }
+        
+        // Safely access participant data
+        var participantRecord = createdParticipant[0];
+      } else {
+        console.log("Participant data returned directly from insert:", participant);
+        var participantRecord = participant[0];
       }
       
       // Save participant info to localStorage
       const participantInfo = {
-        id: participant[0].id,
+        id: participantRecord.id,
         name: participantName,
         sessionId: sessionData.id,
-        anonymousToken: participant[0].anonymous_token
+        anonymousToken: participantRecord.anonymous_token || null
       };
       
       try {
@@ -370,12 +457,48 @@ function JoinContent() {
         console.warn("Could not save participant info to localStorage:", e);
       }
       
+      // Check if we have a valid ID before redirecting
+      if (!participantRecord.id) {
+        setError("Created participant record is missing an ID. Please try again.");
+        setLoading(false);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          participantRecordError: "Missing ID",
+          participantRecord: JSON.stringify(participantRecord)
+        }));
+        return;
+      }
+      
       // Redirect to participate page with correct parameters
       console.log("Successfully joined session, redirecting to participate page");
-      router.push(`/sessions/${sessionData.id}/participate?participantId=${participant[0].id}&token=${encodeURIComponent(participant[0].anonymous_token || '')}`);
+      console.log("Redirect params:", {
+        sessionId: sessionData.id,
+        participantId: participantRecord.id,
+        token: participantRecord.anonymous_token || ''
+      });
+      
+      const token = participantRecord.anonymous_token ? 
+        encodeURIComponent(participantRecord.anonymous_token) : '';
+        
+      const redirectUrl = `/sessions/${sessionData.id}/participate?participantId=${participantRecord.id}${token ? `&token=${token}` : ''}`;
+      console.log("Redirect URL:", redirectUrl);
+      
+      router.push(redirectUrl);
     } catch (error) {
-      console.error("Error joining session:", error);
-      setError(`An unexpected error occurred: ${error.message}`);
+      console.error("Exception in joinSession:", error);
+      setError(`An unexpected error occurred: ${error.message || JSON.stringify(error)}`);
+      
+      // Update debug info with exception
+      setDebugInfo(prev => ({
+        ...prev,
+        joinSessionException: {
+          message: error.message,
+          stack: error.stack,
+          time: new Date().toISOString()
+        }
+      }));
+      
       setLoading(false);
     }
   };
@@ -463,7 +586,9 @@ function JoinContent() {
                 
                 {/* Show email field for semi-anonymous and not-anonymous sessions */}
                 {(sessionData?.settings?.connection?.anonymityLevel === "semi_anonymous" || 
-                  sessionData?.settings?.connection?.anonymityLevel === "not_anonymous") && (
+                  sessionData?.settings?.connection?.anonymityLevel === "semi-anonymous" ||
+                  sessionData?.settings?.connection?.anonymityLevel === "not_anonymous" || 
+                  sessionData?.settings?.connection?.anonymityLevel === "non-anonymous") && (
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                       Email Address *
@@ -481,7 +606,8 @@ function JoinContent() {
                 )}
                 
                 {/* Show organization and role fields for not-anonymous sessions */}
-                {sessionData?.settings?.connection?.anonymityLevel === "not_anonymous" && (
+                {(sessionData?.settings?.connection?.anonymityLevel === "not_anonymous" || 
+                  sessionData?.settings?.connection?.anonymityLevel === "non-anonymous") && (
                   <>
                     <div>
                       <label htmlFor="organization" className="block text-sm font-medium text-gray-700">
