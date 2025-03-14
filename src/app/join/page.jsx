@@ -89,6 +89,18 @@ function JoinContent() {
       const normalizedCode = sessionCode.trim().toUpperCase();
       console.log(`Searching for session with normalized code: ${normalizedCode}`);
       
+      // Get all active sessions to help with debugging and to show available codes
+      const { data: allActiveSessions, error: activeSessionsError } = await supabase
+        .from("sessions")
+        .select("id, name, code, session_code, title, status")
+        .eq("status", "active");
+        
+      console.log("All active sessions:", allActiveSessions);
+      
+      if (activeSessionsError) {
+        console.error("Error fetching active sessions:", activeSessionsError);
+      }
+      
       // First, check if the session exists at all (without status filter)
       // This helps distinguish between "not found" and "not active" errors
       const { data: sessionExists, error: existsError } = await supabase
@@ -114,7 +126,13 @@ function JoinContent() {
             sessionStatus: sessionExists[0].status,
             sessionId: sessionExists[0].id,
             errorReason: 'inactive_session',
-            lastQueryTime: new Date().toISOString()
+            lastQueryTime: new Date().toISOString(),
+            availableSessions: allActiveSessions?.map(s => ({
+              id: s.id.substring(0, 8),
+              name: s.name,
+              code: s.code,
+              session_code: s.session_code
+            })) || []
           }));
           return;
         }
@@ -143,7 +161,13 @@ function JoinContent() {
         setDebugInfo(prev => ({
           ...prev,
           lastQueryError: sessionError,
-          lastQueryTime: new Date().toISOString()
+          lastQueryTime: new Date().toISOString(),
+          availableSessions: allActiveSessions?.map(s => ({
+            id: s.id.substring(0, 8),
+            name: s.name,
+            code: s.code,
+            session_code: s.session_code
+          })) || []
         }));
         return;
       }
@@ -222,7 +246,32 @@ function JoinContent() {
                 if (sessionExists && sessionExists.length > 0) {
                   setError(`Session found but cannot be joined (status: ${sessionExists[0].status || 'unknown'}). Please contact the session organizer.`);
                 } else {
-                  setError("No session found with this code. Please check and try again.");
+                  // Prepare a better error message with available session codes
+                  let errorMsg = "No session found with this code. Please check and try again.";
+                  
+                  // If we have other active sessions, suggest them
+                  if (allActiveSessions && allActiveSessions.length > 0) {
+                    const availableCodes = allActiveSessions
+                      .filter(s => s.status === 'active')
+                      .map(s => {
+                        // Use both codes if available
+                        const codes = [];
+                        if (s.code) codes.push(s.code);
+                        if (s.session_code && s.session_code !== s.code) codes.push(s.session_code);
+                        return { name: s.name || s.title, codes };
+                      });
+                      
+                    if (availableCodes.length > 0) {
+                      errorMsg += " Available sessions:";
+                      availableCodes.forEach(s => {
+                        if (s.codes.length > 0) {
+                          errorMsg += ` "${s.name}" (${s.codes.join(', ')})`;
+                        }
+                      });
+                    }
+                  }
+                  
+                  setError(errorMsg);
                 }
                 
                 setIsVerifyingCode(false);
@@ -236,6 +285,13 @@ function JoinContent() {
                   noSessionsFound: !(sessionExists && sessionExists.length > 0),
                   sessionExistsButInactive: sessionExists && sessionExists.length > 0,
                   sessionStatus: sessionExists && sessionExists.length > 0 ? sessionExists[0].status : null,
+                  availableSessions: allActiveSessions?.map(s => ({
+                    id: s.id.substring(0, 8),
+                    name: s.name || s.title,
+                    code: s.code,
+                    session_code: s.session_code,
+                    status: s.status
+                  })) || [],
                   lastQueryTime: new Date().toISOString()
                 }));
                 return;
