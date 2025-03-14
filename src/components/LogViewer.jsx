@@ -13,6 +13,7 @@ const LogViewer = () => {
   const [activeTab, setActiveTab] = useState('logs');
   const logContainerRef = useRef(null);
   const [filter, setFilter] = useState('all'); // 'all', 'session', 'error', 'warning', 'info'
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Function to add a log entry, wrapped in useCallback to prevent recreation
   const addLogEntry = useCallback((type, args) => {
@@ -138,6 +139,28 @@ const LogViewer = () => {
     }
   };
 
+  // Function to copy all logs to clipboard
+  const copyAllLogs = () => {
+    try {
+      // Format the logs for copying
+      const logsToExport = activeTab === 'logs' 
+        ? filteredLogs.map(log => `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.message}`).join('\n')
+        : userEvents.map(event => {
+            return `[${new Date(event.timestamp).toLocaleTimeString()}] [${event.type.toUpperCase()}] ${event.action}
+${event.details ? JSON.stringify(event.details, null, 2) : ''}`;
+          }).join('\n\n');
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(logsToExport);
+      
+      // Show success message and hide it after 2 seconds
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy logs:", error);
+    }
+  };
+
   // Get the appropriate color for each log type
   const getLogColor = (type) => {
     switch (type) {
@@ -200,6 +223,27 @@ const LogViewer = () => {
                 className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded"
               >
                 Clear
+              </button>
+              <button
+                onClick={copyAllLogs}
+                className={`text-xs ${copySuccess ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'} text-white px-2 py-1 rounded flex items-center gap-1`}
+              >
+                {copySuccess ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                    </svg>
+                    Copy Logs
+                  </>
+                )}
               </button>
               <button
                 onClick={() => exportEvents()}

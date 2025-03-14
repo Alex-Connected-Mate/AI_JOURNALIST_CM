@@ -10,6 +10,7 @@ import { useStore } from '@/lib/store';
 import { usePathname } from 'next/navigation';
 import { LocaleProvider } from '@/components/LocaleProvider';
 import { ErrorBoundary } from 'react-error-boundary';
+import { Toaster } from 'react-hot-toast';
 
 interface RootClientLayoutProps {
   children: React.ReactNode;
@@ -32,45 +33,97 @@ function ErrorFallback({ error }: { error: Error }) {
   );
 }
 
-const RootClientLayout = ({ children }: RootClientLayoutProps) => {
-  const { user } = useStore();
+export default function RootClientLayout({ children }: RootClientLayoutProps) {
   const pathname = usePathname();
-  
-  // Liste des chemins qui ne nécessitent pas d'authentification
-  const publicPaths = ['/', '/auth/login', '/auth/register', '/auth/reset-password', '/join'];
-  
-  // Vérifier si la page actuelle est une page d'authentification
-  const isAuthPage = publicPaths.some(path => 
-    pathname === path || 
-    pathname?.startsWith('/auth/')
-  );
-  
-  // Vérifier si la page actuelle est une page de présentation
-  const isPresentationPage = pathname?.includes('/sessions/') && pathname?.includes('/run');
-  
-  return (
-    <LocaleProvider>
-      <ErrorBoundary FallbackComponent={ErrorFallback}>
-        {/* Initialisateur du système de suivi d'événements */}
-        <EventTrackerInitializer />
-        
-        {/* Vérification de l'authentification */}
-        <AuthChecker />
-        
-        {/* En-tête */}
-        {!isAuthPage && !isPresentationPage && user && <Header />}
-        
-        {/* Protection des routes qui nécessitent une authentification */}
-        <ProtectedRoute excludedPaths={publicPaths}>
-          {/* Contenu principal */}
+  const { appInitialized, user } = useStore();
+
+  // List of protected routes
+  const protectedRoutes = [
+    '/dashboard',
+    '/settings',
+    '/sessions'
+  ];
+
+  // Determine if current route is protected and requires auth
+  const isProtectedRoute = protectedRoutes.some(route => pathname?.startsWith(route));
+
+  // Public join route shouldn't use protected route wrapper
+  const isJoinRoute = pathname?.startsWith('/join');
+
+  // Renderiser le contenu basé sur le type de route
+  const renderContent = () => {
+    if (isProtectedRoute) {
+      return (
+        <ProtectedRoute excludedPaths={['/join']}>
           {children}
         </ProtectedRoute>
-        
-        {/* Afficheur de logs (disponible sur toutes les pages) */}
-        <LogViewer />
-      </ErrorBoundary>
-    </LocaleProvider>
-  );
-};
+      );
+    } else if (isJoinRoute) {
+      return (
+        <AuthChecker>
+          {children}
+        </AuthChecker>
+      );
+    } else {
+      return children;
+    }
+  };
 
-export default RootClientLayout; 
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <LocaleProvider>
+        {appInitialized ? (
+          <>
+            {renderContent()}
+            
+            {/* Toast Notifications */}
+            <Toaster
+              position="top-center"
+              reverseOrder={false}
+              gutter={8}
+              toastOptions={{
+                duration: 5000,
+                success: {
+                  style: {
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    border: '1px solid #dcfce7'
+                  },
+                  duration: 3000,
+                },
+                error: {
+                  style: {
+                    background: '#fef2f2',
+                    color: '#b91c1c',
+                    border: '1px solid #fee2e2'
+                  },
+                  duration: 5000,
+                },
+                loading: {
+                  style: {
+                    background: '#f3f4f6',
+                    color: '#1f2937',
+                    border: '1px solid #e5e7eb'
+                  },
+                },
+              }}
+            />
+            
+            {/* Event tracker for analytics */}
+            <EventTrackerInitializer />
+            
+            {/* Dev tools - only in development */}
+            {process.env.NODE_ENV === 'development' && <LogViewer />}
+          </>
+        ) : (
+          <div className="fixed inset-0 flex items-center justify-center bg-white">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading application...</p>
+            </div>
+          </div>
+        )}
+      </LocaleProvider>
+    </ErrorBoundary>
+  );
+} 

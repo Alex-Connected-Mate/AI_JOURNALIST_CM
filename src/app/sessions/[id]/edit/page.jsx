@@ -53,6 +53,16 @@ export default function EditSessionPage({ params }) {
     try {
       console.log('[Edit Session] Saving session with data:', updatedSession);
       
+      // Si aucune modification n'a été apportée, afficher un message et terminer
+      if (Object.keys(updatedSession).length === 0) {
+        toast.info('Aucune modification n\'a été détectée.');
+        setSaving(false);
+        return;
+      }
+      
+      // Notification de sauvegarde en cours
+      const saveToastId = toast.loading('Sauvegarde de la session en cours...');
+      
       // Créer un objet unifié qui combine les données existantes avec les mises à jour
       const sessionToSave = {
         ...session,                 // Inclure toutes les données de session existantes
@@ -114,36 +124,29 @@ export default function EditSessionPage({ params }) {
       
       if (error) {
         console.error('[Edit Session] Error updating session:', error);
-        toast({
-          title: 'Erreur',
-          description: `Échec de la mise à jour de la session: ${error.message}`,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
+        toast.error(`Échec de la mise à jour: ${error.message}`, {
+          id: saveToastId
         });
       } else {
         console.log('[Edit Session] Session updated successfully:', data);
-        toast({
-          title: 'Succès',
-          description: 'Session mise à jour avec succès',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
+        toast.success('Session mise à jour avec succès!', {
+          id: saveToastId,
+          icon: '✅',
+          duration: 3000
         });
         
         // Mettre à jour l'état de la session avec les données mises à jour
         setSession(data);
         setUpdatedSession({});
+        
+        // Attendre un peu pour que l'utilisateur voie le message de succès
+        setTimeout(() => {
+          // Naviguer vers une autre page ou rester sur la même page selon votre flux
+        }, 1000);
       }
     } catch (err) {
       console.error('[Edit Session] Exception during save:', err);
-      toast({
-        title: 'Erreur',
-        description: `Une erreur inattendue s'est produite: ${err.message}`,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      toast.error(`Une erreur inattendue s'est produite: ${err.message}`);
     } finally {
       setSaving(false);
     }

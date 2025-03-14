@@ -9,8 +9,12 @@ import { useRouter } from 'next/router';
  * 
  * Un composant pour vérifier et mettre à jour l'état d'authentification.
  * Il s'assure que l'utilisateur est correctement synchronisé avec Supabase.
+ * 
+ * Peut être utilisé de deux façons:
+ * 1. Comme composant autonome pour une vérification silencieuse (<AuthChecker />)
+ * 2. Comme wrapper pour protéger du contenu (<AuthChecker>{children}</AuthChecker>)
  */
-const AuthChecker = () => {
+const AuthChecker = ({ children }) => {
   const { user, setUser, setAuthChecked } = useStore();
   const logger = useLogger('AuthChecker');
   const router = useRouter();
@@ -132,7 +136,8 @@ const AuthChecker = () => {
     };
   }, [setUser, setAuthChecked, router, logger]);
 
-  return null; // Ce composant ne rend rien visuellement
+  // Si des enfants sont fournis, les rendre
+  return children || null;
 };
 
 export default AuthChecker; 
