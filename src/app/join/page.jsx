@@ -89,6 +89,37 @@ function JoinContent() {
       const normalizedCode = sessionCode.trim().toUpperCase();
       console.log(`Searching for session with normalized code: ${normalizedCode}`);
       
+      // First, check if the session exists at all (without status filter)
+      // This helps distinguish between "not found" and "not active" errors
+      const { data: sessionExists, error: existsError } = await supabase
+        .from("sessions")
+        .select("id, status, session_code, code")
+        .or(`session_code.eq."${normalizedCode}",code.eq."${normalizedCode}"`)
+        .limit(1);
+      
+      console.log("Session existence check:", { sessionExists, error: existsError });
+      
+      if (existsError) {
+        console.error("Error checking if session exists:", existsError);
+      } else if (sessionExists && sessionExists.length > 0) {
+        // Session exists, but might not be active
+        if (sessionExists[0].status !== 'active') {
+          setError(`Session found but it's not active (status: ${sessionExists[0].status || 'unknown'}). Please contact the session organizer.`);
+          setIsVerifyingCode(false);
+          
+          // Update debug info
+          setDebugInfo(prev => ({
+            ...prev,
+            sessionExists: true,
+            sessionStatus: sessionExists[0].status,
+            sessionId: sessionExists[0].id,
+            errorReason: 'inactive_session',
+            lastQueryTime: new Date().toISOString()
+          }));
+          return;
+        }
+      }
+      
       // First attempt: Use filter syntax with quotes for string values
       const { data: sessions, error: sessionError } = await supabase
         .from("sessions")
@@ -153,40 +184,81 @@ function JoinContent() {
           }
           
           if (!inSessions || inSessions.length === 0) {
-            // Last attempt - try exact match with .eq
-            console.log("Trying exact match with .eq filter");
+            // Try case-insensitive search using ilike
+            console.log("Trying case-insensitive search with ilike");
             
-            const { data: exactSessions, error: exactError } = await supabase
+            const { data: ilikeSessions, error: ilikeError } = await supabase
               .from("sessions")
               .select("id, title, name, status, settings, max_participants, session_code, code")
-              .eq("session_code", normalizedCode)
+              .or(`session_code.ilike.${normalizedCode},code.ilike.${normalizedCode}`)
               .eq("status", "active")
               .limit(1);
               
-            console.log("Exact match search result:", { exactSessions, error: exactError });
+            console.log("Case-insensitive search result:", { ilikeSessions, error: ilikeError });
             
-            if (exactError) {
-              console.error("Error in exact match query:", exactError);
+            if (ilikeError) {
+              console.error("Error in case-insensitive search:", ilikeError);
             }
             
-            if (!exactSessions || exactSessions.length === 0) {
-              setError("No session found with this code. Please check and try again.");
+            if (!ilikeSessions || ilikeSessions.length === 0) {
+              // Last attempt - try exact match with .eq
+              console.log("Trying exact match with .eq filter");
+              
+              const { data: exactSessions, error: exactError } = await supabase
+                .from("sessions")
+                .select("id, title, name, status, settings, max_participants, session_code, code")
+                .eq("session_code", normalizedCode)
+                .eq("status", "active")
+                .limit(1);
+                
+              console.log("Exact match search result:", { exactSessions, error: exactError });
+              
+              if (exactError) {
+                console.error("Error in exact match query:", exactError);
+              }
+              
+              if (!exactSessions || exactSessions.length === 0) {
+                // If session exists check found something but active queries found nothing
+                if (sessionExists && sessionExists.length > 0) {
+                  setError(`Session found but cannot be joined (status: ${sessionExists[0].status || 'unknown'}). Please contact the session organizer.`);
+                } else {
+                  setError("No session found with this code. Please check and try again.");
+                }
+                
+                setIsVerifyingCode(false);
+                
+                // Update debug info with all search attempts
+                setDebugInfo(prev => ({
+                  ...prev,
+                  searchAttempts: 5, // Now 5 with the case-insensitive search
+                  normalizedCode,
+                  queriesSuccessful: true,
+                  noSessionsFound: !(sessionExists && sessionExists.length > 0),
+                  sessionExistsButInactive: sessionExists && sessionExists.length > 0,
+                  sessionStatus: sessionExists && sessionExists.length > 0 ? sessionExists[0].status : null,
+                  lastQueryTime: new Date().toISOString()
+                }));
+                return;
+              }
+              
+              // Session found with exact match
+              setSessionData(exactSessions[0]);
+              setStep(2);
               setIsVerifyingCode(false);
               
-              // Update debug info with all search attempts
+              // Update debug info with success
               setDebugInfo(prev => ({
                 ...prev,
-                searchAttempts: 4,
-                normalizedCode,
-                queriesSuccessful: true,
-                noSessionsFound: true,
+                foundSession: true,
+                searchMethod: "exact_match",
+                sessionId: exactSessions[0].id,
                 lastQueryTime: new Date().toISOString()
               }));
               return;
             }
             
-            // Session found with exact match
-            setSessionData(exactSessions[0]);
+            // Session found with case-insensitive search
+            setSessionData(ilikeSessions[0]);
             setStep(2);
             setIsVerifyingCode(false);
             
@@ -194,8 +266,8 @@ function JoinContent() {
             setDebugInfo(prev => ({
               ...prev,
               foundSession: true,
-              searchMethod: "exact_match",
-              sessionId: exactSessions[0].id,
+              searchMethod: "case_insensitive",
+              sessionId: ilikeSessions[0].id,
               lastQueryTime: new Date().toISOString()
             }));
             return;
