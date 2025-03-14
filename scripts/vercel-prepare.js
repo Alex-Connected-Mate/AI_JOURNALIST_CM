@@ -322,7 +322,8 @@ function installMissingDependencies() {
   // Liste des dépendances à vérifier
   const requiredDependencies = [
     '@headlessui/react',
-    'framer-motion'
+    'framer-motion',
+    'react-hot-toast'
   ];
   
   try {
@@ -344,6 +345,8 @@ function installMissingDependencies() {
           packageJson.dependencies[dep] = '^1.7.18';
         } else if (dep === 'framer-motion') {
           packageJson.dependencies[dep] = '^10.16.4'; // Version compatible avec React 18
+        } else if (dep === 'react-hot-toast') {
+          packageJson.dependencies[dep] = '^2.5.2'; // Version stable actuelle
         }
       });
       
@@ -354,6 +357,18 @@ function installMissingDependencies() {
       // En environnement Vercel, les dépendances seront installées automatiquement
       // après la mise à jour du package.json
       console.log(`${colors.green}✅ Les dépendances seront installées automatiquement par Vercel.${colors.reset}`);
+      
+      // Si nous ne sommes pas sur Vercel, tenter d'installer les dépendances
+      if (!process.env.VERCEL) {
+        try {
+          console.log(`${colors.yellow}⚠️ Installation manuelle des dépendances manquantes...${colors.reset}`);
+          execSync(`npm install ${missingDependencies.join(' ')}`, { stdio: 'inherit' });
+          console.log(`${colors.green}✅ Dépendances installées avec succès.${colors.reset}`);
+        } catch (installError) {
+          console.error(`${colors.red}❌ Erreur lors de l'installation des dépendances: ${installError.message}${colors.reset}`);
+          console.log(`${colors.yellow}⚠️ Veuillez exécuter manuellement: npm install ${missingDependencies.join(' ')}${colors.reset}`);
+        }
+      }
     } else {
       // Vérifier si framer-motion est en version 11 (incompatible avec React 18)
       if (packageJson.dependencies['framer-motion'] && packageJson.dependencies['framer-motion'].includes('11')) {
@@ -747,6 +762,68 @@ function checkDependencyCompatibility() {
   }
 }
 
+// Fonction pour détecter automatiquement les imports manquants
+function detectMissingImports() {
+  console.log(`${colors.blue}🔍 Détection automatique des imports manquants...${colors.reset}`);
+  
+  try {
+    // Liste des modules Node.js intégrés pour les exclure
+    const nodeBuiltins = [
+      'fs', 'path', 'http', 'https', 'crypto', 'util', 'stream', 'events', 
+      'querystring', 'url', 'child_process', 'os', 'zlib'
+    ];
+    
+    // Liste des préfixes d'imports internes au projet
+    const internalPrefixes = ['@/', './', '../'];
+
+    // Commande pour trouver tous les imports dans le code
+    const cmd = `find src -type f -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | xargs grep -h "from ['\\\"]" | grep -v "from ['\\\"]\\(@/\\|\\.\\)" | sed "s/.*from ['\\\"]\\([^'\\\"/]\\+\\).*/\\1/g"`;
+    
+    // Exécuter la commande et récupérer les imports uniques
+    const result = execSync(cmd, { encoding: 'utf8' }).trim();
+    const imports = [...new Set(result.split('\n'))].filter(
+      imp => imp && !nodeBuiltins.includes(imp) && !internalPrefixes.some(prefix => imp.startsWith(prefix))
+    );
+    
+    // Lire le package.json
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    
+    // Filtrer les imports qui ne correspondent pas à une dépendance installée
+    // Considérer aussi les sous-packages comme react-dom/client -> react-dom
+    const missingDependencies = imports.filter(imp => {
+      // Gérer les sous-packages (ex: @mui/material/Button -> @mui/material)
+      const packageName = imp.includes('/') ? imp.split('/')[0] : imp;
+      
+      // Cas spécial pour les packages scoped (@)
+      if (packageName.startsWith('@')) {
+        const scopedPackage = packageName.split('/').slice(0, 2).join('/');
+        return !dependencies[scopedPackage];
+      }
+      
+      return !dependencies[packageName];
+    });
+    
+    if (missingDependencies.length > 0) {
+      console.log(`${colors.yellow}⚠️ Imports sans dépendances correspondantes détectés:${colors.reset}`);
+      const uniquePackages = [...new Set(missingDependencies.map(imp => 
+        imp.includes('/') ? imp.split('/')[0] : imp
+      ))];
+      
+      uniquePackages.forEach(pkg => {
+        console.log(`${colors.yellow}   - ${pkg}${colors.reset}`);
+      });
+      
+      console.log(`${colors.yellow}⚠️ Considérez l'ajout de ces packages à la liste des dépendances requises.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Pas d'imports sans dépendances correspondantes détectés.${colors.reset}`);
+    }
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la détection des imports manquants: ${error.message}${colors.reset}`);
+  }
+}
+
 // Exécuter les fonctions
 try {
   console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
@@ -786,6 +863,9 @@ try {
   
   // Vérification et correction des apostrophes françaises
   checkAndFixFrenchApostrophes();
+  
+  // Détection des imports manquants
+  detectMissingImports();
   
   console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
 } catch (error) {
