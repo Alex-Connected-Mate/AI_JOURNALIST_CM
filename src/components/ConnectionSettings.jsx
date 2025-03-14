@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from './LocaleProvider';
+import UserBlock from './UserBlock';
 
 /**
  * ConnectionSettings Component
@@ -66,95 +67,8 @@ const ConnectionSettings = ({
     "/images/profile-placeholder-3.jpg"
   ];
 
-  // Base64 encoded placeholder image for profile pictures (fallback)
-  const placeholderImageBase64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMzEgMjMxIj48cGF0aCBkPSJNMzMuODMsMzMuODNhMTE1LjUsMTE1LjUsMCwxLDEsMCwxNjMuMzQsMTE1LjQ5LDExNS40OSwwLDAsMSwwLTE2My4zNFoiIGZpbGw9IiMxYTFhMWEiLz48cGF0aCBkPSJNMTE1LjUsMNBhMTE1LjUsMTE1LjUsMCwxLDAsMCwyMzEsMTE1LjUsMTE1LjUsMCwwLDAsMC0yMzFabTAsNDJhNzMuNSw3My41LDAsMSwxLTczLjUsNzMuNUE3My41LDczLjUsMCwwLDEsMTE1LjUsNDJaIiBmaWxsPSIjMzMzIi8+PHBhdGggZD0iTTE1NCwyMzFIMTU0QzExNS41LDIzMSw3Nyw0NywzOC41LDAsNzcsMCwxMTUuNSw0MiwxNTQsNDJzNzctMzksNzcsMzlDMjMxLDQ3LDE5Mi41LDIzMSwxNTQsMjMxWiIgZmlsbD0iIzRkNGQ0ZCIvPjxwYXRoIGQ9Ik0xMTUuNSw0MmE3My41LDczLjUsMCwxLDAtLjA1LDE0N0E3My41LDczLjUsMCwwLDAsMTE1LjUsNDJaTTk2LjM2LDEzMS42MkExNS42MiwxNS42MiwwLDEsMSw5Ni4zNiwxMDAuMzhhMTUuNjIsMTUuNjIsMCwwLDEsMCwzMS4yNFptMzguMjgsMGExNS42MiwxNS42MiwwLDEsMS4wNS0zMS4yNEExNS42MiwxNS42MiwwLDAsMSwxMzQuNjQsMTMxLjYyWiIgZmlsbD0iIzFlMWUxZSIvPjxwYXRoIGQ9Ik0xNTQsMjMxSDc3TDM4LjUsMEwxNTQsNDJsMCwwTDMxLjA5LDEzMS42MiwxNTQsNDJsMzguNSwwTDczLjUsMTg5VjQyaDBjMCw0MC41OSw0MCw3My41LDgwLjUsNzMuNXM0MC0zMi45MSw0MC03My41QzE5Mi41LDIzMSwxNTQsMjMxLDE1NCwyMzFaIiBmaWxsPSIjNTk1OTU5Ii8+PHBhdGggZD0iTTExNS41LDAsMzguNSwwbDExNSw0NC44M0wzOC41LDBsNzcsMTg5TDc3LDBjMCw0MC41OSw4MCw3My41LDgwLDczLjVzLTgwLTMyLjkxLTgwLTczLjVoMGw3NywxODloMGMtMzguNSwwLTc3LTE4OS03Ny0xODlDMzgsNDMuNSw3Nyw4MCwxMTUuNSw4MHM3Ny41LTM2LjUsNzcuNS04MEM1OCw0My41LDExNS41LDAsMTE1LjUsMFoiIGZpbGw9IiM3MzczNzMiLz48cGF0aCBkPSJNOTYuMzYsMTAwLjM4YTE1LjYyLDE1LjYyLDAsMSwwLDMxLjI0LDBBMTUuNjIsMTUuNjIsMCwwLDAsOTYuMzYsMTAwLjM4WiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0xMzQuNjQsMTAwLjM4YTE1LjYyLDE1LjYyLDAsMSwwLDMxLjI0LDBBMTUuNjIsMTUuNjIsMCwwLDAsMTM0LjY0LDEwMC4zOFoiIGZpbGw9IiNmZmYiLz48L3N2Zz4=";
-
   // Sample birth dates for anonymous IDs
   const sampleDates = ["16/12", "03/05", "27/09"];
-
-  // Profile preview component
-  const ProfilePreview = ({ type, emoji, color, name, id, profileImage }) => {
-    // Common profile container for all types
-    const containerClasses = "w-[122px] h-[96px] p-2.5 bg-white shadow-sm rounded-xl flex flex-col items-center justify-start gap-2.5";
-    
-    // Different content for the avatar box based on type
-    let avatarBox;
-    
-    if (type === 'identified') {
-      // Use actual profile image for identified users
-      avatarBox = (
-        <div 
-          className="w-12 h-12 flex items-center justify-center rounded-lg overflow-hidden border-2 border-white shadow-sm"
-        >
-          <img 
-            src={profileImage || placeholderImageBase64}
-            alt={`${name}'s profile`}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = `https://ui-avatars.com/api/?name=${name}&background=0D8ABC&color=fff`;
-            }}
-          />
-        </div>
-      );
-    } else {
-      // Use colored box with emoji for anonymous/semi-anonymous users
-      avatarBox = (
-        <div 
-          className="w-12 h-12 flex items-center justify-center rounded-lg overflow-hidden border-2 border-white shadow-sm"
-          style={{ backgroundColor: enableColors ? color : '#000000' }}
-        >
-          <div className="text-center text-2xl leading-none">
-            {emoji}
-          </div>
-        </div>
-      );
-    }
-
-    // Different name tags based on type
-    let nameTag;
-    
-    if (type === 'identified') {
-      nameTag = (
-        <div className="py-0.5 px-2 bg-blue-100 shadow-sm border border-gray-200 rounded">
-          <div className="text-center text-gray-800 text-xs font-semibold">
-            {name}
-          </div>
-        </div>
-      );
-    } else if (type === 'semi-anonymous') {
-      nameTag = (
-        <div className="py-0.5 px-2 shadow-sm border border-gray-200 bg-gray-50 rounded">
-          <div className="w-full text-center text-gray-800 text-xs font-semibold">
-            {name || "Username"}
-          </div>
-        </div>
-      );
-    } else { // fully anonymous
-      // Extract the first letter (for family name), second letter (for first name), and birth date
-      const idParts = id.split('/');
-      const initials = idParts[0]; // "Cl" for example
-      const birthdate = `${idParts[1]}/${idParts[2]}`; // "16/12" for example
-      
-      nameTag = (
-        <div 
-          className="py-0.5 px-2 shadow-sm border border-gray-800"
-          style={{ backgroundColor: enableColors ? color : '#000000' }}
-        >
-          <div className="w-full text-center text-gray-100 text-xs font-semibold">
-            {`${initials}-${birthdate}`}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className={containerClasses}>
-        {avatarBox}
-        {nameTag}
-      </div>
-    );
-  };
 
   return (
     <div className="p-5 bg-white rounded-lg shadow-sm">
@@ -262,17 +176,17 @@ const ConnectionSettings = ({
           <div className="flex flex-wrap gap-4 mt-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
             {selectedAnonymityLevel === 'identified' ? (
               <>
-                <ProfilePreview 
+                <UserBlock 
                   type="identified" 
                   profileImage={sampleProfilePics[0]}
                   name="John Doe" 
                 />
-                <ProfilePreview 
+                <UserBlock 
                   type="identified" 
                   profileImage={sampleProfilePics[1]}
                   name="Sarah Smith" 
                 />
-                <ProfilePreview 
+                <UserBlock 
                   type="identified" 
                   profileImage={sampleProfilePics[2]}
                   name="Alex Wong" 
@@ -280,44 +194,50 @@ const ConnectionSettings = ({
               </>
             ) : selectedAnonymityLevel === 'semi-anonymous' ? (
               <>
-                <ProfilePreview 
+                <UserBlock 
                   type="semi-anonymous" 
                   emoji={sampleEmojis[0]} 
                   color={sampleColors[0]} 
                   name="JazzCat" 
+                  enableColors={enableColors}
                 />
-                <ProfilePreview 
+                <UserBlock 
                   type="semi-anonymous" 
                   emoji={sampleEmojis[1]} 
                   color={sampleColors[1]} 
                   name="StarGazer" 
+                  enableColors={enableColors}
                 />
-                <ProfilePreview 
+                <UserBlock 
                   type="semi-anonymous" 
                   emoji={sampleEmojis[2]} 
                   color={sampleColors[2]} 
                   name="SkyRunner" 
+                  enableColors={enableColors}
                 />
               </>
             ) : (
               <>
-                <ProfilePreview 
-                  type="anonymous" 
+                <UserBlock 
+                  type="fully-anonymous" 
                   emoji={sampleEmojis[0]} 
                   color={sampleColors[0]} 
                   id="Cl/16/12" 
+                  enableColors={enableColors}
                 />
-                <ProfilePreview 
-                  type="anonymous" 
+                <UserBlock 
+                  type="fully-anonymous" 
                   emoji={sampleEmojis[1]} 
                   color={sampleColors[1]} 
                   id="Me/03/05" 
+                  enableColors={enableColors}
                 />
-                <ProfilePreview 
-                  type="anonymous" 
+                <UserBlock 
+                  type="fully-anonymous" 
                   emoji={sampleEmojis[2]} 
                   color={sampleColors[2]} 
                   id="Br/27/09" 
+                  enableColors={enableColors}
                 />
               </>
             )}

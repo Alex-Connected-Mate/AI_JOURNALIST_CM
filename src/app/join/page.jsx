@@ -48,6 +48,31 @@ function JoinContent() {
   const [debugInfo, setDebugInfo] = useState({});
   const [currentParticipantsCount, setCurrentParticipantsCount] = useState(0);
   
+  // États additionnels pour le mode Fully Anonymous
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [anonymousId, setAnonymousId] = useState("");
+  
+  // Fonction pour générer l'ID anonyme au format "Xy-DD/MM"
+  const generateAnonymousIdentifier = () => {
+    if (!lastName || !firstName || !birthDay || !birthMonth) return "";
+    
+    // Obtenir la première lettre du nom de famille
+    const firstLetterLastName = lastName.charAt(0).toUpperCase();
+    
+    // Obtenir la deuxième lettre du prénom (si disponible)
+    const secondLetterFirstName = firstName.length > 1 ? firstName.charAt(1).toLowerCase() : "";
+    
+    // Formater le jour et le mois avec des zéros si nécessaire
+    const formattedDay = birthDay.padStart(2, '0');
+    const formattedMonth = birthMonth.padStart(2, '0');
+    
+    // Générer l'identifiant au format spécifié
+    return `${firstLetterLastName}${secondLetterFirstName}-${formattedDay}/${formattedMonth}`;
+  };
+  
   // Get auth status for debugging
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -220,23 +245,45 @@ function JoinContent() {
     fetchParticipantCount();
   }, [sessionData?.id, supabase]);
   
+  // Effect to update anonymous ID when form fields change
+  useEffect(() => {
+    if (sessionData?.settings?.connection?.anonymityLevel === "fully_anonymous" || 
+        sessionData?.settings?.connection?.anonymityLevel === "fully-anonymous") {
+      const generatedId = generateAnonymousIdentifier();
+      setAnonymousId(generatedId);
+    }
+  }, [firstName, lastName, birthDay, birthMonth, sessionData]);
+  
   // Join the session
   const joinSession = async (e) => {
     e.preventDefault();
     
-    if (!participantName.trim()) {
-      setError("Veuillez entrer votre nom");
-      return;
-    }
-    
-    // Additional validations based on anonymity level
+    // Get anonymity level from session data
     const anonymityLevel = sessionData?.settings?.connection?.anonymityLevel || "anonymous";
     console.log("Niveau d'anonymat de la session:", anonymityLevel);
     
+    const isFullyAnonymous = anonymityLevel === "fully_anonymous" || 
+                            anonymityLevel === "fully-anonymous";
     const isSemiAnonymous = anonymityLevel === "semi_anonymous" || 
                            anonymityLevel === "semi-anonymous";
     const isNotAnonymous = anonymityLevel === "not_anonymous" || 
                            anonymityLevel === "non-anonymous";
+    
+    // Validation based on anonymity level
+    if (isFullyAnonymous) {
+      if (!anonymousId) {
+        setError("Veuillez remplir tous les champs pour générer votre identifiant");
+        return;
+      }
+      
+      // Set participant name to the generated anonymous ID
+      setParticipantName(anonymousId);
+    } else {
+      if (!participantName.trim()) {
+        setError("Veuillez entrer votre nom");
+        return;
+      }
+    }
     
     if (isSemiAnonymous || isNotAnonymous) {
       if (!email.trim()) {
@@ -314,17 +361,35 @@ function JoinContent() {
       }
       
       // Generate a unique anonymous ID
-      const anonymousId = `${participantName.slice(0, 2).toUpperCase()}${Math.floor(Math.random() * 10000)}`;
+      const anonymousId = isFullyAnonymous 
+        ? anonymousId // Utiliser l'ID généré avec le format Cl-16/12
+        : `${participantName.slice(0, 2).toUpperCase()}${Math.floor(Math.random() * 10000)}`;
       
       // Determine participant fields based on anonymity level
       const participantData = {
         session_id: sessionData.id,
-        nickname: participantName,
-        display_name: participantName,
-        full_name: participantName,
-        anonymous: anonymityLevel === "anonymous" || anonymityLevel === "semi_anonymous" || anonymityLevel === "semi-anonymous",
+        nickname: isFullyAnonymous ? anonymousId : participantName,
+        display_name: isFullyAnonymous ? anonymousId : participantName,
+        full_name: isFullyAnonymous ? anonymousId : participantName,
+        anonymous: isFullyAnonymous || isSemiAnonymous,
         anonymous_identifier: anonymousId
       };
+      
+      // Pour le mode Fully Anonymous, stocker les informations originales de manière sécurisée
+      if (isFullyAnonymous) {
+        participantData.secure_data = {
+          original_info: {
+            first_letter_lastname: lastName.charAt(0).toUpperCase(),
+            second_letter_firstname: firstName.length > 1 ? firstName.charAt(1).toLowerCase() : "",
+            birth_day: birthDay.padStart(2, '0'),
+            birth_month: birthMonth.padStart(2, '0')
+          }
+        };
+        
+        // Ne pas stocker les informations complètes
+        participantData.first_name = null;
+        participantData.last_name = null;
+      }
       
       // Add additional fields for semi-anonymous and not-anonymous levels
       if (isSemiAnonymous || isNotAnonymous) {
@@ -341,12 +406,14 @@ function JoinContent() {
       
       // Generate a random color and emoji for the participant if not provided
       if (!participantData.color) {
-        const colors = ['#FF5733', '#33FF57', '#3357FF', '#F033FF', '#FF33A1', '#33FFF5'];
+        // Utiliser les couleurs spécifiées
+        const colors = ['#98DAFF', '#A4F7A7', '#EAAEFF', '#FF6641', '#FED132'];
         participantData.color = colors[Math.floor(Math.random() * colors.length)];
       }
       
       if (!participantData.emoji) {
-        const emojis = ['😀', '😎', '🤓', '🧐', '🤔', '👨‍🎓', '👩‍🎓', '👨‍💻', '👩‍💻'];
+        // Sélection d'emojis plus corporate
+        const emojis = ['👨‍💼', '👩‍💼', '👨‍🎓', '👩‍🎓', '🧑‍💻', '👨‍💻', '👩‍💻', '📊', '📈', '💡', '🔍', '🎯'];
         participantData.emoji = emojis[Math.floor(Math.random() * emojis.length)];
       }
       
@@ -690,21 +757,112 @@ function JoinContent() {
               )}
               
               <form onSubmit={joinSession} className="space-y-4">
-                <div>
-                  <label htmlFor="participantName" className="block text-sm font-medium text-gray-700">
-                    Votre nom *
-                  </label>
-                  <input
-                    id="participantName"
-                    type="text"
-                    value={participantName}
-                    onChange={(e) => setParticipantName(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                    placeholder="Entrez votre nom"
-                    required
-                    autoFocus
-                  />
-                </div>
+                {/* Formulaire pour mode Fully Anonymous */}
+                {(sessionData?.settings?.connection?.anonymityLevel === "fully_anonymous" || 
+                  sessionData?.settings?.connection?.anonymityLevel === "fully-anonymous") ? (
+                  <>
+                    <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
+                      <h3 className="text-sm font-medium text-gray-700">Mode Anonyme Complet</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Vos informations seront utilisées pour générer un identifiant unique anonyme qui ne pourra pas être 
+                        relié à votre identité réelle.
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                          Nom de famille *
+                        </label>
+                        <input
+                          id="lastName"
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                          placeholder="Votre nom de famille"
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                          Prénom *
+                        </label>
+                        <input
+                          id="firstName"
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                          placeholder="Votre prénom"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="birthDay" className="block text-sm font-medium text-gray-700">
+                          Jour de naissance *
+                        </label>
+                        <input
+                          id="birthDay"
+                          type="text"
+                          value={birthDay}
+                          onChange={(e) => setBirthDay(e.target.value.replace(/[^0-9]/g, '').substring(0, 2))}
+                          pattern="[0-9]{1,2}"
+                          inputMode="numeric"
+                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                          placeholder="JJ"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="birthMonth" className="block text-sm font-medium text-gray-700">
+                          Mois de naissance *
+                        </label>
+                        <input
+                          id="birthMonth"
+                          type="text"
+                          value={birthMonth}
+                          onChange={(e) => setBirthMonth(e.target.value.replace(/[^0-9]/g, '').substring(0, 2))}
+                          pattern="[0-9]{1,2}"
+                          inputMode="numeric"
+                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                          placeholder="MM"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    {anonymousId && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+                        <p className="text-sm font-medium text-blue-700">Votre identifiant anonyme :</p>
+                        <p className="text-lg font-mono font-bold text-blue-800 text-center py-2">{anonymousId}</p>
+                        <p className="text-xs text-blue-600">
+                          Cet identifiant est généré à partir de vos informations et sera utilisé pendant la session.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div>
+                    <label htmlFor="participantName" className="block text-sm font-medium text-gray-700">
+                      Votre nom *
+                    </label>
+                    <input
+                      id="participantName"
+                      type="text"
+                      value={participantName}
+                      onChange={(e) => setParticipantName(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                      placeholder="Entrez votre nom"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                )}
                 
                 {/* Show email field for semi-anonymous and not-anonymous sessions */}
                 {(sessionData?.settings?.connection?.anonymityLevel === "semi_anonymous" || 

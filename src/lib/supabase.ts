@@ -546,7 +546,7 @@ export interface SessionData {
     showProfessorName?: boolean;
     maxParticipants?: number;
     connection?: {
-      anonymityLevel?: 'anonymous' | 'semi-anonymous' | 'non-anonymous';
+      anonymityLevel?: 'anonymous' | 'semi-anonymous' | 'non-anonymous' | 'fully-anonymous';
       loginMethod?: string;
       approvalRequired?: boolean;
       color?: string;
@@ -606,7 +606,7 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
   
   // Check connection settings if provided
   if (data.settings?.connection?.anonymityLevel && 
-      !['anonymous', 'semi-anonymous', 'non-anonymous'].includes(data.settings.connection.anonymityLevel)) {
+      !['anonymous', 'semi-anonymous', 'non-anonymous', 'fully-anonymous'].includes(data.settings.connection.anonymityLevel)) {
     console.error('Session validation failed: invalid anonymity level', data.settings.connection.anonymityLevel);
     return { isValid: false, error: 'Invalid anonymity level' };
   }

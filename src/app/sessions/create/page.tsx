@@ -33,6 +33,7 @@ const userModeOptions = [
   { value: 'anonymous', label: 'Anonymous' },
   { value: 'semi-anonymous', label: 'Semi-Anonymous' },
   { value: 'non-anonymous', label: 'Non-Anonymous' },
+  { value: 'fully-anonymous', label: 'Fully Anonymous' },
 ];
 
 const tabs = [
@@ -55,7 +56,7 @@ export default function CreateSessionPage() {
   const [professorName, setProfessorName] = useState<string>('');
   const [showProfessorName, setShowProfessorName] = useState<boolean>(true);
   const [selectedImage, setSelectedImage] = useState<string>('university');
-  const [profileMode, setProfileMode] = useState<'anonymous' | 'semi-anonymous' | 'non-anonymous'>('anonymous');
+  const [profileMode, setProfileMode] = useState<'anonymous' | 'semi-anonymous' | 'non-anonymous' | 'fully-anonymous'>('anonymous');
   const [color, setColor] = useState<string>('#3490dc');
   const [emoji, setEmoji] = useState<string>('🎓');
   const [maxParticipants, setMaxParticipants] = useState<number>(50);
@@ -288,7 +289,7 @@ export default function CreateSessionPage() {
   };
   
   const handleProfileModeChange = (value: string) => {
-    setProfileMode(value as 'anonymous' | 'semi-anonymous' | 'non-anonymous');
+    setProfileMode(value as 'anonymous' | 'semi-anonymous' | 'non-anonymous' | 'fully-anonymous');
     updateField('profileMode', value);
   };
   
@@ -538,6 +539,28 @@ export default function CreateSessionPage() {
                           <li>Select an emoji from a predefined list</li>
                           <li>Optionally upload a profile photo</li>
                         </ul>
+                      </div>
+                    )}
+                    
+                    {profileMode === 'fully-anonymous' && (
+                      <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">
+                          Fully Anonymous Mode
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-2">
+                          Participants will provide minimal information to generate a unique identifier:
+                        </p>
+                        <ul className="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                          <li>First letter of their family name (e.g., "C" from "Cormeraie")</li>
+                          <li>Second letter of their first name (e.g., "l" from "Alexandre")</li>
+                          <li>Date of birth (day/month)</li>
+                        </ul>
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          Example: For "Alexandre Cormeraie" born on December 16, the code would be "Cl-16/12"
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          This ensures complete anonymity in our database. We cannot trace who used which ID, but can delete data if requested.
+                        </p>
                       </div>
                     )}
                     
