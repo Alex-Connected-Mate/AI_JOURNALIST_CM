@@ -1574,7 +1574,7 @@ function ParticipationContent() {
       
       {/* Footer */}
       <div className="mt-8 text-center">
-        {/* Remove the "Clipboard by ConnectedMate" text */}
+        {/* Empty footer - "Clipboard by ConnectedMate" text removed */}
       </div>
     </div>
   );

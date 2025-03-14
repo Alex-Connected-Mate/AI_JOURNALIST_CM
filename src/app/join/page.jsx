@@ -3,19 +3,23 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import Image from "next/image";
-import Logo from "@/components/ui/Logo";
 import DotPattern from "@/components/ui/DotPattern";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+
+// Simple inline logo component
+const SimpleLogo = ({ light = false }) => (
+  <div className={`font-bold text-xl ${light ? 'text-white' : 'text-primary'}`}>
+    CM
+  </div>
+);
 
 // Loading fallback for Suspense
 function LoadingFallback() {
   return (
     <div className="flex h-screen flex-col items-center justify-center">
       <div className="relative mb-4 h-16 w-16">
-        <Logo />
+        <SimpleLogo />
         <div className="absolute inset-0 flex items-center justify-center">
-          <LoadingSpinner />
+          <div className="w-8 h-8 border-t-4 border-primary border-solid rounded-full animate-spin"></div>
         </div>
       </div>
       <p className="text-gray-600">Loading session...</p>
@@ -170,7 +174,7 @@ function JoinContent() {
       
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-center bg-primary p-6">
-          <Logo className="h-8 w-auto" light />
+          <SimpleLogo light />
         </div>
         
         <div className="p-6">
