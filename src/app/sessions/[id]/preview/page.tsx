@@ -11,7 +11,7 @@ import { getSessionById, updateSessionStatus } from '@/lib/supabase';
 export default function SessionPreviewPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useStore();
+  const { user, userProfile } = useStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +47,34 @@ export default function SessionPreviewPage() {
           throw new Error('You do not have permission to view this session');
         }
         
-        setSession(data);
+        // Ensure all the data has default values
+        const sessionWithDefaults = {
+          ...data,
+          max_participants: data.max_participants || data.settings?.maxParticipants || 100,
+          institution: data.institution || data.settings?.institution || 'Institution non spécifiée',
+          professor_name: data.professor_name || data.settings?.professorName || '',
+          show_professor_name: data.show_professor_name !== undefined ? data.show_professor_name : (data.settings?.showProfessorName !== undefined ? data.settings.showProfessorName : true),
+          company_logo: data.company_logo || null,
+          use_profile_avatar: data.use_profile_avatar || false,
+          settings: {
+            ...data.settings,
+            connection: {
+              ...data.settings?.connection,
+              color: data.settings?.connection?.color || '#3490dc',
+              emoji: data.settings?.connection?.emoji || '🎓',
+              anonymityLevel: data.settings?.connection?.anonymityLevel || 'anonymous'
+            },
+            ai_configuration: {
+              ...data.settings?.ai_configuration,
+              timerEnabled: data.settings?.ai_configuration?.timerEnabled !== undefined 
+                ? data.settings.ai_configuration.timerEnabled 
+                : true,
+              timerDuration: data.settings?.ai_configuration?.timerDuration || 5
+            }
+          }
+        };
+        
+        setSession(sessionWithDefaults);
       } catch (err: any) {
         console.error('Error fetching session:', err);
         setError(err.message);
@@ -143,6 +170,36 @@ export default function SessionPreviewPage() {
             </div>
           </div>
           
+          {/* Images section - if images are available */}
+          {(session.use_profile_avatar || session.company_logo) && (
+            <div className="px-8 pt-6 pb-2">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Images and Logos</h2>
+              <div className="flex items-center gap-6">
+                {session.use_profile_avatar && userProfile?.avatar_url && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">Professor Avatar</p>
+                    <img 
+                      src={userProfile.avatar_url} 
+                      alt="Professor Avatar" 
+                      className="h-16 w-16 rounded-full object-cover border border-gray-200"
+                    />
+                  </div>
+                )}
+                
+                {session.company_logo && (
+                  <div>
+                    <p className="text-sm text-gray-500 mb-2">Company/Program Logo</p>
+                    <img 
+                      src={session.company_logo} 
+                      alt="Company Logo" 
+                      className="h-16 object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Session Content */}
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -174,6 +231,40 @@ export default function SessionPreviewPage() {
                         <span className="text-gray-500">Created:</span>
                         <span className="font-medium">
                           {new Date(session.created_at).toLocaleDateString()}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h3 className="font-medium text-gray-700">AI Interaction Settings</h3>
+                    <ul className="mt-2 space-y-2 text-sm">
+                      <li className="flex justify-between">
+                        <span className="text-gray-500">Timer Enabled:</span>
+                        <span className="font-medium">
+                          {session.settings?.ai_configuration?.timerEnabled ? 'Yes' : 'No'}
+                        </span>
+                      </li>
+                      {session.settings?.ai_configuration?.timerEnabled && (
+                        <li className="flex justify-between">
+                          <span className="text-gray-500">Timer Duration:</span>
+                          <span className="font-medium">
+                            {session.settings?.ai_configuration?.timerDuration || 5} minutes
+                          </span>
+                        </li>
+                      )}
+                      <li className="flex justify-between">
+                        <span className="text-gray-500">AI Model:</span>
+                        <span className="font-medium">
+                          {session.settings?.ai_configuration?.model || 'GPT-4'}
+                        </span>
+                      </li>
+                      <li className="flex justify-between items-center">
+                        <span className="text-gray-500">AI Configuration:</span>
+                        <span className="font-medium bg-blue-50 px-2 py-1 rounded text-xs">
+                          {session.settings?.ai_configuration?.timerEnabled 
+                            ? `Timer: ${session.settings?.ai_configuration?.timerDuration || 5} min` 
+                            : 'No timer limit'}
                         </span>
                       </li>
                     </ul>

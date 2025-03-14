@@ -29,6 +29,8 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
     showProfessorName = true,
     showInstitution = true,
     selectedImage = 'university',
+    useProfileAvatar = false,
+    companyLogo = null,
   } = sessionConfig;
 
   // Use the proper title value (prefer title or fall back to sessionName)
@@ -229,11 +231,25 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
           
           <div className="space-y-4">
             <ImageSelector
-              label="Logo / Image"
+              label="Logo de Professeur / Avatar"
               selectedImageId={selectedImage}
               onChange={(value) => handleChange('selectedImage', value)}
               onFileUpload={handleFileUpload}
+              userAvatarUrl={userProfile?.avatar_url || null}
+              useUserAvatar={useProfileAvatar}
+              onUseUserAvatarChange={(use) => handleChange('useProfileAvatar', use)}
+              helpText="Choisissez une image ou utilisez votre avatar de profil"
             />
+
+            <div className="mt-6">
+              <ImageSelector
+                label="Logo d'entreprise/programme"
+                selectedImageId={companyLogo}
+                onChange={(value) => handleChange('companyLogo', value)}
+                onFileUpload={handleFileUpload}
+                helpText="Logo de l'entreprise ou du programme à afficher dans la session"
+              />
+            </div>
           </div>
           
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-6">

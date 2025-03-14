@@ -915,4 +915,74 @@ export async function updateSessionStatus(sessionId: string, status: 'draft' | '
     console.log('[SESSION] Session status updated successfully:', data);
     return { data, error: null };
   });
+}
+
+// Update session with full data support
+export async function updateSession(sessionId: string, sessionData: Partial<SessionData>) {
+  return withRetry(async () => {
+    console.log('[SESSION] Updating session with data:', JSON.stringify(sessionData, null, 2));
+    
+    try {
+      // Validate the data before sending the update
+      const { isValid, error: validationError } = validateSessionData(sessionData);
+      if (!isValid && validationError) {
+        console.error('[SESSION] Validation failed:', validationError);
+        throw new Error(`Validation failed: ${validationError}`);
+      }
+      
+      // Prepare update data with timestamp
+      const updateData = {
+        ...sessionData,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Execute the update
+      const { data, error } = await supabase
+        .from('sessions')
+        .update(updateData)
+        .eq('id', sessionId)
+        .select();
+        
+      if (error) {
+        console.error('[SESSION] Update error:', error);
+        throw error;
+      }
+      
+      // Verify update was successful
+      if (!data || data.length === 0) {
+        console.error('[SESSION] Update returned no data');
+        throw new Error('Update returned no data');
+      }
+      
+      console.log('[SESSION] Update successful:', data[0]);
+      
+      // Verify the data was updated correctly
+      const expectedFields = Object.keys(sessionData).filter(key => 
+        key !== 'updated_at' && 
+        key !== 'settings'
+      );
+      
+      const mismatchedFields = expectedFields.filter(key => {
+        // Skip comparison for complex objects like settings
+        if (typeof sessionData[key as keyof Partial<SessionData>] === 'object') return false;
+        
+        return sessionData[key as keyof Partial<SessionData>] !== data[0][key as keyof typeof data[0]];
+      });
+      
+      if (mismatchedFields.length > 0) {
+        console.warn('[SESSION] Some fields may not have updated correctly:', mismatchedFields);
+      }
+      
+      return { data: data[0], error: null };
+    } catch (err) {
+      console.error('[SESSION] Update failed with error:', err);
+      return { 
+        data: null, 
+        error: { 
+          message: err instanceof Error ? err.message : 'Failed to update session',
+          details: 'Error in updateSession function' 
+        } 
+      };
+    }
+  });
 } 

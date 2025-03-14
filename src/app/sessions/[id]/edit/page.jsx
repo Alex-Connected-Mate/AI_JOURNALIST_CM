@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import SessionCreationFlow from '@/components/SessionCreationFlow';
-import { getSessionById } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
+import { getSessionById, updateSession } from '@/lib/supabase';
 
 export default function EditSessionPage({ params }) {
   const sessionId = params.id;
   const router = useRouter();
-  const { user } = useStore();
+  const { user, userProfile } = useStore();
   
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,22 +50,38 @@ export default function EditSessionPage({ params }) {
     try {
       setSaving(true);
       
-      // Merge the updated session data with the existing session
+      // Prepare the updated session data with the new fields
       const sessionToSave = {
         ...session,
         ...updatedSession,
-        updated_at: new Date().toISOString()
+        // Make sure the new fields are included if they exist in the updatedSession
+        use_profile_avatar: updatedSession.use_profile_avatar !== undefined 
+          ? updatedSession.use_profile_avatar 
+          : session.use_profile_avatar,
+        company_logo: updatedSession.company_logo || session.company_logo,
+        settings: {
+          ...session.settings,
+          ...updatedSession.settings,
+          ai_configuration: {
+            ...session.settings?.ai_configuration,
+            ...updatedSession.settings?.ai_configuration,
+            // Include timer settings
+            timerEnabled: updatedSession.settings?.ai_configuration?.timerEnabled !== undefined
+              ? updatedSession.settings.ai_configuration.timerEnabled
+              : session.settings?.ai_configuration?.timerEnabled || false,
+            timerDuration: updatedSession.settings?.ai_configuration?.timerDuration !== undefined
+              ? updatedSession.settings.ai_configuration.timerDuration
+              : session.settings?.ai_configuration?.timerDuration || 5
+          }
+        }
       };
       
-      // Update the session in the database
-      const { error } = await supabase
-        .from('sessions')
-        .update(sessionToSave)
-        .eq('id', sessionId);
+      // Use the new updateSession function
+      const { data, error } = await updateSession(sessionId, sessionToSave);
       
       if (error) throw error;
       
-      console.log('Session updated successfully:', sessionToSave);
+      console.log('Session updated successfully:', data);
       
       // Redirect back to the session details page
       router.push(`/sessions/${sessionId}?success=session-updated`);
@@ -128,12 +143,21 @@ export default function EditSessionPage({ params }) {
   const initialConfig = {
     title: session.title || session.name,
     description: session.description,
-    institution: session.institution || (session.settings?.institution),
+    institution: session.institution || userProfile?.institution || (session.settings?.institution),
     professorName: session.professor_name || (session.settings?.professorName),
     showProfessorName: session.show_professor_name !== undefined ? session.show_professor_name : (session.settings?.showProfessorName),
     maxParticipants: session.max_participants || (session.settings?.maxParticipants) || 30,
+    useProfileAvatar: session.use_profile_avatar !== undefined ? session.use_profile_avatar : false,
+    companyLogo: session.company_logo || null,
+    // Add timer settings if they exist
+    timerEnabled: session.settings?.ai_configuration?.timerEnabled !== undefined
+      ? session.settings.ai_configuration.timerEnabled
+      : false,
+    timerDuration: session.settings?.ai_configuration?.timerDuration || 5,
     ...session.settings,
   };
+  
+  console.log("Session config for editing:", initialConfig);
   
   return (
     <div className="container mx-auto px-4 py-8">

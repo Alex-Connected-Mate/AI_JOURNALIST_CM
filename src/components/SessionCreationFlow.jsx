@@ -9,6 +9,8 @@ import AnalysisPhaseConfig from './AnalysisPhaseConfig';
 import ReadingPhaseConfig from './ReadingPhaseConfig';
 import logger from '@/lib/logger';
 import ConnectionSettings from './ConnectionSettings';
+import { useStore } from '@/lib/store';
+import ImageSelector from './ImageSelector';
 
 /**
  * SessionCreationFlow Component
@@ -21,6 +23,7 @@ import ConnectionSettings from './ConnectionSettings';
 const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState('basic-info');
+  const { userProfile } = useStore();
   const [sessionConfig, setSessionConfig] = useState({
     basicInfo: {
       title: initialConfig.title || initialConfig.sessionName || '',
@@ -52,6 +55,18 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       provideSessionSummary: true,
       customRules: ''
     },
+    // Add timer settings from initialConfig
+    timerEnabled: initialConfig.timerEnabled !== undefined ? initialConfig.timerEnabled : false,
+    timerDuration: initialConfig.timerDuration || 5,
+    // Include settings structure for AI configuration
+    settings: {
+      ...initialConfig.settings,
+      ai_configuration: {
+        ...(initialConfig.settings?.ai_configuration || {}),
+        timerEnabled: initialConfig.timerEnabled !== undefined ? initialConfig.timerEnabled : false,
+        timerDuration: initialConfig.timerDuration || 5
+      }
+    },
     // Visualization defaults
     enableWordCloud: true,
     enableThemeNetwork: true,
@@ -75,6 +90,9 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     showProfessorName: initialConfig.showProfessorName ?? true,
     maxParticipants: initialConfig.maxParticipants || 30,
     companyLogos: initialConfig.companyLogos || [],
+    // New image settings
+    useProfileAvatar: initialConfig.useProfileAvatar !== undefined ? initialConfig.useProfileAvatar : false,
+    companyLogo: initialConfig.companyLogo || null,
     
     // Will be populated with defaults from each step component
     ...initialConfig
@@ -298,6 +316,21 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
         basicInfo: {
           ...sessionConfig.basicInfo,
           title: titleValue
+        },
+        // Ensure timer settings are included
+        timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
+        timerDuration: sessionConfig.timerDuration || 5,
+        // Ensure image settings are included
+        useProfileAvatar: sessionConfig.useProfileAvatar !== undefined ? sessionConfig.useProfileAvatar : false,
+        companyLogo: sessionConfig.companyLogo || null,
+        // Ensure settings structure includes AI configuration
+        settings: {
+          ...sessionConfig.settings,
+          ai_configuration: {
+            ...(sessionConfig.settings?.ai_configuration || {}),
+            timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
+            timerDuration: sessionConfig.timerDuration || 5
+          }
         }
       };
       
@@ -316,7 +349,24 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
         logger.info('Session validation successful, submitting data');
         
         // Ensure title is properly set before submitting
-        const finalConfig = { ...sessionConfig };
+        const finalConfig = { 
+          ...sessionConfig,
+          // Ensure timer settings are included
+          timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
+          timerDuration: sessionConfig.timerDuration || 5,
+          // Ensure image settings are included
+          useProfileAvatar: sessionConfig.useProfileAvatar !== undefined ? sessionConfig.useProfileAvatar : false,
+          companyLogo: sessionConfig.companyLogo || null,
+          // Ensure settings structure includes AI configuration
+          settings: {
+            ...sessionConfig.settings,
+            ai_configuration: {
+              ...(sessionConfig.settings?.ai_configuration || {}),
+              timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
+              timerDuration: sessionConfig.timerDuration || 5
+            }
+          }
+        };
         
         if (finalConfig.basicInfo?.title && !finalConfig.title) {
           finalConfig.title = finalConfig.basicInfo.title;

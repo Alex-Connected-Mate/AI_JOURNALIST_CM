@@ -5,7 +5,10 @@ interface ImageSelectorProps {
   selectedImageId: string | null;
   onChange: (value: string | null) => void;
   helpText?: string;
-  onFileUpload: (file: File) => Promise<void>;
+  onFileUpload: (file: File) => Promise<string | null>;
+  userAvatarUrl?: string | null;
+  useUserAvatar?: boolean;
+  onUseUserAvatarChange?: (use: boolean) => void;
 }
 
 const ImageSelector: React.FC<ImageSelectorProps> = ({ 
@@ -13,13 +16,19 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
   selectedImageId, 
   onChange, 
   helpText, 
-  onFileUpload 
+  onFileUpload,
+  userAvatarUrl,
+  useUserAvatar = false,
+  onUseUserAvatarChange
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     try {
-      await onFileUpload(file);
+      const uploadedUrl = await onFileUpload(file);
+      if (uploadedUrl) {
+        onChange(uploadedUrl);
+      }
     } catch (error) {
       console.error('Error uploading file:', error);
     }
@@ -30,6 +39,31 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
+      
+      {userAvatarUrl && (
+        <div className="flex items-center mb-4">
+          <input
+            type="checkbox"
+            id="useUserAvatar"
+            checked={useUserAvatar}
+            onChange={(e) => onUseUserAvatarChange?.(e.target.checked)}
+            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+          />
+          <label htmlFor="useUserAvatar" className="ml-2 block text-sm text-gray-700">
+            Utiliser mon avatar de profil
+          </label>
+          
+          {useUserAvatar && (
+            <div className="ml-4">
+              <img 
+                src={userAvatarUrl} 
+                alt="Avatar de profil" 
+                className="h-12 w-12 rounded-full object-cover"
+              />
+            </div>
+          )}
+        </div>
+      )}
       
       <div className="mt-1 flex items-center">
         {selectedImageId ? (
@@ -72,7 +106,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
           onClick={() => fileInputRef.current?.click()}
           className="ml-4 bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
-          Changer
+          {selectedImageId ? 'Changer' : 'Ajouter logo'}
         </button>
         
         <input
