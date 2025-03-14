@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { fixAllSessionCodes } from '@/lib/sessionUtils'; // Import the session utility
 
 /**
  * API route pour appliquer des corrections automatiques
@@ -13,26 +14,63 @@ import path from 'path';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { fixNextConfig, fixInputComponents, fixJsonErrors } = body;
+    const { fixNextConfig, fixInputComponents, fixJsonErrors, fixSessionCodes } = body;
     const results = [];
     
     // En environnement Vercel de production, nous ne pouvons pas modifier les fichiers
-    // Nous informons simplement l'utilisateur que ces corrections seraient appliquées
+    // Mais nous pouvons toujours corriger les problèmes de base de données
     
+    // Si la correction des codes de session est demandée, nous pouvons le faire même en production
+    if (fixSessionCodes) {
+      try {
+        const fixResult = await fixAllSessionCodes();
+        
+        if (fixResult.success) {
+          results.push({
+            name: 'Codes de session',
+            status: 'success',
+            message: `${fixResult.fixedCount} sessions ont été corrigées avec de nouveaux codes`
+          });
+        } else {
+          results.push({
+            name: 'Codes de session',
+            status: 'error',
+            message: `Erreur lors de la correction des codes de session: ${fixResult.error?.message || 'Raison inconnue'}`
+          });
+        }
+      } catch (error) {
+        results.push({
+          name: 'Codes de session',
+          status: 'error',
+          message: `Exception lors de la correction des codes de session: ${error.message}`
+        });
+      }
+    }
+    
+    // Pour les corrections de fichiers, nous ne pouvons les faire qu'en développement
     if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
       // Dans Vercel, nous ne pouvons pas modifier les fichiers directement
-      // Retourner un succès simulé
-      return NextResponse.json({
-        success: true,
-        message: 'En environnement de production, les corrections ne peuvent pas être appliquées directement. Un nouveau déploiement avec les changements est nécessaire.',
-        results: [
-          {
-            name: 'Corrections sur Vercel',
-            status: 'warning',
-            message: 'Les modifications de fichiers ne sont pas possibles en production. Correction locale requise et nouveau déploiement.'
-          }
-        ]
-      });
+      if (results.length > 0) {
+        // Si nous avons déjà des résultats de corrections de base de données, les retourner
+        return NextResponse.json({
+          success: true,
+          message: 'Les corrections de base de données ont été appliquées. Les corrections de fichiers ne sont pas possibles en production.',
+          results
+        });
+      } else {
+        // Sinon, informer que nous ne pouvons rien faire
+        return NextResponse.json({
+          success: true,
+          message: 'En environnement de production, les corrections de fichiers ne peuvent pas être appliquées directement. Un nouveau déploiement avec les changements est nécessaire.',
+          results: [
+            {
+              name: 'Corrections sur Vercel',
+              status: 'warning',
+              message: 'Les modifications de fichiers ne sont pas possibles en production. Correction locale requise et nouveau déploiement.'
+            }
+          ]
+        });
+      }
     }
     
     // En environnement de développement, nous pouvons modifier les fichiers

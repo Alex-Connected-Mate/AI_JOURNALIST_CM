@@ -33,6 +33,8 @@ function DiagnosticsContent() {
   const [logs, setLogs] = useState([]);
   const [deployInfo, setDeployInfo] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [sessionCodeFixStatus, setSessionCodeFixStatus] = useState(null);
+  const [sessionCodeFixResult, setSessionCodeFixResult] = useState(null);
   
   // Chargement des informations système au montage
   useEffect(() => {
@@ -147,6 +149,59 @@ function DiagnosticsContent() {
       setAutoFixStatus('error');
     } finally {
       setFixRunning(false);
+    }
+  };
+  
+  // Fonction pour corriger les codes de session manquants
+  const handleFixSessionCodes = async () => {
+    setSessionCodeFixStatus('running');
+    setSessionCodeFixResult(null);
+    
+    try {
+      // Appeler l'API de correction des codes de session
+      const response = await fetch('/api/admin/fix-session-codes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSessionCodeFixStatus('success');
+        setSessionCodeFixResult(data);
+        
+        // Mettre à jour les résultats de diagnostic
+        const updatedResults = [...diagnosticResults];
+        const sessionCodeIndex = updatedResults.findIndex(r => 
+          r.name === 'Sessions avec codes manquants' || 
+          r.name.includes('session') && r.name.includes('code')
+        );
+        
+        if (sessionCodeIndex >= 0) {
+          updatedResults[sessionCodeIndex] = {
+            ...updatedResults[sessionCodeIndex],
+            status: data.fixedCount > 0 ? 'success' : 'warning',
+            message: data.fixedCount > 0 
+              ? `${data.fixedCount} sessions ont été corrigées avec succès.` 
+              : 'Aucune session avec des codes manquants n\'a été trouvée.'
+          };
+          setDiagnosticResults(updatedResults);
+        }
+      } else {
+        setSessionCodeFixStatus('error');
+        setSessionCodeFixResult(data);
+        console.error('Erreur lors de la correction des codes de session:', data.message);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la correction des codes de session:', error);
+      setSessionCodeFixStatus('error');
+      setSessionCodeFixResult({
+        success: false,
+        message: error.message || 'Erreur inconnue'
+      });
     }
   };
   
@@ -363,6 +418,34 @@ function DiagnosticsContent() {
             </div>
           )}
           
+          {sessionCodeFixStatus && (
+            <div className={`mb-4 p-4 rounded-md ${
+              sessionCodeFixStatus === 'running' ? 'bg-blue-50 text-blue-700' :
+              sessionCodeFixStatus === 'success' ? 'bg-green-50 text-green-700' : 
+              'bg-red-50 text-red-700'
+            }`}>
+              {sessionCodeFixStatus === 'running' && 'Correction des codes de session en cours...'}
+              {sessionCodeFixStatus === 'success' && (
+                <div>
+                  <p>Correction des codes de session terminée avec succès.</p>
+                  {sessionCodeFixResult && (
+                    <p className="mt-1 text-sm">
+                      {sessionCodeFixResult.fixedCount} session(s) corrigée(s).
+                    </p>
+                  )}
+                </div>
+              )}
+              {sessionCodeFixStatus === 'error' && (
+                <div>
+                  <p>Erreur lors de la correction des codes de session.</p>
+                  {sessionCodeFixResult && (
+                    <p className="mt-1 text-sm">{sessionCodeFixResult.message}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
           <ul className="space-y-4">
             {diagnosticResults.map((result, index) => (
               <li 
@@ -392,7 +475,7 @@ function DiagnosticsContent() {
             ))}
           </ul>
           
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
             <button
               onClick={handleAutoFix}
               disabled={fixRunning}
@@ -404,6 +487,21 @@ function DiagnosticsContent() {
             >
               {fixRunning ? 'Correction en cours...' : 'Corriger automatiquement les problèmes'}
             </button>
+            
+            <button
+              onClick={handleFixSessionCodes}
+              disabled={sessionCodeFixStatus === 'running'}
+              className={`block px-4 py-2 rounded-md text-white font-medium ${
+                sessionCodeFixStatus === 'running'
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {sessionCodeFixStatus === 'running' 
+                ? 'Correction des codes en cours...' 
+                : 'Corriger les codes de session manquants'}
+            </button>
+            
             <p className="mt-2 text-sm text-gray-500">
               Note: Certaines corrections peuvent nécessiter un nouveau déploiement pour prendre effet.
             </p>

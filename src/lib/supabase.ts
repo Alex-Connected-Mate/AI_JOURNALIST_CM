@@ -633,8 +633,15 @@ export async function createSession(sessionData: Partial<SessionData>) {
       throw new Error('Missing required fields: user_id and title are required');
     }
 
-    // Generate a unique access code
-    const accessCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Generate unique codes for the session
+    const generateUniqueCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+    
+    // Generate three different codes to ensure uniqueness
+    const accessCode = generateUniqueCode();
+    const code = generateUniqueCode();
+    const sessionCode = generateUniqueCode();
+    
+    console.log('[SESSION] Generated codes:', { accessCode, code, sessionCode });
     
     // Generate a unique ID for the session
     const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
@@ -649,6 +656,8 @@ export async function createSession(sessionData: Partial<SessionData>) {
       description: sessionData.description || '',
       status: sessionData.status || 'draft',
       access_code: accessCode,
+      code: code, // Add code field
+      session_code: sessionCode, // Add session_code field
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       settings: sessionData.settings || {}
@@ -685,6 +694,8 @@ export async function createSession(sessionData: Partial<SessionData>) {
               description: session.description,
               status: session.status,
               access_code: session.access_code,
+              code: session.code, // Include code in RPC call
+              session_code: session.session_code, // Include session_code in RPC call
               settings: session.settings,
               created_at: session.created_at,
               updated_at: session.updated_at

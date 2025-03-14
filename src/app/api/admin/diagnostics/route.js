@@ -109,6 +109,46 @@ export async function GET() {
       });
     }
     
+    // 5. Vérifier les sessions avec des codes manquants
+    try {
+      const { data: sessionsWithMissingCodes, error: missingCodesError } = await supabase
+        .from('sessions')
+        .select('id, name, title')
+        .or('code.is.null,session_code.is.null')
+        .limit(10);
+      
+      if (missingCodesError) {
+        results.push({
+          name: 'Codes de session',
+          status: 'error',
+          message: `Erreur lors de la vérification des codes de session: ${missingCodesError.message}`
+        });
+      } else if (sessionsWithMissingCodes && sessionsWithMissingCodes.length > 0) {
+        const sessionNames = sessionsWithMissingCodes.map(s => s.name || s.title || s.id).join(', ');
+        results.push({
+          name: 'Codes de session',
+          status: 'warning',
+          message: `${sessionsWithMissingCodes.length} sessions ont des codes manquants: ${sessionNames}. Utilisez l'outil de correction automatique pour les réparer.`,
+          actionNeeded: true,
+          actionEndpoint: '/api/admin/fix-session-codes',
+          actionLabel: 'Réparer les codes manquants'
+        });
+      } else {
+        results.push({
+          name: 'Codes de session',
+          status: 'success',
+          message: 'Toutes les sessions ont des codes valides'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la vérification des codes de session:', error);
+      results.push({
+        name: 'Codes de session',
+        status: 'error',
+        message: `Erreur lors de la vérification des codes de session: ${error.message}`
+      });
+    }
+    
     return NextResponse.json({ results }, { status: 200 });
   } catch (error) {
     console.error('Erreur lors de l\'exécution des diagnostics:', error);
