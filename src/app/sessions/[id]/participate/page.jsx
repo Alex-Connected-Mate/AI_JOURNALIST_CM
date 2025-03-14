@@ -272,6 +272,8 @@ function ParticipationContent() {
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({});
   const audioRef = useRef(null);
   const aiResponseCache = useRef({});
   const messageCountRef = useRef(0);
@@ -280,6 +282,37 @@ function ParticipationContent() {
   const sessionContextRef = useRef(new SessionContextManager());
   const API_RATE_LIMIT_WINDOW = 60000; // Fenêtre de 60 secondes pour le rate limiting
   const API_RATE_LIMIT_MAX = 20; // Maximum 20 appels par minute
+  
+  // Get auth status for debugging
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // Update debug info
+        setDebugInfo(prev => ({
+          ...prev,
+          authStatus: session ? 'Authenticated' : 'Unauthenticated',
+          authError: error ? error.message : null,
+          timestamp: new Date().toISOString(),
+          sessionId,
+          participantIdParam: participantId,
+          hasParticipantData: !!currentParticipant,
+          hasSessionData: !!session
+        }));
+      } catch (err) {
+        console.error("Error checking auth status:", err);
+        setDebugInfo(prev => ({
+          ...prev,
+          authStatus: 'Error checking auth',
+          authError: err.message,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    };
+    
+    checkAuthStatus();
+  }, [sessionId, participantId, currentParticipant, session]);
   
   // Jouer un son quand le timer se termine
   const playTimerEndSound = () => {
@@ -330,35 +363,74 @@ function ParticipationContent() {
         
         if (participantId) {
           console.log(`Looking up participant with ID: ${participantId}`);
-          const { data: participantData, error: participantLookupError } = await supabase
-            .from("participants")
-            .select("*")
-            .eq("id", participantId)
-            .single();
-            
-          if (participantData && !participantLookupError) {
-            console.log("Found participant:", participantData);
-            currentParticipantInfo = {
-              id: participantData.id,
-              name: participantData.display_name || participantData.name
-            };
-            setParticipantName(currentParticipantInfo.name);
-            setCurrentParticipant(currentParticipantInfo);
-            setJoiningComplete(true);
-          } else {
-            console.warn("Participant lookup error or not found:", participantLookupError);
+          try {
+            const { data: participantData, error: participantLookupError } = await supabase
+              .from("participants")
+              .select("*")
+              .eq("id", participantId)
+              .single();
+              
+            if (participantData && !participantLookupError) {
+              console.log("Found participant:", participantData);
+              currentParticipantInfo = {
+                id: participantData.id,
+                name: participantData.display_name || participantData.name,
+                session_id: participantData.session_id
+              };
+              setParticipantName(currentParticipantInfo.name);
+              setCurrentParticipant(currentParticipantInfo);
+              setJoiningComplete(true);
+            } else {
+              console.warn("Participant lookup error or not found:", participantLookupError);
+              if (participantLookupError?.code === 'PGRST301') {
+                console.error("Authentication error when looking up participant. RLS policy might be blocking access.");
+              }
+            }
+          } catch (err) {
+            console.error("Error during participant lookup:", err);
           }
         }
         
         // Fall back to localStorage if no participantId in URL or lookup failed
         if (!currentParticipantInfo) {
+          console.log("Participant not found by ID, checking localStorage");
           const savedParticipant = localStorage.getItem(`participant_${sessionId}`);
           if (savedParticipant) {
             try {
               const parsedParticipant = JSON.parse(savedParticipant);
               console.log("Found participant in localStorage:", parsedParticipant);
-              setCurrentParticipant(parsedParticipant);
-              setParticipantName(parsedParticipant.name);
+              
+              // Verify if the participant exists in the database
+              try {
+                if (parsedParticipant.id) {
+                  const { data: verifyParticipant, error: verifyError } = await supabase
+                    .from("participants")
+                    .select("id, name, display_name")
+                    .eq("id", parsedParticipant.id)
+                    .single();
+                    
+                  if (verifyParticipant && !verifyError) {
+                    console.log("Verified participant from localStorage exists in database");
+                    // Use the current participant data from database
+                    currentParticipantInfo = {
+                      id: verifyParticipant.id,
+                      name: verifyParticipant.display_name || verifyParticipant.name
+                    };
+                  } else {
+                    console.warn("Participant in localStorage not found in database:", verifyError);
+                    // Still use localStorage data as fallback
+                    currentParticipantInfo = parsedParticipant;
+                  }
+                } else {
+                  currentParticipantInfo = parsedParticipant;
+                }
+              } catch (verifyErr) {
+                console.error("Error verifying participant from localStorage:", verifyErr);
+                currentParticipantInfo = parsedParticipant;
+              }
+              
+              setCurrentParticipant(currentParticipantInfo);
+              setParticipantName(currentParticipantInfo.name);
               setJoiningComplete(true);
             } catch (e) {
               console.error("Error parsing saved participant:", e);
@@ -371,54 +443,66 @@ function ParticipationContent() {
         
         // Load session information
         console.log(`Loading session with ID: ${sessionId}`);
-        const { data: sessionData, error: sessionError } = await supabase
-          .from("sessions")
-          .select("*")
-          .eq("id", sessionId)
-          .single();
-          
-        if (sessionError) {
-          console.error("Error loading session:", sessionError);
-          if (sessionError.code === '42P01') {
-            setError("The 'sessions' table does not exist in the database. Please follow the instructions in DATABASE_SETUP.md to configure the database.");
-          } else {
-            setError(`Error loading session: ${sessionError.message}`);
-          }
-          setLoading(false);
-          return;
-        }
-        
-        if (sessionData) {
-          console.log("Session loaded successfully:", sessionData);
-          setSession(sessionData);
-          
-          // Set the number of votes based on session parameters
-          if (sessionData.max_votes_per_participant) {
-            setRemainingVotes(sessionData.max_votes_per_participant);
-          }
-          
-          // Load current participants
-          console.log("Loading participants for session");
-          const { data: participantsData, error: participantsError } = await supabase
-            .from("participants")
+        try {
+          const { data: sessionData, error: sessionError } = await supabase
+            .from("sessions")
             .select("*")
-            .eq("session_id", sessionId);
+            .eq("id", sessionId)
+            .single();
             
-          if (participantsError) {
-            console.error("Error loading participants:", participantsError);
-            if (participantsError.code === '42P01') {
-              setError("The 'participants' table does not exist in the database. Some features will be limited.");
+          if (sessionError) {
+            console.error("Error loading session:", sessionError);
+            if (sessionError.code === 'PGRST301') {
+              setError("Authentication error when loading session. RLS policy might be blocking access. Make sure the session is active.");
+            } else if (sessionError.code === '42P01') {
+              setError("The 'sessions' table does not exist in the database. Please follow the instructions in DATABASE_SETUP.md to configure the database.");
             } else {
-              console.warn(`Participant loading warning: ${participantsError.message}`);
+              setError(`Error loading session: ${sessionError.message}`);
+            }
+            setLoading(false);
+            return;
+          }
+          
+          if (sessionData) {
+            console.log("Session loaded successfully:", sessionData);
+            setSession(sessionData);
+            
+            // Set the number of votes based on session parameters
+            if (sessionData.max_votes_per_participant) {
+              setRemainingVotes(sessionData.max_votes_per_participant);
+            }
+            
+            // Load current participants
+            console.log("Loading participants for session");
+            try {
+              const { data: participantsData, error: participantsError } = await supabase
+                .from("participants")
+                .select("*")
+                .eq("session_id", sessionId);
+                
+              if (participantsError) {
+                console.error("Error loading participants:", participantsError);
+                if (participantsError.code === 'PGRST301') {
+                  console.warn("Authentication error when loading participants. RLS policy might be blocking access.");
+                } else if (participantsError.code === '42P01') {
+                  setError("The 'participants' table does not exist in the database. Some features will be limited.");
+                } else {
+                  console.warn(`Participant loading warning: ${participantsError.message}`);
+                }
+              } else {
+                console.log(`Loaded ${participantsData?.length || 0} participants`);
+                setParticipants(participantsData || []);
+              }
+            } catch (participantsErr) {
+              console.error("Exception loading participants:", participantsErr);
             }
           } else {
-            console.log(`Loaded ${participantsData?.length || 0} participants`);
-            setParticipants(participantsData || []);
+            setError("Session not found. It may have been deleted or is no longer active.");
           }
-        } else {
-          setError("Session not found. It may have been deleted or is no longer active.");
+        } catch (sessionErr) {
+          console.error("Exception during session loading:", sessionErr);
+          setError(`Error loading session: ${sessionErr.message}`);
         }
-        
       } catch (err) {
         console.error("Error loading session details:", err);
         setError(`Error: ${err.message || "Unable to load this session"}`);
@@ -527,8 +611,8 @@ function ParticipationContent() {
       setSubmitting(true);
       
       // Check if the session is full
-      if (participants.length >= (session?.max_participants || 30)) {
-        setError(`This session is full (maximum ${session?.max_participants || 30} participants)`);
+      if (participants.length >= (session?.max_participants || session?.settings?.maxParticipants || 30)) {
+        setError(`This session is full (maximum ${session?.max_participants || session?.settings?.maxParticipants || 30} participants)`);
         setSubmitting(false);
         return;
       }
@@ -536,23 +620,33 @@ function ParticipationContent() {
       console.log("Creating participant with name:", participantName);
       
       // Create a participant
+      const participantData = {
+        session_id: sessionId,
+        display_name: participantName,
+        name: participantName,
+        is_anonymous: true,
+        votes: 0,
+        status: 'active'
+      };
+      
+      console.log("Participant data to insert:", participantData);
+      
+      // Create a participant
       const { data, error } = await supabase
         .from("participants")
-        .insert([
-          {
-            session_id: sessionId,
-            display_name: participantName,
-            name: participantName,
-            is_anonymous: true,
-            votes: 0
-          }
-        ])
+        .insert([participantData])
         .select();
         
       if (error) {
         console.error("Error creating participant:", error);
-        if (error.code === '42P01') {
+        if (error.code === 'PGRST301') {
+          setError("Authentication error. The system may require you to be logged in. Please try using the join page.");
+        } else if (error.code === '42P01') {
           setError("The 'participants' table does not exist in the database. Please contact the administrator.");
+        } else if (error.code === '23503') {
+          setError("Cannot join this session. The session may no longer be active.");
+        } else if (error.code === '23505') {
+          setError("A participant with this name already exists in this session. Please use a different name.");
         } else {
           setError(`Failed to join session: ${error.message}`);
         }
@@ -565,11 +659,13 @@ function ParticipationContent() {
         // Save participant information locally
         const participantInfo = {
           id: data[0].id,
-          name: participantName
+          name: participantName,
+          sessionId: sessionId
         };
         
         try {
           localStorage.setItem(`participant_${sessionId}`, JSON.stringify(participantInfo));
+          console.log("Participant info saved to localStorage:", participantInfo);
         } catch (e) {
           console.warn("Could not save to localStorage:", e);
         }
@@ -1639,6 +1735,40 @@ function ParticipationContent() {
       
       {/* Contenu principal basé sur la phase actuelle */}
       {renderPhaseContent()}
+      
+      {/* Debug button */}
+      <div className="mt-4 text-center">
+        <button
+          type="button"
+          onClick={() => setShowDebug(!showDebug)}
+          className="text-xs text-gray-400 hover:text-gray-600"
+        >
+          {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+        </button>
+      </div>
+      
+      {/* Debug information panel */}
+      {showDebug && (
+        <div className="mt-2 mb-4 rounded-md bg-gray-50 p-3 text-xs font-mono max-w-md w-full">
+          <div className="mb-2 text-gray-500">Debug Information:</div>
+          <pre className="whitespace-pre-wrap text-gray-600 overflow-auto max-h-60">
+            {JSON.stringify(
+              {
+                ...debugInfo,
+                currentPhase,
+                numParticipants: participants?.length,
+                joiningComplete,
+                currentParticipantId: currentParticipant?.id,
+                usingSupabaseSingleton: true,
+                error,
+                browser: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+              },
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      )}
       
       {/* Footer */}
       <div className="mt-8 text-center">

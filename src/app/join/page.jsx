@@ -44,6 +44,35 @@ function JoinContent() {
   const [sessionData, setSessionData] = useState(null);
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [step, setStep] = useState(1); // 1: Enter code, 2: Enter profile info
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({});
+  
+  // Get auth status for debugging
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // Update debug info
+        setDebugInfo(prev => ({
+          ...prev,
+          authStatus: session ? 'Authenticated' : 'Unauthenticated',
+          authError: error ? error.message : null,
+          timestamp: new Date().toISOString()
+        }));
+      } catch (err) {
+        console.error("Error checking auth status:", err);
+        setDebugInfo(prev => ({
+          ...prev,
+          authStatus: 'Error checking auth',
+          authError: err.message,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    };
+    
+    checkAuthStatus();
+  }, []);
   
   // Verify the session code
   const verifySessionCode = async (e) => {
@@ -57,13 +86,14 @@ function JoinContent() {
     setError(null);
     
     try {
-      console.log(`Searching for session with code: ${sessionCode}`);
+      const normalizedCode = sessionCode.trim().toUpperCase();
+      console.log(`Searching for session with normalized code: ${normalizedCode}`);
       
-      // Properly format query with quoted string values
+      // Improved query with proper formatting and error handling
       const { data: sessions, error: sessionError } = await supabase
         .from("sessions")
         .select("id, title, name, status, settings, max_participants, session_code, code")
-        .or(`session_code.eq."${sessionCode}",code.eq."${sessionCode}"`)
+        .or(`session_code.eq."${normalizedCode}",code.eq."${normalizedCode}"`)
         .eq("status", "active")
         .limit(1);
       
@@ -71,18 +101,48 @@ function JoinContent() {
       
       if (sessionError) {
         console.error("Error fetching session:", sessionError);
-        setError(`Error fetching session: ${sessionError.message}`);
+        if (sessionError.code === 'PGRST301') {
+          setError(`Authentication error: ${sessionError.message}. This may be due to RLS policies.`);
+        } else {
+          setError(`Error fetching session: ${sessionError.message}`);
+        }
         setIsVerifyingCode(false);
         return;
       }
       
       if (!sessions || sessions.length === 0) {
-        setError("No session found with this code. Please check and try again.");
+        // Try alternative query format as fallback
+        console.log("No sessions found with first query format, trying alternative");
+        const { data: altSessions, error: altError } = await supabase
+          .from("sessions")
+          .select("id, title, name, status, settings, max_participants, session_code, code")
+          .or(`session_code.eq.${normalizedCode},code.eq.${normalizedCode}`)
+          .eq("status", "active")
+          .limit(1);
+          
+        console.log("Alternative search result:", { altSessions, error: altError });
+        
+        if (altError) {
+          console.error("Error in alternative fetch:", altError);
+          setError("No session found with this code. Please check and try again.");
+          setIsVerifyingCode(false);
+          return;
+        }
+        
+        if (!altSessions || altSessions.length === 0) {
+          setError("No session found with this code. Please check and try again.");
+          setIsVerifyingCode(false);
+          return;
+        }
+        
+        // Session found with alternative query
+        setSessionData(altSessions[0]);
+        setStep(2);
         setIsVerifyingCode(false);
         return;
       }
       
-      // Session found, proceed to step 2
+      // Session found with first query
       setSessionData(sessions[0]);
       setStep(2);
       setIsVerifyingCode(false);
@@ -137,6 +197,13 @@ function JoinContent() {
     setError(null);
     
     try {
+      // Check max participants
+      if (participants.length >= (sessionData?.max_participants || sessionData?.settings?.maxParticipants || 30)) {
+        setError(`This session is full (maximum ${sessionData?.max_participants || sessionData?.settings?.maxParticipants || 30} participants)`);
+        setLoading(false);
+        return;
+      }
+      
       // Determine participant fields based on anonymity level
       const participantData = {
         session_id: sessionData.id,
@@ -165,7 +232,17 @@ function JoinContent() {
       
       if (participantError) {
         console.error("Error creating participant:", participantError);
-        setError(`Failed to join the session: ${participantError.message}`);
+        
+        if (participantError.code === 'PGRST301') {
+          setError("Authentication error. The database may require authentication for participant creation.");
+        } else if (participantError.code === '23503') {
+          setError("Foreign key violation. The session may no longer be valid.");
+        } else if (participantError.code === '23505') {
+          setError("A participant with this information already exists.");
+        } else {
+          setError(`Failed to join the session: ${participantError.message}`);
+        }
+        
         setLoading(false);
         return;
       }
@@ -179,16 +256,18 @@ function JoinContent() {
       // Save participant info to localStorage
       const participantInfo = {
         id: participant[0].id,
-        name: participantName
+        name: participantName,
+        sessionId: sessionData.id
       };
       
       try {
         localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify(participantInfo));
+        console.log("Participant info saved to localStorage");
       } catch (e) {
         console.warn("Could not save participant info to localStorage:", e);
       }
       
-      // Redirect to participate page
+      // Redirect to participate page with participant ID
       console.log("Successfully joined session, redirecting to participate page");
       router.push(`/sessions/${sessionData.id}/participate?participantId=${participant[0].id}`);
     } catch (error) {
@@ -361,9 +440,42 @@ function JoinContent() {
           )}
         </div>
         
-        <div className="border-t border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-600">
-          Need help? Contact your session organizer
+        {/* Debug toggle button */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs text-gray-400 hover:text-gray-600"
+          >
+            {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+          </button>
         </div>
+        
+        {/* Debug information panel */}
+        {showDebug && (
+          <div className="mt-2 rounded-md bg-gray-50 p-3 text-xs font-mono">
+            <div className="mb-2 text-gray-500">Debug Information:</div>
+            <pre className="whitespace-pre-wrap text-gray-600">
+              {JSON.stringify(
+                {
+                  ...debugInfo,
+                  currentStep: step,
+                  sessionCodeLength: sessionCode?.length,
+                  hasSessionData: !!sessionData,
+                  usingSupabaseSingleton: true,
+                  error: error,
+                  browser: navigator.userAgent,
+                },
+                null,
+                2
+              )}
+            </pre>
+          </div>
+        )}
+      </div>
+      
+      <div className="border-t border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-600">
+        Need help? Contact your session organizer
       </div>
     </div>
   );
