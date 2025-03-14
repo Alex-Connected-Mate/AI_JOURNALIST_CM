@@ -886,4 +886,33 @@ export async function endSession(sessionId: string) {
     .single();
     
   return { data, error };
+}
+
+// Update session status
+export async function updateSessionStatus(sessionId: string, status: 'draft' | 'active' | 'ended') {
+  return withRetry(async () => {
+    console.log(`[SESSION] Updating session ${sessionId} status to: ${status}`);
+    
+    const statusData = {
+      status,
+      updated_at: new Date().toISOString(),
+      ...(status === 'active' ? { started_at: new Date().toISOString() } : {}),
+      ...(status === 'ended' ? { ended_at: new Date().toISOString() } : {})
+    };
+    
+    const { data, error } = await supabase
+      .from('sessions')
+      .update(statusData)
+      .eq('id', sessionId)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('[SESSION] Failed to update session status:', error);
+      throw error;
+    }
+    
+    console.log('[SESSION] Session status updated successfully:', data);
+    return { data, error: null };
+  });
 } 

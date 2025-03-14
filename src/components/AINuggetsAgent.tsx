@@ -1,15 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useStore } from '@/lib/store';
-import { createAINuggetsAgent } from '@/lib/prompts';
-
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-}
+import { useState } from 'react';
 
 interface AINuggetsAgentProps {
   sessionId: string;
@@ -28,126 +19,68 @@ export default function AINuggetsAgent({
   onClose,
   onComplete
 }: AINuggetsAgentProps) {
-  const { user, userProfile } = useStore();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [aiAgent, setAIAgent] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState<'intro' | 'questions' | 'analysis' | 'results'>('intro');
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [insights, setInsights] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   
-  // Initialization effect
-  useEffect(() => {
-    const initAgent = async () => {
-      if (!user) return;
-      
-      try {
-        setIsLoading(true);
-        
-        // Initialize AI Nuggets agent with user's API key if they've chosen to use it
-        const agent = await createAINuggetsAgent(
-          user.id,
-          sessionId,
-          {
-            programName,
-            teacherName,
-            apiKey: userProfile?.use_own_api_key && userProfile?.openai_api_key ? userProfile.openai_api_key : undefined,
-          }
-        );
-        
-        setAIAgent(agent);
-        
-        // Add initial welcome message from AI
-        const welcomeMessage: Message = {
-          id: Date.now().toString(),
-          content: `Hi there! I'm AI Nuggets, your AI Journalist for "${programName}". Congratulations! Your peers found your business story particularly compelling and voted for you to share it in more detail. I'm here to help you articulate your experience and extract valuable business insights that can benefit everyone. Let's start with the big picture – could you tell me a bit about your business journey and what makes it unique? 😊`,
-          sender: 'ai',
-          timestamp: new Date()
-        };
-        
-        setMessages([welcomeMessage]);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Failed to initialize AI Nuggets agent:', err);
-        setError('Failed to initialize AI agent. Please try again later.');
-        setIsLoading(false);
+  // Sample questions for the nuggets agent
+  const questions = [
+    "What's the most important business concept you've learned in this session?",
+    "How might you apply this knowledge in a real-world business situation?",
+    "What challenges do you think businesses face in implementing these concepts?",
+    "Can you identify any potential opportunities for innovation based on what you've learned?"
+  ];
+  
+  const handleNext = () => {
+    if (step === 'intro') {
+      setStep('questions');
+    } else if (step === 'questions') {
+      if (currentQuestion < questions.length - 1) {
+        setCurrentQuestion(currentQuestion + 1);
+      } else {
+        // All questions answered, move to analysis
+        setLoading(true);
+        // Simulate AI processing time
+        setTimeout(() => {
+          setStep('analysis');
+          // Simulate analysis time
+          setTimeout(() => {
+            // Generate insights based on answers
+            const generatedInsights = [
+              "Key business concept identified: Strategic value creation through customer-centric approaches",
+              "Potential application: Implementing feedback loops in product development cycles",
+              "Challenge: Balancing innovation with practical implementation constraints",
+              "Opportunity: Exploring untapped market segments through innovative business models"
+            ];
+            setInsights(generatedInsights);
+            setStep('results');
+            setLoading(false);
+          }, 2000);
+        }, 1500);
       }
-    };
-    
-    initAgent();
-  }, [user, sessionId, programName, teacherName, userProfile]);
-  
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-  
-  // Handle user message submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!inputValue.trim() || !aiAgent || isLoading) return;
-    
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputValue,
-      sender: 'user',
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
-    
-    try {
-      // Get conversation context from previous messages
-      const conversationContext = messages
-        .map(msg => `${msg.sender.toUpperCase()}: ${msg.content}`)
-        .join('\n\n');
-      
-      // Generate AI response
-      const aiResponse = await aiAgent.generateResponse(inputValue, conversationContext);
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: aiResponse,
-        sender: 'ai',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (err) {
-      console.error('Error generating AI response:', err);
-      setError('Failed to generate response. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } else if (step === 'results') {
+      if (onComplete) {
+        onComplete(insights);
+      }
     }
   };
   
-  // Extract insights from conversation for the onComplete callback
-  const handleComplete = () => {
-    // Extract AI messages as insights
-    const insights = messages
-      .filter(msg => msg.sender === 'ai')
-      .map(msg => msg.content);
-    
-    if (onComplete) {
-      onComplete(insights);
-    }
-    
-    if (onClose) {
-      onClose();
-    }
+  const handleAnswerChange = (answer: string) => {
+    setAnswers({
+      ...answers,
+      [`question_${currentQuestion}`]: answer
+    });
   };
   
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-lg overflow-hidden">
-      {/* Header */}
       <div className="bg-indigo-600 p-4 text-white">
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-xl font-semibold">AI Nuggets</h2>
-            <p className="text-sm text-indigo-200">Extracting insights from {participantName}'s business story</p>
+            <p className="text-sm text-indigo-200">Extract valuable business insights</p>
           </div>
           {onClose && (
             <button 
@@ -162,86 +95,106 @@ export default function AINuggetsAgent({
         </div>
       </div>
       
-      {/* Messages Container */}
-      <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-        {messages.map(message => (
-          <div 
-            key={message.id} 
-            className={`mb-4 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}
-          >
-            <div 
-              className={`inline-block p-3 rounded-lg max-w-3/4 ${
-                message.sender === 'user' 
-                  ? 'bg-indigo-500 text-white rounded-br-none' 
-                  : 'bg-white border border-gray-200 rounded-bl-none'
-              }`}
-            >
-              {message.content}
-              <div 
-                className={`text-xs mt-1 ${
-                  message.sender === 'user' ? 'text-indigo-200' : 'text-gray-500'
-                }`}
-              >
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
+      <div className="flex-1 p-6 overflow-y-auto">
+        {step === 'intro' && (
+          <div className="text-center py-8">
+            <div className="inline-block p-4 bg-indigo-100 rounded-full mb-6">
+              <span className="text-5xl">💎</span>
             </div>
-          </div>
-        ))}
-        
-        {isLoading && (
-          <div className="flex items-center space-x-2 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-            <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-            <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-            <span className="text-sm text-gray-500">AI is thinking...</span>
-          </div>
-        )}
-        
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 mb-4">
-            {error}
-            <button 
-              className="ml-3 text-red-700 underline"
-              onClick={() => setError(null)}
+            <h3 className="text-2xl font-semibold mb-4">Welcome to AI Nuggets</h3>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              I'll help you extract the most valuable business insights from this session.
+              Let's work together to identify key concepts, applications, and opportunities.
+            </p>
+            <button
+              onClick={handleNext}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Dismiss
+              Get Started
             </button>
           </div>
         )}
         
-        {/* Invisible element for auto-scrolling */}
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Input Area */}
-      <div className="p-4 border-t">
-        <form onSubmit={handleSubmit} className="flex space-x-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            disabled={isLoading || !aiAgent}
-            placeholder={isLoading ? "AI is thinking..." : "Type your message..."}
-            className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !inputValue.trim() || !aiAgent}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg 
-                      disabled:bg-indigo-300 hover:bg-indigo-700 
-                      transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            Send
-          </button>
-        </form>
+        {step === 'questions' && (
+          <div className="max-w-lg mx-auto">
+            <div className="mb-6">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center mr-3">
+                  {currentQuestion + 1}
+                </div>
+                <div className="text-xl font-medium text-gray-800">
+                  {questions[currentQuestion]}
+                </div>
+              </div>
+              
+              <textarea
+                value={answers[`question_${currentQuestion}`] || ''}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                placeholder="Type your answer here..."
+                className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
+              />
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-500">
+                Question {currentQuestion + 1} of {questions.length}
+              </div>
+              <button
+                onClick={handleNext}
+                disabled={!answers[`question_${currentQuestion}`]}
+                className={`px-6 py-2 rounded-lg transition-colors ${
+                  answers[`question_${currentQuestion}`]
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {currentQuestion < questions.length - 1 ? 'Next Question' : 'Submit Answers'}
+              </button>
+            </div>
+          </div>
+        )}
         
-        {messages.length > 3 && (
-          <div className="mt-3 text-right">
+        {step === 'analysis' && (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="mb-6">
+              <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Analyzing Your Responses</h3>
+            <p className="text-gray-600">
+              Please wait while I extract key business insights from your responses...
+            </p>
+          </div>
+        )}
+        
+        {step === 'results' && (
+          <div className="max-w-lg mx-auto">
+            <h3 className="text-xl font-semibold mb-4">Your Business Nuggets</h3>
+            <p className="text-gray-600 mb-6">
+              Based on your responses, I've extracted these valuable business insights:
+            </p>
+            
+            <div className="space-y-4 mb-8">
+              {insights.map((insight, index) => (
+                <div key={index} className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0 mr-3">
+                      <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center">
+                        {index + 1}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-gray-800">{insight}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
             <button
-              onClick={handleComplete}
-              className="text-sm text-indigo-600 hover:text-indigo-800"
+              onClick={handleNext}
+              className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Complete Interview & Save Insights
+              Complete & Save Insights
             </button>
           </div>
         )}

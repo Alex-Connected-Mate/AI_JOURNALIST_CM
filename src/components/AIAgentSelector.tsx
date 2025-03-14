@@ -19,8 +19,8 @@ interface AIAgentSelectorProps {
 /**
  * AIAgentSelector Component
  * 
- * Ce composant sélectionne le bon agent IA en fonction du type (nuggets, lightbulb)
- * ou affiche un message de pause si l'utilisateur a choisi de ne pas interagir.
+ * This component selects the appropriate AI agent based on the type (nuggets, lightbulb)
+ * or displays a pause message if the user has chosen not to interact.
  */
 export default function AIAgentSelector({
   sessionId,
@@ -31,10 +31,10 @@ export default function AIAgentSelector({
   onClose,
   onComplete
 }: AIAgentSelectorProps) {
-  // États locaux
+  // Local state
   const [insights, setInsights] = useState<string[]>([]);
   
-  // Gérer la complétion et sauvegarder les insights
+  // Handle completion and save insights
   const handleComplete = (agentInsights: string[]) => {
     setInsights(agentInsights);
     if (onComplete) {
@@ -42,7 +42,7 @@ export default function AIAgentSelector({
     }
   };
   
-  // Si l'utilisateur a choisi de faire une pause
+  // If the user has chosen to take a pause
   if (agentType === 'pause') {
     return (
       <div className="flex flex-col h-full bg-white rounded-lg shadow-lg overflow-hidden">
@@ -50,7 +50,7 @@ export default function AIAgentSelector({
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-semibold">Pause</h2>
-              <p className="text-sm text-gray-200">Prendre un moment pour réfléchir</p>
+              <p className="text-sm text-gray-200">Take a moment to reflect</p>
             </div>
             {onClose && (
               <button 
@@ -72,17 +72,17 @@ export default function AIAgentSelector({
             </svg>
           </div>
           
-          <h3 className="text-xl font-semibold mb-2">Moment de réflexion</h3>
+          <h3 className="text-xl font-semibold mb-2">Reflection Time</h3>
           <p className="text-gray-600 mb-6 max-w-md">
-            Vous avez choisi de prendre un moment de pause pendant que les autres participants interagissent avec les agents IA. 
-            Profitez de ce temps pour réfléchir aux discussions que vous avez entendues.
+            You've chosen to take a moment of pause while other participants interact with the AI agents.
+            Use this time to reflect on the discussions you've heard.
           </p>
           
           <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 max-w-md">
-            <h4 className="font-medium text-yellow-800 mb-2">Pendant ce temps...</h4>
+            <h4 className="font-medium text-yellow-800 mb-2">During this time...</h4>
             <p className="text-sm text-yellow-700">
-              Vous pouvez prendre des notes sur les idées qui vous sont venues pendant les discussions.
-              Vous pourrez les partager lors de la phase suivante.
+              You can take notes on ideas that came to you during the discussions.
+              You'll be able to share them in the next phase.
             </p>
           </div>
           
@@ -90,14 +90,14 @@ export default function AIAgentSelector({
             onClick={onClose}
             className="mt-8 px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
           >
-            Terminer la pause
+            End Pause
           </button>
         </div>
       </div>
     );
   }
   
-  // Sélection de l'agent approprié
+  // Select the appropriate agent
   if (agentType === 'nuggets') {
     return (
       <AINuggetsAgent
@@ -124,14 +124,14 @@ export default function AIAgentSelector({
     );
   }
   
-  // Fallback au cas où le type n'est pas reconnu
+  // Fallback in case the type is not recognized
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="bg-red-600 p-4 text-white">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold">Erreur</h2>
-            <p className="text-sm text-red-200">Type d'agent non reconnu</p>
+            <h2 className="text-xl font-semibold">Error</h2>
+            <p className="text-sm text-red-200">Agent type not recognized</p>
           </div>
           {onClose && (
             <button 
@@ -148,13 +148,13 @@ export default function AIAgentSelector({
       
       <div className="flex-1 p-8 flex flex-col items-center justify-center text-center">
         <p className="text-red-600 mb-4">
-          Le type d'agent "{agentType}" n'est pas reconnu.
+          The agent type "{agentType}" is not recognized.
         </p>
         <button
           onClick={onClose}
           className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
-          Fermer
+          Close
         </button>
       </div>
     </div>

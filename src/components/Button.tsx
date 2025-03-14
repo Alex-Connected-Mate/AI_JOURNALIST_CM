@@ -5,6 +5,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
   size?: 'sm' | 'md' | 'lg';
   icon?: React.ReactNode;
+  fullWidth?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -15,6 +16,7 @@ const Button: React.FC<ButtonProps> = ({
   icon,
   className = '',
   disabled,
+  fullWidth = false,
   ...props
 }) => {
   const baseClasses = 'btn flex items-center justify-center transition-all duration-200';
@@ -31,7 +33,9 @@ const Button: React.FC<ButtonProps> = ({
     lg: 'py-3 px-6 text-lg'
   };
   
-  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className} ${
+  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${
+    fullWidth ? 'w-full' : ''
+  } ${className} ${
     isLoading ? 'opacity-70 cursor-not-allowed' : ''
   }`;
   
