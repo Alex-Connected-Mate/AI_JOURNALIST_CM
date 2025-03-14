@@ -9,7 +9,8 @@ const PUBLIC_ROUTES = [
   '/auth/signup',
   '/auth/reset-password',
   '/auth/callback',
-  '/join'
+  '/join',
+  '/sessions' // Permettre l'accès à ses chemins pour les participants
 ]
 
 export async function middleware(request: NextRequest) {
@@ -18,9 +19,13 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   const path = request.nextUrl.pathname;
+  
+  // Considérer les URLs de participation comme publiques
+  const isParticipateRoute = path.includes('/participate') || path.includes('/join');
+  
   const isPublicRoute = PUBLIC_ROUTES.some(route => 
     path === route || path.startsWith(`${route}/`)
-  );
+  ) || isParticipateRoute;
   
   if (!session && !isPublicRoute) {
     // Rediriger vers la page de connexion avec l'URL actuelle en paramètre de redirection

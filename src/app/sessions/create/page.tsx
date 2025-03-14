@@ -159,6 +159,7 @@ export default function CreateSessionPage() {
         image: uploadedImageUrl || selectedImage,
         company_logo: companyLogo,
         use_profile_avatar: useProfileAvatar,
+        max_participants: maxParticipants,
         settings: {
           maxParticipants,
           institution,

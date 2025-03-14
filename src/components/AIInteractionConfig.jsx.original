@@ -1,0 +1,286 @@
+import React, { useState, useEffect } from 'react';
+import Input from './Input';
+import Checkbox from './Checkbox';
+import NumberInput from './NumberInput';
+import NexusAIJournalist from './NexusAIJournalist';
+import FinalAnalysisConfig from './FinalAnalysisConfig';
+import TimerSettings from './TimerSettings';
+
+// Import our new AI Nuggets prompt configuration
+import { AI_NUGGETS_PROMPT, DEFAULT_AI_NUGGETS_CONFIG } from '../lib/prompts';
+
+// Import useStore to access user profile
+import { useStore } from '../lib/store';
+
+/**
+ * AIInteractionConfig Component
+ * 
+ * Configuration for the AI interaction phase:
+ * - AI Nuggets for top-voted participants (mandatory)
+ * - AI Lightbulbs for participants who choose to discuss (optional)
+ * - Book generation settings for both agents
+ * - Timer settings for AI interactions
+ */
+const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = "standard" }) => {
+  // State for collapsible sections
+  const [showAIConfig, setShowAIConfig] = useState(false);
+  const [showTimerConfig, setShowTimerConfig] = useState(true);
+  const [showBookConfig, setShowBookConfig] = useState(false);
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+  const [bookPreviewOpen, setBookPreviewOpen] = useState(false);
+  const [showFinalAnalysisConfig, setShowFinalAnalysisConfig] = useState(false);
+  
+  // State for final analysis configuration
+  const [analysisItems, setAnalysisItems] = useState(
+    sessionConfig.analysisConfiguration?.items || [
+      { id: 'nuggets-analysis', type: 'nuggets', enabled: true, title: 'Nuggets Analysis' },
+      { id: 'lightbulbs-analysis', type: 'lightbulbs', enabled: true, title: 'Lightbulbs Analysis' },
+      { id: 'overall-analysis', type: 'overall', enabled: true, title: 'Overall Analysis' }
+    ]
+  );
+  
+  // Local state for form values
+  const [localConfig, setLocalConfig] = useState({
+    agentName: "",
+    programName: "",
+    teacherName: "",
+    location: "",
+    venue: "",
+    agentPersonality: "",
+    // ... other fields
+  });
+
+  // Validation state
+  const [validationState, setValidationState] = useState({
+    agentName: { isValid: true, message: '' },
+    programName: { isValid: true, message: '' },
+    teacherName: { isValid: true, message: '' },
+    location: { isValid: true, message: '' },
+    venue: { isValid: true, message: '' },
+    agentPersonality: { isValid: true, message: '' }
+  });
+  
+  // Inside component, add this near the other useState declarations
+  const { userProfile } = useStore();
+  
+  // Add a state to track if there are unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // For accessing analysis configuration
+  const analysisConfiguration = sessionConfig.analysisConfiguration || {};
+
+  // Timer settings handlers
+  const handleTimerEnabledChange = (enabled) => {
+    updateSessionConfig({
+      ...sessionConfig,
+      timerEnabled: enabled,
+      settings: {
+        ...sessionConfig.settings,
+        ai_configuration: {
+          ...(sessionConfig.settings?.ai_configuration || {}),
+          timerEnabled: enabled
+        }
+      }
+    });
+  };
+  
+  const handleTimerDurationChange = (duration) => {
+    updateSessionConfig({
+      ...sessionConfig,
+      timerDuration: duration,
+      settings: {
+        ...sessionConfig.settings,
+        ai_configuration: {
+          ...(sessionConfig.settings?.ai_configuration || {}),
+          timerDuration: duration
+        }
+      }
+    });
+  };
+
+  // Extract timer settings from the config
+  const timerEnabled = sessionConfig.timerEnabled || 
+    sessionConfig.settings?.ai_configuration?.timerEnabled || false;
+  const timerDuration = sessionConfig.timerDuration || 
+    sessionConfig.settings?.ai_configuration?.timerDuration || 5;
+    
+  // Default configuration values
+  const defaultNuggetsPromptConfig = {
+    agentName: DEFAULT_AI_NUGGETS_CONFIG.agentName,
+    programName: DEFAULT_AI_NUGGETS_CONFIG.programName,
+    teacherName: DEFAULT_AI_NUGGETS_CONFIG.teacherName,
+    location: "",
+    venue: "",
+    agentPersonality: "conversational, curious and journalistic",
+    rules: [
+      "Acknowledge Selection: Begin by congratulating the participant for being selected by their peers for their interesting story, making them feel valued.",
+      "Sequential Storytelling: Guide participants through sharing their story chronologically, asking follow-up questions for clarity.",
+      "Business Focus: While allowing natural storytelling, direct questions toward business challenges, solutions, and insights.",
+      "Deep Diving: When participants mention interesting business points, probe deeper with follow-up questions.",
+      "Complete Picture: Ensure all key aspects of their business story are covered: origin, challenges, solutions, results, and learnings.",
+      "Confidentiality Assurance: Reassure participants that their information will be used responsibly within the program context.",
+      "Synthesis Support: Periodically summarize key points to validate understanding and help the participant refine their story."
+    ],
+    questions: [
+      {
+        title: "Origin Story",
+        question: "What inspired you to start this business journey? What problem or opportunity did you initially identify?"
+      },
+      {
+        title: "Challenge & Solution",
+        question: "What was the biggest challenge you faced, and how did you overcome it? What made your approach unique?"
+      },
+      {
+        title: "Market & Customer Insights",
+        question: "What have you learned about your market and customers that others might not realize?"
+      },
+      {
+        title: "Business Model Evolution",
+        question: "How has your business model or approach evolved since you started? What prompted these changes?"
+      },
+      {
+        title: "Key Learnings",
+        question: "What's the most valuable business lesson from your experience that could benefit others in the room?"
+      },
+      {
+        title: "Future Vision",
+        question: "Where do you see this journey taking you next? What's your vision for growth or impact?"
+      }
+    ]
+  };
+  
+  // Collapsible Section Component
+  const CollapsibleSection = ({ title, isOpen, onToggle, children, icon, color = "purple" }) => {
+    const colorClasses = {
+      purple: "bg-purple-100 border-purple-400 text-purple-900 shadow-md",
+      amber: "bg-amber-100 border-amber-400 text-amber-900 shadow-md",
+      indigo: "bg-indigo-100 border-indigo-400 text-indigo-900 shadow-md",
+      gray: "bg-gray-100 border-gray-400 text-gray-900 shadow-md",
+      blue: "bg-blue-100 border-blue-400 text-blue-900 shadow-md"
+    };
+    
+    return (
+      <div className="border-2 rounded-lg overflow-hidden mb-8 shadow-lg transition-all duration-300 hover:shadow-xl">
+        <div
+          className={`flex justify-between items-center p-4 ${colorClasses[color] || colorClasses.purple} cursor-pointer`}
+          onClick={onToggle}
+        >
+          <div className="flex items-center">
+            {icon && <span className="mr-3 text-xl">{icon}</span>}
+            <h3 className="font-medium text-lg">{title}</h3>
+          </div>
+          <div>
+            <svg
+              className={`w-5 h-5 transition-transform duration-200 ${isOpen ? 'transform rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+        {isOpen && (
+          <div className="p-5 bg-white border-t">
+            {children}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // If in questionnaire mode, render the Nexus AI Journalist component
+  if (mode === "questionnaire") {
+    return (
+      <div className="space-y-6">
+        <div className="bg-purple-100 border-l-4 border-purple-500 p-6 mb-8 rounded-r-lg shadow-md">
+          <p className="text-purple-800 text-lg">
+            Configure the AI Journalist for the Nexus X Insead questionnaire.
+            This specialized AI agent will guide participants through the questionnaire process.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <NexusAIJournalist 
+              config={sessionConfig.questionnaireConfig} 
+              onChange={(newConfig) => updateSessionConfig({
+                ...sessionConfig,
+                questionnaireConfig: newConfig
+              })}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If in nuggets mode, render a simplified version for AI Nuggets
+  if (mode === "nuggets") {
+    return (
+      <div className="space-y-6">
+        {/* Timer Settings Section */}
+        <CollapsibleSection 
+          title="Configuration du Timer pour les Interactions IA"
+          isOpen={showTimerConfig}
+          onToggle={() => setShowTimerConfig(!showTimerConfig)}
+          icon="⏱️"
+          color="blue"
+        >
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <TimerSettings
+              timerEnabled={timerEnabled}
+              timerDuration={timerDuration}
+              onTimerEnabledChange={handleTimerEnabledChange}
+              onTimerDurationChange={handleTimerDurationChange}
+            />
+          </div>
+        </CollapsibleSection>
+
+        <div className="p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200">
+          <div className="bg-gradient-to-r from-purple-100 to-indigo-50 border-l-4 border-purple-500 p-6 mb-8 rounded-r-lg shadow-md">
+            <p className="text-purple-800 text-lg">
+              Configure the AI Journalist for participants who received the most votes during the discussion.
+              This AI agent will engage with them to develop their insights further.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If in lightbulb mode, render the AI Lightbulbs configuration
+  if (mode === "lightbulb") {
+    return (
+      <div className="space-y-8">
+        {/* Timer Settings Section for lightbulb mode */}
+        <CollapsibleSection 
+          title="Configuration du Timer pour les Interactions IA"
+          isOpen={showTimerConfig}
+          onToggle={() => setShowTimerConfig(!showTimerConfig)}
+          icon="⏱️"
+          color="blue"
+        >
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <TimerSettings
+              timerEnabled={timerEnabled}
+              timerDuration={timerDuration}
+              onTimerEnabledChange={handleTimerEnabledChange}
+              onTimerDurationChange={handleTimerDurationChange}
+            />
+          </div>
+        </CollapsibleSection>
+      </div>
+    );
+  }
+
+  // Standard mode is no longer needed as we're using specific modes
+  return (
+    <div className="space-y-6">
+      <p>Please select a specific mode (questionnaire, nuggets, or lightbulb).</p>
+    </div>
+  );
+};
+
+export default AIInteractionConfig; 

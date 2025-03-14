@@ -647,6 +647,14 @@ export async function createSession(sessionData: Partial<SessionData>) {
     const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
                      'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
     
+    // Determine max_participants from settings or use a default value
+    const max_participants = (sessionData as any).max_participants || 
+                            (sessionData.settings as any)?.maxParticipants || 
+                            (sessionData.settings as any)?.connection?.maxParticipants || 
+                            30;
+    
+    console.log('[SESSION] Using max_participants:', max_participants);
+    
     // Prepare session data with all required fields explicitly set
     const session = {
       id: sessionId,
@@ -660,8 +668,17 @@ export async function createSession(sessionData: Partial<SessionData>) {
       session_code: sessionCode, // Add session_code field
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      max_participants: max_participants, // Add max_participants field
       settings: sessionData.settings || {}
     };
+
+    // Log the session data for debugging, specifically highlight max_participants
+    console.log('[SESSION] Prepared session data for database insertion:', {
+      id: session.id,
+      title: session.title,
+      max_participants: session.max_participants,
+      settingsMaxParticipants: session.settings?.maxParticipants
+    });
 
     try {
       console.log('[SESSION] Inserting new session with explicit ID');

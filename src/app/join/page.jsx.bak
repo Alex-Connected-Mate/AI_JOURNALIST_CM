@@ -79,7 +79,7 @@ function JoinContent() {
   const verifySessionCode = async (e) => {
     e?.preventDefault();
     if (!sessionCode.trim()) {
-      setError("Veuillez entrer un code de session");
+      setError("Please enter a session code");
       return;
     }
     
@@ -89,92 +89,114 @@ function JoinContent() {
     try {
       // Normalize the input code to uppercase and trim whitespace
       const normalizedCode = sessionCode.trim().toUpperCase();
-      console.log(`Recherche de session avec code: ${normalizedCode}`);
+      console.log(`Attempting to find session with code: ${normalizedCode}`);
       
-      // Check for rate limiting (prevent abuse)
-      const now = new Date().getTime();
-      const lastAttemptTime = localStorage.getItem('lastJoinAttempt');
-      
-      if (lastAttemptTime && (now - parseInt(lastAttemptTime)) < 1000) {
-        // Rate limiting - attempt within 1 second
-        setError("Veuillez patienter avant de réessayer");
-        setIsVerifyingCode(false);
-        return;
-      }
-      
-      // Store this attempt time
-      localStorage.setItem('lastJoinAttempt', now.toString());
-      
-      // SIMPLIFIED: Optimized single query to find a matching session
-      // Use OR to check both code and session_code in a single query
-      const { data: matchingSessions, error: queryError } = await supabase
+      // STEP 1: Fetch ALL active sessions first - this ensures we always have data to show users
+      const { data: allActiveSessions, error: activeSessionsError } = await supabase
         .from("sessions")
-        .select("id, name, title, code, session_code, status, settings")
-        .or(`code.eq.${normalizedCode},session_code.eq.${normalizedCode}`)
-        .limit(2); // Limit to 2 to check if multiple sessions match (shouldn't happen)
-        
-      if (queryError) {
-        console.error("Erreur lors de la recherche de session:", queryError);
-        setError(`Erreur lors de la vérification: ${queryError.message}`);
+        .select("id, name, title, code, session_code, status")
+        .eq("status", "active");
+      
+      console.log("All active sessions:", allActiveSessions);
+      
+      if (activeSessionsError) {
+        console.error("Error fetching active sessions:", activeSessionsError);
+        setError(`Error retrieving available sessions: ${activeSessionsError.message}`);
         setIsVerifyingCode(false);
         return;
       }
       
-      console.log("Sessions correspondantes:", matchingSessions);
+      // STEP 2: Process available sessions to show to users if needed
+      const availableSessions = allActiveSessions ? allActiveSessions.map(session => {
+        // Format each session with name and codes
+        const sessionName = session.name || session.title || "Unnamed Session";
+        const codes = [];
+        if (session.code) codes.push(session.code);
+        if (session.session_code && session.session_code !== session.code) codes.push(session.session_code);
+        return { id: session.id, name: sessionName, codes, status: session.status };
+      }) : [];
       
-      // Process results
-      if (!matchingSessions || matchingSessions.length === 0) {
-        // No matching session found
-        setError("Code de session invalide. Veuillez vérifier et réessayer.");
-        setDebugInfo(prev => ({
-          ...prev,
-          noSessionFound: true,
-          searchedCode: normalizedCode,
-          lastQueryTime: new Date().toISOString(),
-          // Ne pas exposer d'informations en production
-          availableSessions: process.env.NODE_ENV === 'development' ? [] : []
-        }));
-        
-        setIsVerifyingCode(false);
-        return;
+      console.log("Processed available sessions:", availableSessions);
+      
+      // STEP 3: Look for an exact match in the fetched sessions
+      let foundSession = null;
+      
+      // Simplification: on regarde uniquement le champ "code" car tous les codes devraient être identiques
+      for (const session of allActiveSessions) {
+        if (session.code && session.code.toUpperCase() === normalizedCode) {
+          foundSession = session;
+          console.log("Found matching session by code:", foundSession);
+          break;
+        }
       }
       
-      // Check if we have a unique active match
-      const activeSession = matchingSessions.find(s => s.status === 'active');
-      const inactiveSession = !activeSession ? matchingSessions[0] : null;
+      // Si pas trouvé par code, essayer avec session_code (pour la compatibilité)
+      if (!foundSession) {
+        for (const session of allActiveSessions) {
+          if (session.session_code && session.session_code.toUpperCase() === normalizedCode) {
+            foundSession = session;
+            console.log("Found matching session by session_code:", foundSession);
+            break;
+          }
+        }
+      }
       
-      if (activeSession) {
-        // Success! Found an active matching session
-        setSessionData(activeSession);
+      // STEP 4: Si toujours pas trouvé, vérifier si une session non active correspond
+      let inactiveSession = null;
+      if (!foundSession) {
+        const { data: anySession, error: anySessionError } = await supabase
+          .from("sessions")
+          .select("id, status, code, session_code")
+          .or(`code.eq."${normalizedCode}"`)
+          .limit(1);
+          
+        if (anySession && anySession.length > 0) {
+          inactiveSession = anySession[0];
+          console.log("Found non-active session:", inactiveSession);
+        }
+      }
+      
+      // STEP 5: Handle results based on what we found
+      if (foundSession) {
+        // Success! We found a matching active session
+        setSessionData(foundSession);
         setStep(2);
         setDebugInfo(prev => ({
           ...prev,
           foundSession: true,
-          sessionId: activeSession.id,
+          sessionId: foundSession.id,
           matchedCode: normalizedCode,
-          lastQueryTime: new Date().toISOString()
+          lastQueryTime: new Date().toISOString(),
+          availableSessions: availableSessions
         }));
-        
-        // Store session ID in sessionStorage to prevent multiple join attempts
-        sessionStorage.setItem('last_joined_session', activeSession.id);
-        
       } else if (inactiveSession) {
         // Session exists but is not active
-        setError(`Session trouvée mais elle n'est pas active (statut: ${inactiveSession.status || 'inconnu'}). Veuillez contacter l'organisateur.`);
+        setError(`Session found but it's not active (status: ${inactiveSession.status || 'unknown'}). Please contact the session organizer.`);
         setDebugInfo(prev => ({
           ...prev,
           sessionExists: true,
           sessionNotActive: true,
           sessionStatus: inactiveSession.status,
-          lastQueryTime: new Date().toISOString()
+          lastQueryTime: new Date().toISOString(),
+          availableSessions: availableSessions
         }));
       } else {
-        // Should never happen with the query above
-        setError("Code de session invalide. Veuillez vérifier et réessayer.");
+        // No session found with this code - show available sessions
+        let errorMsg = "Code de session invalide. Veuillez vérifier et réessayer.";
+        
+        setError(errorMsg);
+        setDebugInfo(prev => ({
+          ...prev,
+          noSessionFound: true,
+          searchedCode: normalizedCode,
+          lastQueryTime: new Date().toISOString(),
+          // Ne pas exposer les sessions disponibles dans les informations de débogage en production
+          availableSessions: process.env.NODE_ENV === 'development' ? availableSessions : null
+        }));
       }
     } catch (error) {
-      console.error("Erreur lors de la vérification du code de session:", error);
-      setError(`Une erreur est survenue: ${error.message}. Veuillez réessayer.`);
+      console.error("Error verifying session code:", error);
+      setError(`An error occurred: ${error.message}. Please try again.`);
       setDebugInfo(prev => ({
         ...prev,
         error: error.message,
@@ -225,13 +247,13 @@ function JoinContent() {
     e.preventDefault();
     
     if (!participantName.trim()) {
-      setError("Veuillez entrer votre nom");
+      setError("Please enter your name");
       return;
     }
     
     // Additional validations based on anonymity level
     const anonymityLevel = sessionData?.settings?.connection?.anonymityLevel || "anonymous";
-    console.log("Niveau d'anonymat de la session:", anonymityLevel);
+    console.log("Anonymity level from session:", anonymityLevel);
     
     const isSemiAnonymous = anonymityLevel === "semi_anonymous" || 
                            anonymityLevel === "semi-anonymous";
@@ -240,25 +262,19 @@ function JoinContent() {
     
     if (isSemiAnonymous || isNotAnonymous) {
       if (!email.trim()) {
-        setError("Veuillez entrer votre email");
-        return;
-      }
-      
-      // Basic email validation
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-        setError("Veuillez entrer une adresse email valide");
+        setError("Please enter your email");
         return;
       }
     }
     
     if (isNotAnonymous) {
       if (!organization.trim()) {
-        setError("Veuillez entrer votre organisation");
+        setError("Please enter your organization");
         return;
       }
       
       if (!role.trim()) {
-        setError("Veuillez entrer votre rôle");
+        setError("Please enter your role");
         return;
       }
     }
@@ -269,35 +285,15 @@ function JoinContent() {
     try {
       // Verify session data exists
       if (!sessionData || !sessionData.id) {
-        throw new Error("Les données de session sont manquantes ou invalides");
+        throw new Error("Session data is missing or invalid");
       }
       
-      console.log("Données de session disponibles:", {
+      console.log("Session data available:", {
         id: sessionData.id,
         title: sessionData.title,
         name: sessionData.name,
         status: sessionData.status
       });
-      
-      // Prevent rejoining the same session (check if we have already joined this session)
-      const existingParticipation = localStorage.getItem(`participant_${sessionData.id}`);
-      if (existingParticipation) {
-        try {
-          const parsed = JSON.parse(existingParticipation);
-          if (parsed.id) {
-            console.log("Vous avez déjà rejoint cette session, redirection...");
-            const token = parsed.anonymousToken ? 
-              encodeURIComponent(parsed.anonymousToken) : '';
-              
-            const redirectUrl = `/sessions/${sessionData.id}/participate?participantId=${parsed.id}${token ? `&token=${token}` : ''}`;
-            router.push(redirectUrl);
-            return;
-          }
-        } catch (e) {
-          console.warn("Erreur lors de la vérification de participation existante:", e);
-          // Continue with normal flow if there's an error parsing the saved data
-        }
-      }
       
       // Check max participants
       const maxParticipants = sessionData?.max_participants || 
@@ -305,16 +301,13 @@ function JoinContent() {
                              sessionData?.settings?.connection?.maxParticipants || 
                              30;
                               
-      console.log(`Vérification du nombre de participants: ${currentParticipantsCount} vs max: ${maxParticipants}`);
+      console.log(`Checking participant count: ${currentParticipantsCount} vs max: ${maxParticipants}`);
       
       if (currentParticipantsCount >= maxParticipants) {
-        setError(`Cette session est complète (maximum ${maxParticipants} participants)`);
+        setError(`This session is full (maximum ${maxParticipants} participants)`);
         setLoading(false);
         return;
       }
-      
-      // Generate a unique anonymous ID
-      const anonymousId = `${participantName.slice(0, 2).toUpperCase()}${Math.floor(Math.random() * 10000)}`;
       
       // Determine participant fields based on anonymity level
       const participantData = {
@@ -322,8 +315,7 @@ function JoinContent() {
         nickname: participantName,
         display_name: participantName,
         full_name: participantName,
-        anonymous: anonymityLevel === "anonymous" || anonymityLevel === "semi_anonymous" || anonymityLevel === "semi-anonymous",
-        anonymous_identifier: anonymousId
+        anonymous: anonymityLevel === "anonymous" || anonymityLevel === "semi_anonymous" || anonymityLevel === "semi-anonymous"
       };
       
       // Add additional fields for semi-anonymous and not-anonymous levels
@@ -353,13 +345,8 @@ function JoinContent() {
       // Set joined_at timestamp
       participantData.joined_at = new Date().toISOString();
       
-      // Generate a secure anonymous token
-      const secureToken = btoa(`${sessionData.id}:${anonymousId}:${Date.now()}`);
-      participantData.anonymous_token = secureToken;
-      
       // Capture l'adresse IP du client si possible
       try {
-        // Note: This will only capture public IP in a server environment
         const headers = req?.headers || {};
         let ipAddress = headers["x-real-ip"];
         
@@ -372,10 +359,10 @@ function JoinContent() {
           participantData.ip_address = ipAddress;
         }
       } catch (err) {
-        console.warn("Impossible de capturer l'adresse IP:", err);
+        console.warn("Could not capture IP address:", err);
       }
       
-      // Ajouter des informations sur le navigateur et l'appareil
+      // Également, ajouter des informations sur le navigateur et l'appareil si possible
       try {
         const userAgent = req?.headers?.["user-agent"] || navigator.userAgent;
         if (userAgent) {
@@ -383,16 +370,12 @@ function JoinContent() {
             participantData.device_info = {};
           }
           participantData.device_info.user_agent = userAgent;
-          
-          // Add simple device detection
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
-          participantData.device_info.device_type = isMobile ? 'mobile' : 'desktop';
         }
       } catch (err) {
-        console.warn("Impossible de capturer les informations d'appareil:", err);
+        console.warn("Could not capture user agent:", err);
       }
       
-      console.log("Création du participant avec les données:", JSON.stringify(participantData, null, 2));
+      console.log("Creating participant with data:", JSON.stringify(participantData, null, 2));
       
       // Add debug info for troubleshooting
       setDebugInfo(prev => ({
@@ -407,8 +390,21 @@ function JoinContent() {
         }
       }));
       
+      // Check the structure of the session_participants table
+      try {
+        const { data: tableInfo, error: tableError } = await supabase
+          .from("session_participants")
+          .select("*")
+          .limit(1);
+          
+        console.log("Session participants table sample:", tableInfo);
+        console.log("Table info error:", tableError);
+      } catch (tableCheckError) {
+        console.error("Error checking table structure:", tableCheckError);
+      }
+      
       // Create participant in session_participants table
-      console.log("Tentative d'insertion du participant...");
+      console.log("Attempting to insert participant record...");
       const insertResult = await supabase
         .from("session_participants")
         .insert([participantData])
@@ -416,52 +412,19 @@ function JoinContent() {
         
       const { data: participant, error: participantError } = insertResult;
       
-      console.log("Résultat de l'insertion:", insertResult);
+      console.log("Insert result:", insertResult);
       
       if (participantError) {
-        console.error("Erreur lors de la création du participant:", participantError);
+        console.error("Error creating participant:", participantError);
         
         if (participantError.code === 'PGRST301') {
-          setError("Erreur d'authentification. La base de données peut nécessiter une authentification pour la création de participants.");
+          setError("Authentication error. The database may require authentication for participant creation.");
         } else if (participantError.code === '23503') {
-          setError("Violation de clé étrangère. La session n'est peut-être plus valide.");
+          setError("Foreign key violation. The session may no longer be valid.");
         } else if (participantError.code === '23505') {
-          setError("Un participant avec ces informations existe déjà.");
-          
-          // Try to find the existing participant and redirect
-          try {
-            const { data: existingParticipant } = await supabase
-              .from("session_participants")
-              .select("id, anonymous_token")
-              .eq("session_id", sessionData.id)
-              .eq("nickname", participantName)
-              .eq("email", email || '')
-              .limit(1);
-              
-            if (existingParticipant && existingParticipant.length > 0) {
-              // Save participant info to localStorage
-              const participantInfo = {
-                id: existingParticipant[0].id,
-                name: participantName,
-                sessionId: sessionData.id,
-                anonymousToken: existingParticipant[0].anonymous_token || null,
-                rejoined: true
-              };
-              
-              localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify(participantInfo));
-              
-              // Redirect to participate page with existing participant's info
-              const token = existingParticipant[0].anonymous_token ? 
-                encodeURIComponent(existingParticipant[0].anonymous_token) : '';
-                
-              router.push(`/sessions/${sessionData.id}/participate?participantId=${existingParticipant[0].id}${token ? `&token=${token}` : ''}`);
-              return;
-            }
-          } catch (e) {
-            console.error("Erreur lors de la récupération du participant existant:", e);
-          }
+          setError("A participant with this information already exists.");
         } else {
-          setError(`Impossible de rejoindre la session: ${participantError.message || JSON.stringify(participantError)}`);
+          setError(`Failed to join the session: ${participantError.message || JSON.stringify(participantError)}`);
         }
         
         // Update debug info with error
@@ -477,10 +440,10 @@ function JoinContent() {
       
       // Check if we got the participant data back from the insert
       if (!participant || participant.length === 0) {
-        console.log("Aucune donnée de participant retournée, recherche en cours...");
+        console.log("No participant data returned from insert, will query to find it");
         
         // Query to get the created participant
-        console.log("Recherche du participant créé...");
+        console.log("Querying for the created participant...");
         const { data: createdParticipant, error: fetchError } = await supabase
           .from("session_participants")
           .select("*")
@@ -490,17 +453,17 @@ function JoinContent() {
           .order("created_at", { ascending: false })
           .limit(1);
           
-        console.log("Résultat de la recherche du participant:", { createdParticipant, fetchError });
+        console.log("Created participant query result:", { createdParticipant, fetchError });
         
         if (fetchError) {
-          console.error("Erreur lors de la récupération du participant:", fetchError);
-          setError("Le participant a été créé mais n'a pas pu être récupéré. Veuillez réessayer.");
+          console.error("Error fetching created participant:", fetchError);
+          setError("Participant was created but could not be retrieved. Please try again.");
           setLoading(false);
           return;
         }
         
         if (!createdParticipant || createdParticipant.length === 0) {
-          setError("Impossible de récupérer les informations du participant");
+          setError("Failed to retrieve participant record");
           setLoading(false);
           return;
         }
@@ -508,49 +471,41 @@ function JoinContent() {
         // Safely access participant data
         var participantRecord = createdParticipant[0];
       } else {
-        console.log("Données du participant retournées directement:", participant);
+        console.log("Participant data returned directly from insert:", participant);
         var participantRecord = participant[0];
       }
       
-      // Save participant info to localStorage with expiration
+      // Save participant info to localStorage
       const participantInfo = {
         id: participantRecord.id,
         name: participantName,
         sessionId: sessionData.id,
-        anonymousToken: participantRecord.anonymous_token || null,
-        timestamp: Date.now(),
-        expires: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 days expiration
+        anonymousToken: participantRecord.anonymous_token || null
       };
       
       try {
         localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify(participantInfo));
-        console.log("Informations du participant sauvegardées dans localStorage");
-        
-        // Also store in sessionStorage for immediate session checks
-        sessionStorage.setItem(`participant_${sessionData.id}`, JSON.stringify({
-          id: participantRecord.id,
-          joined: Date.now()
-        }));
+        console.log("Participant info saved to localStorage");
       } catch (e) {
-        console.warn("Impossible de sauvegarder les informations du participant dans localStorage:", e);
+        console.warn("Could not save participant info to localStorage:", e);
       }
       
       // Check if we have a valid ID before redirecting
       if (!participantRecord.id) {
-        setError("L'identifiant du participant est manquant. Veuillez réessayer.");
+        setError("Created participant record is missing an ID. Please try again.");
         setLoading(false);
         
         setDebugInfo(prev => ({
           ...prev,
-          participantRecordError: "ID manquant",
+          participantRecordError: "Missing ID",
           participantRecord: JSON.stringify(participantRecord)
         }));
         return;
       }
       
       // Redirect to participate page with correct parameters
-      console.log("Session rejointe avec succès, redirection vers la page de participation");
-      console.log("Paramètres de redirection:", {
+      console.log("Successfully joined session, redirecting to participate page");
+      console.log("Redirect params:", {
         sessionId: sessionData.id,
         participantId: participantRecord.id,
         token: participantRecord.anonymous_token || ''
@@ -560,23 +515,12 @@ function JoinContent() {
         encodeURIComponent(participantRecord.anonymous_token) : '';
         
       const redirectUrl = `/sessions/${sessionData.id}/participate?participantId=${participantRecord.id}${token ? `&token=${token}` : ''}`;
-      console.log("URL de redirection:", redirectUrl);
-      
-      // Store last activity timestamp
-      try {
-        localStorage.setItem('last_session_activity', JSON.stringify({
-          sessionId: sessionData.id,
-          participantId: participantRecord.id,
-          timestamp: Date.now()
-        }));
-      } catch (e) {
-        console.warn("Impossible de sauvegarder l'horodatage d'activité:", e);
-      }
+      console.log("Redirect URL:", redirectUrl);
       
       router.push(redirectUrl);
     } catch (error) {
-      console.error("Exception dans joinSession:", error);
-      setError(`Une erreur inattendue s'est produite: ${error.message || JSON.stringify(error)}`);
+      console.error("Exception in joinSession:", error);
+      setError(`An unexpected error occurred: ${error.message || JSON.stringify(error)}`);
       
       // Update debug info with exception
       setDebugInfo(prev => ({
@@ -600,47 +544,30 @@ function JoinContent() {
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-center bg-primary p-6">
           <SimpleLogo light />
-          {step === 2 && sessionData && (
-            <div className="ml-4 pl-4 border-l border-white/30">
-              <h2 className="text-white text-sm font-medium">{sessionData.title || sessionData.name}</h2>
-            </div>
-          )}
         </div>
         
         <div className="p-6">
           {step === 1 ? (
             // Step 1: Enter session code
             <>
-              <h1 className="mb-4 text-center text-2xl font-bold text-gray-900">
-                Rejoindre une session
+              <h1 className="mb-6 text-center text-2xl font-bold text-gray-900">
+                Join a Session
               </h1>
-              
-              <p className="mb-6 text-center text-gray-600">
-                Entrez le code de session fourni par votre instructeur
-              </p>
               
               <form onSubmit={verifySessionCode} className="space-y-4">
                 <div>
                   <label htmlFor="sessionCode" className="block text-sm font-medium text-gray-700">
-                    Code de session
+                    Session Code
                   </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <input
-                      id="sessionCode"
-                      type="text"
-                      value={sessionCode}
-                      onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-                      className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                      placeholder="Entrez le code de session"
-                      required
-                      autoComplete="off"
-                      autoCapitalize="characters"
-                      autoFocus
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Le code est généralement un code à 6 caractères (ex: ABC123)
-                  </p>
+                  <input
+                    id="sessionCode"
+                    type="text"
+                    value={sessionCode}
+                    onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                    placeholder="Enter the session code"
+                    required
+                  />
                 </div>
                 
                 {error && (
@@ -654,15 +581,7 @@ function JoinContent() {
                   disabled={isVerifyingCode || !sessionCode.trim()}
                   className="w-full rounded-md bg-primary px-4 py-2 text-center text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
                 >
-                  {isVerifyingCode ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Vérification...
-                    </span>
-                  ) : "Continuer"}
+                  {isVerifyingCode ? "Verifying..." : "Continue"}
                 </button>
               </form>
             </>
@@ -670,29 +589,22 @@ function JoinContent() {
             // Step 2: Enter participant info
             <>
               <h1 className="mb-4 text-center text-2xl font-bold text-gray-900">
-                Finaliser l'inscription
+                Join Session
               </h1>
               
               {sessionData && (
                 <div className="mb-6 text-center">
                   <h2 className="text-xl font-semibold">{sessionData.title || sessionData.name}</h2>
                   <p className="text-gray-600">
-                    Organisé par {sessionData.settings?.professorName || 'Instructeur'}
+                    Hosted by {sessionData.settings?.professorName || 'Professor'}
                   </p>
-                  
-                  {/* Afficher le nombre actuel de participants */}
-                  <div className="mt-2 text-sm">
-                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                      {currentParticipantsCount} / {sessionData.max_participants || sessionData.settings?.maxParticipants || 30} participants
-                    </span>
-                  </div>
                 </div>
               )}
               
               <form onSubmit={joinSession} className="space-y-4">
                 <div>
                   <label htmlFor="participantName" className="block text-sm font-medium text-gray-700">
-                    Votre nom *
+                    Your Name *
                   </label>
                   <input
                     id="participantName"
@@ -700,9 +612,8 @@ function JoinContent() {
                     value={participantName}
                     onChange={(e) => setParticipantName(e.target.value)}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                    placeholder="Entrez votre nom"
+                    placeholder="Enter your name"
                     required
-                    autoFocus
                   />
                 </div>
                 
@@ -713,7 +624,7 @@ function JoinContent() {
                   sessionData?.settings?.connection?.anonymityLevel === "non-anonymous") && (
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                      Adresse email *
+                      Email Address *
                     </label>
                     <input
                       id="email"
@@ -721,7 +632,7 @@ function JoinContent() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                      placeholder="Entrez votre email"
+                      placeholder="Enter your email"
                       required
                     />
                   </div>
@@ -733,7 +644,7 @@ function JoinContent() {
                   <>
                     <div>
                       <label htmlFor="organization" className="block text-sm font-medium text-gray-700">
-                        Organisation *
+                        Organization *
                       </label>
                       <input
                         id="organization"
@@ -741,14 +652,14 @@ function JoinContent() {
                         value={organization}
                         onChange={(e) => setOrganization(e.target.value)}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                        placeholder="Entrez votre organisation"
+                        placeholder="Enter your organization"
                         required
                       />
                     </div>
                     
                     <div>
                       <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                        Rôle *
+                        Role *
                       </label>
                       <input
                         id="role"
@@ -756,7 +667,7 @@ function JoinContent() {
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                        placeholder="Entrez votre rôle"
+                        placeholder="Enter your role"
                         required
                       />
                     </div>
@@ -775,7 +686,7 @@ function JoinContent() {
                     onClick={() => setStep(1)}
                     className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 text-center text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                   >
-                    Retour
+                    Back
                   </button>
                   
                   <button
@@ -783,45 +694,29 @@ function JoinContent() {
                     disabled={loading}
                     className="flex-1 rounded-md bg-primary px-4 py-2 text-center text-white shadow-sm hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
                   >
-                    {loading ? (
-                      <span className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Inscription...
-                      </span>
-                    ) : "Rejoindre la session"}
+                    {loading ? "Joining..." : "Join Session"}
                   </button>
                 </div>
-                
-                {/* Notice de confidentialité */}
-                <p className="text-xs text-gray-500 mt-4">
-                  En rejoignant cette session, vous acceptez que vos informations soient utilisées uniquement 
-                  dans le cadre de cette session et conformément à la politique de confidentialité.
-                </p>
               </form>
             </>
           )}
         </div>
         
-        {/* Debug toggle button - only in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setShowDebug(!showDebug)}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              {showDebug ? "Masquer les infos de débogage" : "Afficher les infos de débogage"}
-            </button>
-          </div>
-        )}
+        {/* Debug toggle button */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs text-gray-400 hover:text-gray-600"
+          >
+            {showDebug ? "Hide Debug Info" : "Show Debug Info"}
+          </button>
+        </div>
         
         {/* Debug information panel */}
         {showDebug && (
           <div className="mt-2 rounded-md bg-gray-50 p-3 text-xs font-mono">
-            <div className="mb-2 text-gray-500">Informations de débogage:</div>
+            <div className="mb-2 text-gray-500">Debug Information:</div>
             <pre className="whitespace-pre-wrap text-gray-600">
               {JSON.stringify(
                 {
@@ -844,7 +739,7 @@ function JoinContent() {
       </div>
       
       <div className="border-t border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-600">
-        Besoin d'aide? Contactez l'organisateur de votre session
+        Need help? Contact your session organizer
       </div>
     </div>
   );
@@ -857,4 +752,5 @@ export default function JoinPage() {
       <JoinContent />
     </Suspense>
   );
+} 
 } 

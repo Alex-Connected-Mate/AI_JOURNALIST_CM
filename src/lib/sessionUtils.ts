@@ -53,6 +53,7 @@ export async function checkSessionCodes(sessionId: string): Promise<{
 
 /**
  * Fixes missing session codes by generating and updating them
+ * Utilise un code unique pour tous les champs pour éviter la confusion
  */
 export async function fixSessionCodes(sessionId: string): Promise<{
   success: boolean;
@@ -66,7 +67,7 @@ export async function fixSessionCodes(sessionId: string): Promise<{
     const { hasValidCodes, code, sessionCode, accessCode } = await checkSessionCodes(sessionId);
     
     // If codes are valid, just return them
-    if (hasValidCodes) {
+    if (hasValidCodes && code === sessionCode && code === accessCode) {
       return {
         success: true,
         code,
@@ -75,24 +76,19 @@ export async function fixSessionCodes(sessionId: string): Promise<{
       };
     }
     
-    // Generate any missing codes
+    // Generate a single unique code for all fields
+    const uniqueCode = generateSessionCode();
+    
+    // Use the same code for all fields
     const updatedCodes: {
-      code?: string;
-      session_code?: string;
-      access_code?: string;
-    } = {};
-    
-    if (!code) {
-      updatedCodes.code = generateSessionCode();
-    }
-    
-    if (!sessionCode) {
-      updatedCodes.session_code = generateSessionCode();
-    }
-    
-    if (!accessCode) {
-      updatedCodes.access_code = generateSessionCode();
-    }
+      code: string;
+      session_code: string;
+      access_code: string;
+    } = {
+      code: uniqueCode,
+      session_code: uniqueCode,
+      access_code: uniqueCode
+    };
     
     // Update the session with new codes
     const { data, error } = await supabase
