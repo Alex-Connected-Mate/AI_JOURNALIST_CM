@@ -113,10 +113,29 @@ Je favorise la créativité et l'innovation tout en restant pertinent par rappor
   includeParticipantInfo: true
 };
 
+export interface AnalysisItem {
+  id: string;
+  type: 'nuggets' | 'lightbulbs' | 'global';
+  enabled: boolean;
+  title: string;
+  description: string;
+}
+
+export interface FinalAnalysisConfig {
+  items: AnalysisItem[];
+}
+
 // Configuration globale par défaut
 export const DEFAULT_AI_CONFIGURATION = {
   timerEnabled: true,
-  timerDuration: 5, // minutes
+  timerDuration: 10,
+  finalAnalysis: {
+    items: [
+      { id: 'nuggets-analysis', type: 'nuggets', enabled: true, title: 'Analyse AI Nuggets', description: 'Analyse des informations extraites par l\'agent AI Nuggets' },
+      { id: 'lightbulbs-analysis', type: 'lightbulbs', enabled: true, title: 'Analyse AI Lightbulbs', description: 'Analyse des idées créatives développées par l\'agent AI Lightbulbs' },
+      { id: 'global-analysis', type: 'global', enabled: true, title: 'Analyse Globale', description: 'Synthèse combinant les insights des deux agents' }
+    ]
+  },
   nuggets: DEFAULT_NUGGETS_AGENT,
   lightbulbs: DEFAULT_LIGHTBULBS_AGENT
 };
