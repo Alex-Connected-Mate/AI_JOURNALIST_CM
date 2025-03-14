@@ -89,7 +89,7 @@ function JoinContent() {
       const normalizedCode = sessionCode.trim().toUpperCase();
       console.log(`Searching for session with normalized code: ${normalizedCode}`);
       
-      // Improved query with proper formatting and error handling
+      // First attempt: Use filter syntax with quotes for string values
       const { data: sessions, error: sessionError } = await supabase
         .from("sessions")
         .select("id, title, name, status, settings, max_participants, session_code, code")
@@ -107,12 +107,21 @@ function JoinContent() {
           setError(`Error fetching session: ${sessionError.message}`);
         }
         setIsVerifyingCode(false);
+        
+        // Update debug info with error details
+        setDebugInfo(prev => ({
+          ...prev,
+          lastQueryError: sessionError,
+          lastQueryTime: new Date().toISOString()
+        }));
         return;
       }
       
       if (!sessions || sessions.length === 0) {
-        // Try alternative query format as fallback
+        // Try alternative query formats as fallbacks
         console.log("No sessions found with first query format, trying alternative");
+        
+        // Try without quotes
         const { data: altSessions, error: altError } = await supabase
           .from("sessions")
           .select("id, title, name, status, settings, max_participants, session_code, code")
@@ -124,14 +133,87 @@ function JoinContent() {
         
         if (altError) {
           console.error("Error in alternative fetch:", altError);
-          setError("No session found with this code. Please check and try again.");
-          setIsVerifyingCode(false);
-          return;
         }
         
         if (!altSessions || altSessions.length === 0) {
-          setError("No session found with this code. Please check and try again.");
+          // Try with .in() filter instead of .or()
+          console.log("Trying with .in() filter method");
+          
+          const { data: inSessions, error: inError } = await supabase
+            .from("sessions")
+            .select("id, title, name, status, settings, max_participants, session_code, code")
+            .in("session_code", [normalizedCode])
+            .eq("status", "active")
+            .limit(1);
+            
+          console.log("In filter search result:", { inSessions, error: inError });
+          
+          if (inError) {
+            console.error("Error in .in() filter query:", inError);
+          }
+          
+          if (!inSessions || inSessions.length === 0) {
+            // Last attempt - try exact match with .eq
+            console.log("Trying exact match with .eq filter");
+            
+            const { data: exactSessions, error: exactError } = await supabase
+              .from("sessions")
+              .select("id, title, name, status, settings, max_participants, session_code, code")
+              .eq("session_code", normalizedCode)
+              .eq("status", "active")
+              .limit(1);
+              
+            console.log("Exact match search result:", { exactSessions, error: exactError });
+            
+            if (exactError) {
+              console.error("Error in exact match query:", exactError);
+            }
+            
+            if (!exactSessions || exactSessions.length === 0) {
+              setError("No session found with this code. Please check and try again.");
+              setIsVerifyingCode(false);
+              
+              // Update debug info with all search attempts
+              setDebugInfo(prev => ({
+                ...prev,
+                searchAttempts: 4,
+                normalizedCode,
+                queriesSuccessful: true,
+                noSessionsFound: true,
+                lastQueryTime: new Date().toISOString()
+              }));
+              return;
+            }
+            
+            // Session found with exact match
+            setSessionData(exactSessions[0]);
+            setStep(2);
+            setIsVerifyingCode(false);
+            
+            // Update debug info with success
+            setDebugInfo(prev => ({
+              ...prev,
+              foundSession: true,
+              searchMethod: "exact_match",
+              sessionId: exactSessions[0].id,
+              lastQueryTime: new Date().toISOString()
+            }));
+            return;
+          }
+          
+          // Session found with .in() filter
+          setSessionData(inSessions[0]);
+          setStep(2);
           setIsVerifyingCode(false);
+          
+          // Update debug info with success
+          setDebugInfo(prev => ({
+            ...prev,
+            foundSession: true,
+            searchMethod: "in_filter",
+            sessionId: inSessions[0].id,
+            lastQueryTime: new Date().toISOString()
+          }));
           return;
         }
         
@@ -139,6 +221,15 @@ function JoinContent() {
         setSessionData(altSessions[0]);
         setStep(2);
         setIsVerifyingCode(false);
+        
+        // Update debug info with success
+        setDebugInfo(prev => ({
+          ...prev,
+          foundSession: true,
+          searchMethod: "alt_query",
+          sessionId: altSessions[0].id,
+          lastQueryTime: new Date().toISOString()
+        }));
         return;
       }
       
@@ -146,10 +237,26 @@ function JoinContent() {
       setSessionData(sessions[0]);
       setStep(2);
       setIsVerifyingCode(false);
+      
+      // Update debug info with success
+      setDebugInfo(prev => ({
+        ...prev,
+        foundSession: true,
+        searchMethod: "primary_query",
+        sessionId: sessions[0].id,
+        lastQueryTime: new Date().toISOString()
+      }));
     } catch (error) {
       console.error("Error verifying session code:", error);
       setError(`An error occurred while verifying the session code: ${error.message}`);
       setIsVerifyingCode(false);
+      
+      // Update debug info with error
+      setDebugInfo(prev => ({
+        ...prev,
+        error: error.message,
+        lastQueryTime: new Date().toISOString()
+      }));
     }
   };
   
@@ -460,11 +567,13 @@ function JoinContent() {
                 {
                   ...debugInfo,
                   currentStep: step,
+                  sessionCode: sessionCode,
                   sessionCodeLength: sessionCode?.length,
                   hasSessionData: !!sessionData,
                   usingSupabaseSingleton: true,
                   error: error,
                   browser: navigator.userAgent,
+                  timestamp: new Date().toISOString()
                 },
                 null,
                 2

@@ -297,7 +297,10 @@ function ParticipationContent() {
           timestamp: new Date().toISOString(),
           sessionId,
           participantIdParam: participantId,
-          hasParticipantData: !!currentParticipant,
+          currentParticipantInfo: currentParticipant ? {
+            id: currentParticipant.id,
+            name: currentParticipant.name
+          } : null,
           hasSessionData: !!session
         }));
       } catch (err) {
@@ -380,15 +383,50 @@ function ParticipationContent() {
               setParticipantName(currentParticipantInfo.name);
               setCurrentParticipant(currentParticipantInfo);
               setJoiningComplete(true);
+              
+              // Update debug info on successful participant lookup
+              setDebugInfo(prev => ({
+                ...prev,
+                participantLookup: 'successful',
+                participant: {
+                  id: participantData.id,
+                  name: participantData.display_name || participantData.name,
+                  sessionId: participantData.session_id
+                }
+              }));
             } else {
               console.warn("Participant lookup error or not found:", participantLookupError);
               if (participantLookupError?.code === 'PGRST301') {
                 console.error("Authentication error when looking up participant. RLS policy might be blocking access.");
+                setDebugInfo(prev => ({
+                  ...prev,
+                  participantLookup: 'failed',
+                  participantLookupError: 'PGRST301 - Authentication error, likely RLS policy issue',
+                  errorDetails: participantLookupError
+                }));
+              } else {
+                setDebugInfo(prev => ({
+                  ...prev,
+                  participantLookup: 'failed',
+                  participantLookupError: participantLookupError ? participantLookupError.message : 'Participant not found',
+                  errorDetails: participantLookupError
+                }));
               }
             }
           } catch (err) {
             console.error("Error during participant lookup:", err);
+            setDebugInfo(prev => ({
+              ...prev,
+              participantLookup: 'exception',
+              participantLookupError: err.message
+            }));
           }
+        } else {
+          setDebugInfo(prev => ({
+            ...prev,
+            participantLookup: 'skipped',
+            reason: 'No participantId provided in URL'
+          }));
         }
         
         // Fall back to localStorage if no participantId in URL or lookup failed
@@ -416,17 +454,43 @@ function ParticipationContent() {
                       id: verifyParticipant.id,
                       name: verifyParticipant.display_name || verifyParticipant.name
                     };
+                    
+                    setDebugInfo(prev => ({
+                      ...prev,
+                      participantSource: 'localStorage_verified',
+                      participant: currentParticipantInfo
+                    }));
                   } else {
                     console.warn("Participant in localStorage not found in database:", verifyError);
                     // Still use localStorage data as fallback
                     currentParticipantInfo = parsedParticipant;
+                    
+                    setDebugInfo(prev => ({
+                      ...prev,
+                      participantSource: 'localStorage_unverified',
+                      participant: parsedParticipant,
+                      verifyError: verifyError
+                    }));
                   }
                 } else {
                   currentParticipantInfo = parsedParticipant;
+                  
+                  setDebugInfo(prev => ({
+                    ...prev,
+                    participantSource: 'localStorage_no_id',
+                    participant: parsedParticipant
+                  }));
                 }
               } catch (verifyErr) {
                 console.error("Error verifying participant from localStorage:", verifyErr);
                 currentParticipantInfo = parsedParticipant;
+                
+                setDebugInfo(prev => ({
+                  ...prev,
+                  participantSource: 'localStorage_verification_error',
+                  participant: parsedParticipant,
+                  verifyError: verifyErr.message
+                }));
               }
               
               setCurrentParticipant(currentParticipantInfo);
@@ -434,10 +498,26 @@ function ParticipationContent() {
               setJoiningComplete(true);
             } catch (e) {
               console.error("Error parsing saved participant:", e);
+              setDebugInfo(prev => ({
+                ...prev,
+                participantSource: 'localStorage_parse_error',
+                error: e.message
+              }));
             }
           } else if (displayName) {
             // If there's a display name in the URL but no participant info
             setParticipantName(displayName);
+            setDebugInfo(prev => ({
+              ...prev,
+              participantSource: 'url_display_name',
+              displayName
+            }));
+          } else {
+            setDebugInfo(prev => ({
+              ...prev,
+              participantSource: 'none',
+              error: 'No participant information found'
+            }));
           }
         }
         
@@ -454,10 +534,28 @@ function ParticipationContent() {
             console.error("Error loading session:", sessionError);
             if (sessionError.code === 'PGRST301') {
               setError("Authentication error when loading session. RLS policy might be blocking access. Make sure the session is active.");
+              setDebugInfo(prev => ({
+                ...prev,
+                sessionLookup: 'failed',
+                sessionError: 'PGRST301 - Authentication error, likely RLS policy issue',
+                errorDetails: sessionError
+              }));
             } else if (sessionError.code === '42P01') {
               setError("The 'sessions' table does not exist in the database. Please follow the instructions in DATABASE_SETUP.md to configure the database.");
+              setDebugInfo(prev => ({
+                ...prev,
+                sessionLookup: 'failed',
+                sessionError: '42P01 - Table does not exist',
+                errorDetails: sessionError
+              }));
             } else {
               setError(`Error loading session: ${sessionError.message}`);
+              setDebugInfo(prev => ({
+                ...prev,
+                sessionLookup: 'failed',
+                sessionError: sessionError.message,
+                errorDetails: sessionError
+              }));
             }
             setLoading(false);
             return;
@@ -466,6 +564,18 @@ function ParticipationContent() {
           if (sessionData) {
             console.log("Session loaded successfully:", sessionData);
             setSession(sessionData);
+            
+            setDebugInfo(prev => ({
+              ...prev,
+              sessionLookup: 'successful',
+              sessionData: {
+                id: sessionData.id,
+                name: sessionData.name,
+                title: sessionData.title,
+                status: sessionData.status,
+                hasSettings: !!sessionData.settings
+              }
+            }));
             
             // Set the number of votes based on session parameters
             if (sessionData.max_votes_per_participant) {
@@ -484,28 +594,69 @@ function ParticipationContent() {
                 console.error("Error loading participants:", participantsError);
                 if (participantsError.code === 'PGRST301') {
                   console.warn("Authentication error when loading participants. RLS policy might be blocking access.");
+                  setDebugInfo(prev => ({
+                    ...prev,
+                    participantsLookup: 'failed',
+                    participantsError: 'PGRST301 - Authentication error, likely RLS policy issue',
+                    errorDetails: participantsError
+                  }));
                 } else if (participantsError.code === '42P01') {
                   setError("The 'participants' table does not exist in the database. Some features will be limited.");
+                  setDebugInfo(prev => ({
+                    ...prev,
+                    participantsLookup: 'failed',
+                    participantsError: '42P01 - Table does not exist',
+                    errorDetails: participantsError
+                  }));
                 } else {
                   console.warn(`Participant loading warning: ${participantsError.message}`);
+                  setDebugInfo(prev => ({
+                    ...prev,
+                    participantsLookup: 'failed',
+                    participantsError: participantsError.message,
+                    errorDetails: participantsError
+                  }));
                 }
               } else {
                 console.log(`Loaded ${participantsData?.length || 0} participants`);
                 setParticipants(participantsData || []);
+                setDebugInfo(prev => ({
+                  ...prev,
+                  participantsLookup: 'successful',
+                  participantsCount: participantsData?.length || 0
+                }));
               }
             } catch (participantsErr) {
               console.error("Exception loading participants:", participantsErr);
+              setDebugInfo(prev => ({
+                ...prev,
+                participantsLookup: 'exception',
+                participantsError: participantsErr.message
+              }));
             }
           } else {
             setError("Session not found. It may have been deleted or is no longer active.");
+            setDebugInfo(prev => ({
+              ...prev,
+              sessionLookup: 'not_found'
+            }));
           }
         } catch (sessionErr) {
           console.error("Exception during session loading:", sessionErr);
           setError(`Error loading session: ${sessionErr.message}`);
+          setDebugInfo(prev => ({
+            ...prev,
+            sessionLookup: 'exception',
+            sessionError: sessionErr.message
+          }));
         }
       } catch (err) {
         console.error("Error loading session details:", err);
         setError(`Error: ${err.message || "Unable to load this session"}`);
+        setDebugInfo(prev => ({
+          ...prev,
+          overallError: err.message
+        }));
       } finally {
         setLoading(false);
       }
