@@ -530,57 +530,38 @@ export async function getSessions(userId: string) {
   return { data, error };
 }
 
-// Session Types
-export interface SessionData {
+// Mise à jour du type SessionData pour inclure tous les champs nécessaires
+interface SessionData {
   id?: string;
-  title: string;
+  title?: string;
+  name?: string; // Ajout pour compatibilité avec l'ancien modèle de données
   description?: string;
-  status: 'draft' | 'active' | 'ended';
-  user_id: string;
+  status?: 'draft' | 'active' | 'ended';
+  user_id?: string;
   started_at?: string;
   ended_at?: string;
   access_code?: string;
+  institution?: string; // Ajout du champ institution
+  professor_name?: string; // Ajout du champ professor_name
+  show_professor_name?: boolean; // Ajout du champ show_professor_name
+  max_participants?: number; // Ajout du champ max_participants
   settings?: {
+    sessionName?: string;
     institution?: string;
     professorName?: string;
     showProfessorName?: boolean;
     maxParticipants?: number;
+    timerEnabled?: boolean;
+    timerDuration?: number;
+    imageUrl?: string;
+    showInstitution?: boolean;
     connection?: {
       anonymityLevel?: 'anonymous' | 'semi-anonymous' | 'non-anonymous' | 'fully-anonymous';
-      loginMethod?: string;
-      approvalRequired?: boolean;
-      color?: string;
-      emoji?: string;
+      // autres propriétés de connection
     };
-    discussion?: Record<string, any>;
-    aiInteraction?: {
-      nuggets?: Record<string, any>;
-      lightbulbs?: Record<string, any>;
-      overall?: Record<string, any>;
-    };
-    visualization?: {
-      enableWordCloud?: boolean;
-      enableThemeNetwork?: boolean;
-      enableLightbulbCategorization?: boolean;
-      enableIdeaImpactMatrix?: boolean;
-      enableEngagementChart?: boolean;
-      showTopThemes?: boolean;
-    };
-    ai_configuration?: {
-      model: string;
-      temperature: number;
-      max_tokens: number;
-      presence_penalty: number;
-      frequency_penalty: number;
-      custom_instructions: string | null;
-    };
-    participant_settings?: {
-      anonymity_level: 'anonymous' | 'semi-anonymous' | 'non-anonymous';
-      require_approval: boolean;
-      allow_chat: boolean;
-      allow_reactions: boolean;
-    };
+    // autres propriétés de settings
   };
+  // autres propriétés de SessionData
 }
 
 // Session validation functions
@@ -588,7 +569,7 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
   console.log('Validating session data:', JSON.stringify(data, null, 2));
   
   // Check required fields
-  if (!data.title?.trim()) {
+  if (!data.title?.trim() && !data.name?.trim()) {
     console.error('Session validation failed: title is required');
     return { isValid: false, error: 'Session title is required' };
   }
@@ -611,10 +592,11 @@ export function validateSessionData(data: Partial<SessionData>): { isValid: bool
     return { isValid: false, error: 'Invalid anonymity level' };
   }
   
-  // Validate max participants if provided
-  if (data.settings?.maxParticipants !== undefined) {
-    if (isNaN(data.settings.maxParticipants) || data.settings.maxParticipants < 1) {
-      console.error('Session validation failed: invalid max participants count', data.settings.maxParticipants);
+  // Validate max participants if provided - check both root and settings
+  const maxParticipants = data.max_participants || data.settings?.maxParticipants;
+  if (maxParticipants !== undefined) {
+    if (isNaN(maxParticipants) || maxParticipants < 1) {
+      console.error('Session validation failed: invalid max participants count', maxParticipants);
       return { isValid: false, error: 'Max participants must be a positive number' };
     }
   }
@@ -947,11 +929,16 @@ export async function updateSession(sessionId: string, sessionData: Partial<Sess
         throw new Error(`Validation failed: ${validationError}`);
       }
       
+      // Ensure data consistency between root and settings
+      const updatedData = ensureConsistentSessionData(sessionData);
+      
       // Prepare update data with timestamp
       const updateData = {
-        ...sessionData,
+        ...updatedData,
         updated_at: new Date().toISOString()
       };
+      
+      console.log('[SESSION] Sending update data to Supabase:', JSON.stringify(updateData, null, 2));
       
       // Execute the update
       const { data, error } = await supabase
@@ -973,22 +960,8 @@ export async function updateSession(sessionId: string, sessionData: Partial<Sess
       
       console.log('[SESSION] Update successful:', data[0]);
       
-      // Verify the data was updated correctly
-      const expectedFields = Object.keys(sessionData).filter(key => 
-        key !== 'updated_at' && 
-        key !== 'settings'
-      );
-      
-      const mismatchedFields = expectedFields.filter(key => {
-        // Skip comparison for complex objects like settings
-        if (typeof sessionData[key as keyof Partial<SessionData>] === 'object') return false;
-        
-        return sessionData[key as keyof Partial<SessionData>] !== data[0][key as keyof typeof data[0]];
-      });
-      
-      if (mismatchedFields.length > 0) {
-        console.warn('[SESSION] Some fields may not have updated correctly:', mismatchedFields);
-      }
+      // Verify the data was updated correctly - more detailed check
+      verifySessionUpdate(sessionData, data[0]);
       
       return { data: data[0], error: null };
     } catch (err) {
@@ -1002,4 +975,91 @@ export async function updateSession(sessionId: string, sessionData: Partial<Sess
       };
     }
   });
+}
+
+// Helper function to ensure data consistency between root and settings
+function ensureConsistentSessionData(sessionData: Partial<SessionData>): Partial<SessionData> {
+  const result = { ...sessionData };
+  
+  // Ensure settings object exists
+  if (!result.settings) {
+    result.settings = {};
+  }
+  
+  // Synchronize fields from root to settings
+  if (result.title) {
+    result.name = result.title; // Ensure name is also set
+  } else if (result.name) {
+    result.title = result.name; // Ensure title is also set
+  }
+  
+  // Synchronize institution
+  if (result.institution) {
+    result.settings.institution = result.institution;
+  } else if (result.settings?.institution) {
+    result.institution = result.settings.institution;
+  }
+  
+  // Synchronize professor name
+  if (result.professor_name) {
+    result.settings.professorName = result.professor_name;
+  } else if (result.settings?.professorName) {
+    result.professor_name = result.settings.professorName;
+  }
+  
+  // Synchronize show professor name
+  if (result.show_professor_name !== undefined) {
+    result.settings.showProfessorName = result.show_professor_name;
+  } else if (result.settings?.showProfessorName !== undefined) {
+    result.show_professor_name = result.settings.showProfessorName;
+  }
+  
+  // Synchronize max participants
+  if (result.max_participants) {
+    result.settings.maxParticipants = result.max_participants;
+  } else if (result.settings?.maxParticipants) {
+    result.max_participants = result.settings.maxParticipants;
+  }
+  
+  console.log('[SESSION] Ensured data consistency between root and settings:', result);
+  return result;
+}
+
+// Helper function to verify session update was successful
+function verifySessionUpdate(original: Partial<SessionData>, updated: any) {
+  // Check root level fields
+  const rootFields = ['title', 'name', 'institution', 'professor_name', 'description', 'max_participants', 'show_professor_name'];
+  
+  const mismatches: string[] = [];
+  
+  rootFields.forEach(field => {
+    const originalKey = field as keyof Partial<SessionData>;
+    if (original[originalKey] !== undefined && 
+        original[originalKey] !== null && 
+        String(original[originalKey]) !== String(updated[field])) {
+      mismatches.push(`Field ${field}: expected "${original[originalKey]}", got "${updated[field]}"`);
+    }
+  });
+  
+  // Also check settings fields if both objects have settings
+  if (original.settings && updated.settings) {
+    const settingsFields = ['institution', 'professorName', 'showProfessorName', 'maxParticipants'];
+    
+    settingsFields.forEach(field => {
+      const originalValue = (original.settings as any)[field];
+      const updatedValue = (updated.settings as any)[field];
+      
+      if (originalValue !== undefined && 
+          originalValue !== null && 
+          String(originalValue) !== String(updatedValue)) {
+        mismatches.push(`Settings field ${field}: expected "${originalValue}", got "${updatedValue}"`);
+      }
+    });
+  }
+  
+  if (mismatches.length > 0) {
+    console.warn('[SESSION] Some fields may not have updated correctly:', mismatches);
+  } else {
+    console.log('[SESSION] All fields updated successfully');
+  }
 } 
