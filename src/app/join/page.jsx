@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import DotPattern from "@/components/ui/DotPattern";
 
 // Simple inline logo component
@@ -31,7 +31,7 @@ function LoadingFallback() {
 function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseClient();
   
   // State variables
   const [sessionCode, setSessionCode] = useState(searchParams.get("code") || "");
@@ -57,27 +57,38 @@ function JoinContent() {
     setError(null);
     
     try {
+      console.log(`Searching for session with code: ${sessionCode}`);
+      
+      // Properly format query with quoted string values
       const { data: sessions, error: sessionError } = await supabase
         .from("sessions")
         .select("id, title, name, status, settings, max_participants, session_code, code")
-        .or(`session_code.eq.${sessionCode},code.eq.${sessionCode}`)
+        .or(`session_code.eq."${sessionCode}",code.eq."${sessionCode}"`)
         .eq("status", "active")
-        .limit(1)
-        .single();
+        .limit(1);
       
-      if (sessionError || !sessions) {
+      console.log("Session search result:", { sessions, error: sessionError });
+      
+      if (sessionError) {
+        console.error("Error fetching session:", sessionError);
+        setError(`Error fetching session: ${sessionError.message}`);
+        setIsVerifyingCode(false);
+        return;
+      }
+      
+      if (!sessions || sessions.length === 0) {
         setError("No session found with this code. Please check and try again.");
         setIsVerifyingCode(false);
         return;
       }
       
       // Session found, proceed to step 2
-      setSessionData(sessions);
+      setSessionData(sessions[0]);
       setStep(2);
       setIsVerifyingCode(false);
     } catch (error) {
       console.error("Error verifying session code:", error);
-      setError("An error occurred while verifying the session code. Please try again.");
+      setError(`An error occurred while verifying the session code: ${error.message}`);
       setIsVerifyingCode(false);
     }
   };
@@ -89,7 +100,7 @@ function JoinContent() {
       setSessionCode(codeFromUrl);
       verifySessionCode();
     }
-  }, [searchParams]);
+  }, []);
   
   // Join the session
   const joinSession = async (e) => {
@@ -144,25 +155,45 @@ function JoinContent() {
         participantData.role = role;
       }
       
+      console.log("Creating participant with data:", participantData);
+      
       // Create participant
       const { data: participant, error: participantError } = await supabase
         .from("participants")
-        .insert(participantData)
-        .select()
-        .single();
+        .insert([participantData])
+        .select();
       
       if (participantError) {
         console.error("Error creating participant:", participantError);
-        setError("Failed to join the session. Please try again.");
+        setError(`Failed to join the session: ${participantError.message}`);
         setLoading(false);
         return;
       }
       
+      if (!participant || participant.length === 0) {
+        setError("Failed to create participant record");
+        setLoading(false);
+        return;
+      }
+      
+      // Save participant info to localStorage
+      const participantInfo = {
+        id: participant[0].id,
+        name: participantName
+      };
+      
+      try {
+        localStorage.setItem(`participant_${sessionData.id}`, JSON.stringify(participantInfo));
+      } catch (e) {
+        console.warn("Could not save participant info to localStorage:", e);
+      }
+      
       // Redirect to participate page
-      router.push(`/sessions/${sessionData.id}/participate?participantId=${participant.id}`);
+      console.log("Successfully joined session, redirecting to participate page");
+      router.push(`/sessions/${sessionData.id}/participate?participantId=${participant[0].id}`);
     } catch (error) {
       console.error("Error joining session:", error);
-      setError("An unexpected error occurred. Please try again.");
+      setError(`An unexpected error occurred: ${error.message}`);
       setLoading(false);
     }
   };

@@ -33,8 +33,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import DotPattern from "@/components/ui/DotPattern";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -244,7 +243,9 @@ function ParticipationContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = params.id;
+  const participantId = searchParams.get("participantId");
   const displayName = searchParams.get("name") || "";
+  const supabase = getSupabaseClient();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -324,20 +325,52 @@ function ParticipationContent() {
       try {
         setLoading(true);
         
-        // Vérifier si l'utilisateur a déjà rejoint la session
-        const savedParticipant = localStorage.getItem(`participant_${sessionId}`);
-        if (savedParticipant) {
-          try {
-            const parsedParticipant = JSON.parse(savedParticipant);
-            setCurrentParticipant(parsedParticipant);
-            setParticipantName(parsedParticipant.name);
+        // Check for participantId in URL first
+        let currentParticipantInfo = null;
+        
+        if (participantId) {
+          console.log(`Looking up participant with ID: ${participantId}`);
+          const { data: participantData, error: participantLookupError } = await supabase
+            .from("participants")
+            .select("*")
+            .eq("id", participantId)
+            .single();
+            
+          if (participantData && !participantLookupError) {
+            console.log("Found participant:", participantData);
+            currentParticipantInfo = {
+              id: participantData.id,
+              name: participantData.display_name || participantData.name
+            };
+            setParticipantName(currentParticipantInfo.name);
+            setCurrentParticipant(currentParticipantInfo);
             setJoiningComplete(true);
-          } catch (e) {
-            console.error("Erreur lors de la lecture du participant sauvegardé:", e);
+          } else {
+            console.warn("Participant lookup error or not found:", participantLookupError);
           }
         }
         
-        // Charger les informations de la session
+        // Fall back to localStorage if no participantId in URL or lookup failed
+        if (!currentParticipantInfo) {
+          const savedParticipant = localStorage.getItem(`participant_${sessionId}`);
+          if (savedParticipant) {
+            try {
+              const parsedParticipant = JSON.parse(savedParticipant);
+              console.log("Found participant in localStorage:", parsedParticipant);
+              setCurrentParticipant(parsedParticipant);
+              setParticipantName(parsedParticipant.name);
+              setJoiningComplete(true);
+            } catch (e) {
+              console.error("Error parsing saved participant:", e);
+            }
+          } else if (displayName) {
+            // If there's a display name in the URL but no participant info
+            setParticipantName(displayName);
+          }
+        }
+        
+        // Load session information
+        console.log(`Loading session with ID: ${sessionId}`);
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .select("*")
@@ -345,52 +378,50 @@ function ParticipationContent() {
           .single();
           
         if (sessionError) {
+          console.error("Error loading session:", sessionError);
           if (sessionError.code === '42P01') {
-            console.error("La table 'sessions' n'existe pas dans la base de données:", sessionError);
-            setError("La table 'sessions' n'existe pas dans la base de données. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
-            setLoading(false);
-            return;
+            setError("The 'sessions' table does not exist in the database. Please follow the instructions in DATABASE_SETUP.md to configure the database.");
+          } else {
+            setError(`Error loading session: ${sessionError.message}`);
           }
-          throw sessionError;
+          setLoading(false);
+          return;
         }
         
         if (sessionData) {
+          console.log("Session loaded successfully:", sessionData);
           setSession(sessionData);
           
-          // Définir le nombre de votes en fonction des paramètres de la session
+          // Set the number of votes based on session parameters
           if (sessionData.max_votes_per_participant) {
             setRemainingVotes(sessionData.max_votes_per_participant);
           }
           
-          try {
-            // Charger les participants actuels
-            const { data: participantsData, error: participantsError } = await supabase
-              .from("participants")
-              .select("*")
-              .eq("session_id", sessionId);
-              
-            if (participantsError) {
-              if (participantsError.code === '42P01') {
-                console.error("La table 'participants' n'existe pas dans la base de données:", participantsError);
-                // Afficher un message mais continuer le flux
-                setError("La table 'participants' n'existe pas dans la base de données. Certaines fonctionnalités seront limitées. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer correctement la base de données.");
-                setParticipants([]);
-              } else {
-                throw participantsError;
-              }
+          // Load current participants
+          console.log("Loading participants for session");
+          const { data: participantsData, error: participantsError } = await supabase
+            .from("participants")
+            .select("*")
+            .eq("session_id", sessionId);
+            
+          if (participantsError) {
+            console.error("Error loading participants:", participantsError);
+            if (participantsError.code === '42P01') {
+              setError("The 'participants' table does not exist in the database. Some features will be limited.");
             } else {
-              setParticipants(participantsData || []);
+              console.warn(`Participant loading warning: ${participantsError.message}`);
             }
-          } catch (participantsErr) {
-            console.error("Erreur lors du chargement des participants:", participantsErr);
-            // Continuer le flux sans planter l'application
-            setParticipants([]);
+          } else {
+            console.log(`Loaded ${participantsData?.length || 0} participants`);
+            setParticipants(participantsData || []);
           }
+        } else {
+          setError("Session not found. It may have been deleted or is no longer active.");
         }
         
       } catch (err) {
-        console.error("Erreur lors du chargement de la session:", err);
-        setError(err.message || "Impossible de charger cette session. Elle n'existe peut-être plus.");
+        console.error("Error loading session details:", err);
+        setError(`Error: ${err.message || "Unable to load this session"}`);
       } finally {
         setLoading(false);
       }
@@ -398,7 +429,7 @@ function ParticipationContent() {
     
     getSessionDetails();
     
-    // Configurer une mise à jour en temps réel des participants
+    // Set up realtime subscriptions
     const participantsSubscription = supabase
       .channel(`session_${sessionId}_participants`)
       .on('postgres_changes', { 
@@ -407,7 +438,8 @@ function ParticipationContent() {
         table: 'participants',
         filter: `session_id=eq.${sessionId}`
       }, (payload) => {
-        // Mettre à jour la liste des participants
+        console.log("Participant change event:", payload);
+        // Update the participants list
         if (payload.eventType === 'INSERT') {
           setParticipants(prev => [...prev, payload.new]);
         } else if (payload.eventType === 'DELETE') {
@@ -420,13 +452,14 @@ function ParticipationContent() {
       })
       .subscribe();
     
-    // Écouter les notifications de phase de la session
+    // Listen for phase change notifications
     const phaseSubscription = supabase
       .channel(`session_${sessionId}_phase`)
       .on('broadcast', { event: 'phase_change' }, (payload) => {
+        console.log("Phase change event:", payload);
         setCurrentPhase(payload.payload.phase);
         
-        // Réinitialiser le timer si nécessaire
+        // Reset timer if needed
         if (payload.payload.timer) {
           setTimer(payload.payload.timer);
           setTimerActive(true);
@@ -434,23 +467,23 @@ function ParticipationContent() {
           setTimerActive(false);
         }
         
-        // Si passage à la phase d'interaction, vérifier si le participant est sélectionné
+        // If moving to interaction phase, check if participant is selected
         if (payload.payload.phase === PHASES.INTERACTION && payload.payload.selected_participants) {
-          // Activer l'état de chargement de l'agent IA
+          // Activate AI agent loading state
           setAiAgentLoading(true);
           
-          // Vérifier si le participant est sélectionné
+          // Check if the participant is selected
           const isSelected = payload.payload.selected_participants.includes(currentParticipant?.id);
           setInteractionStatus(isSelected ? 'selected' : 'not_selected');
           
-          // Désactiver l'état de chargement après un court délai
-          // Cela permet d'avoir un retour visuel pour l'utilisateur
+          // Disable loading state after a short delay
+          // This provides visual feedback to the user
           setTimeout(() => {
             setAiAgentLoading(false);
           }, 2000);
         }
         
-        // Si passage à la phase d'analyse, charger les résultats
+        // If moving to analysis phase, load results
         if (payload.payload.phase === PHASES.ANALYSIS && payload.payload.analyses) {
           setAnalysisResults(payload.payload.analyses);
         }
@@ -461,7 +494,7 @@ function ParticipationContent() {
       supabase.removeChannel(participantsSubscription);
       supabase.removeChannel(phaseSubscription);
     };
-  }, [sessionId, displayName, currentParticipant?.id]);
+  }, [sessionId, participantId, displayName]);
   
   // Gestionnaire du timer
   useEffect(() => {
@@ -486,27 +519,30 @@ function ParticipationContent() {
     e.preventDefault();
     
     if (!participantName.trim()) {
-      alert("Veuillez entrer votre nom pour rejoindre la session");
+      alert("Please enter your name to join the session");
       return;
     }
     
     try {
       setSubmitting(true);
       
-      // Vérifier si la session est pleine
+      // Check if the session is full
       if (participants.length >= (session?.max_participants || 30)) {
-        setError(`Cette session est pleine (maximum ${session?.max_participants || 30} participants)`);
+        setError(`This session is full (maximum ${session?.max_participants || 30} participants)`);
         setSubmitting(false);
         return;
       }
       
-      // Créer un participant avec un UUID anonyme
+      console.log("Creating participant with name:", participantName);
+      
+      // Create a participant
       const { data, error } = await supabase
         .from("participants")
         .insert([
           {
             session_id: sessionId,
             display_name: participantName,
+            name: participantName,
             is_anonymous: true,
             votes: 0
           }
@@ -514,27 +550,38 @@ function ParticipationContent() {
         .select();
         
       if (error) {
+        console.error("Error creating participant:", error);
         if (error.code === '42P01') {
-          setError("La table 'participants' n'existe pas dans la base de données. Veuillez contacter l'administrateur.");
-          return;
+          setError("The 'participants' table does not exist in the database. Please contact the administrator.");
+        } else {
+          setError(`Failed to join session: ${error.message}`);
         }
-        throw error;
+        setSubmitting(false);
+        return;
       }
       
       if (data && data[0]) {
-        // Enregistrer les informations du participant localement
+        console.log("Participant created successfully:", data[0]);
+        // Save participant information locally
         const participantInfo = {
           id: data[0].id,
           name: participantName
         };
         
-        localStorage.setItem(`participant_${sessionId}`, JSON.stringify(participantInfo));
+        try {
+          localStorage.setItem(`participant_${sessionId}`, JSON.stringify(participantInfo));
+        } catch (e) {
+          console.warn("Could not save to localStorage:", e);
+        }
+        
         setCurrentParticipant(participantInfo);
         setJoiningComplete(true);
+      } else {
+        setError("Failed to create participant record");
       }
     } catch (err) {
-      console.error("Erreur lors de l'inscription à la session:", err);
-      setError("Impossible de rejoindre la session. Veuillez réessayer.");
+      console.error("Error joining session:", err);
+      setError(`Unable to join session: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -543,42 +590,49 @@ function ParticipationContent() {
   // Voter pour un participant
   const voteForParticipant = async (participantId) => {
     if (remainingVotes <= 0) {
-      alert("Vous avez utilisé tous vos votes disponibles.");
+      alert("You have used all your available votes.");
       return;
     }
     
     if (participantId === currentParticipant?.id) {
-      alert("Vous ne pouvez pas voter pour vous-même.");
+      alert("You cannot vote for yourself.");
       return;
     }
     
     if (selectedParticipants.includes(participantId)) {
-      alert("Vous avez déjà voté pour ce participant.");
+      alert("You have already voted for this participant.");
       return;
     }
     
     try {
-      // Mettre à jour le vote du participant
+      console.log(`Voting for participant: ${participantId}`);
+      
+      // Update the participant's vote count
       const { error } = await supabase
         .from("participants")
         .update({ votes: supabase.rpc('increment', { inc: 1 }) })
         .eq("id", participantId);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error voting:", error);
+        throw error;
+      }
       
-      // Mettre à jour l'état local
+      // Update local state
       setSelectedParticipants([...selectedParticipants, participantId]);
       setRemainingVotes(remainingVotes - 1);
       
-      // Mettre à jour localement le participant dans la liste
+      // Update participant in the list locally
       setParticipants(prev => 
         prev.map(p => 
           p.id === participantId ? { ...p, votes: (p.votes || 0) + 1 } : p
         )
       );
+      
+      console.log("Vote recorded successfully");
     } catch (err) {
-      console.error("Erreur lors du vote:", err);
-      alert("Impossible de voter pour ce participant. Veuillez réessayer.");
+      console.error("Error voting for participant:", err);
+      alert(`Unable to vote for this participant: ${err.message}`);
     }
   };
   
@@ -694,26 +748,28 @@ function ParticipationContent() {
     }
   }, []);
   
-  // Soumettre un feedback sur l'interaction avec l'IA
+  // Submit feedback on AI interaction
   const submitFeedback = useCallback(async () => {
     if (!feedbackMessage.trim()) {
-      setError("Veuillez entrer un message de feedback.");
+      setError("Please enter a feedback message.");
       return;
     }
     
     setFeedbackSubmitting(true);
     
     try {
-      // Vérifier le contenu du feedback
+      // Check feedback content
       const isSafe = await checkContentModeration(feedbackMessage);
       
       if (!isSafe) {
-        setError("Votre message contient du contenu inapproprié. Veuillez le modifier.");
+        setError("Your message contains inappropriate content. Please revise it.");
         setFeedbackSubmitting(false);
         return;
       }
       
-      // Enregistrer le feedback dans la base de données
+      console.log("Submitting feedback:", { type: feedbackType, message: feedbackMessage });
+      
+      // Save feedback to database
       const { error: feedbackError } = await supabase
         .from("ai_feedback")
         .insert([{
@@ -725,8 +781,9 @@ function ParticipationContent() {
         }]);
         
       if (feedbackError) {
+        console.error("Error saving feedback to database:", feedbackError);
         if (feedbackError.code === '42P01') {
-          // La table n'existe pas, on stocke localement
+          // Table doesn't exist, store locally
           try {
             const feedbackKey = `feedback_${sessionId}_${Date.now()}`;
             localStorage.setItem(feedbackKey, JSON.stringify({
@@ -734,25 +791,27 @@ function ParticipationContent() {
               type: feedbackType,
               timestamp: new Date().toISOString()
             }));
+            console.log("Saved feedback to localStorage");
           } catch (err) {
-            console.error("Erreur lors de la sauvegarde du feedback:", err);
+            console.error("Error saving feedback to localStorage:", err);
+            throw new Error("Could not save feedback");
           }
         } else {
           throw feedbackError;
         }
       }
       
-      // Réinitialiser le formulaire
+      // Reset the form
       setFeedbackMessage('');
       setFeedbackOpen(false);
       
-      // Afficher un message de confirmation
-      setError("Merci pour votre feedback!");
+      // Show confirmation message
+      setError("Thank you for your feedback!");
       setTimeout(() => setError(null), 3000);
       
     } catch (err) {
-      console.error("Erreur lors de la soumission du feedback:", err);
-      setError("Impossible d'envoyer votre feedback. Veuillez réessayer.");
+      console.error("Error submitting feedback:", err);
+      setError(`Unable to send your feedback: ${err.message}`);
     } finally {
       setFeedbackSubmitting(false);
     }
@@ -765,17 +824,26 @@ function ParticipationContent() {
     }
   }, [sessionId]);
   
-  // Sauvegarder une note de session
+  // Save a session note
   const saveSessionNote = useCallback(() => {
-    if (sessionNote.trim()) {
+    if (!sessionNote.trim()) {
+      return;
+    }
+    
+    try {
+      console.log("Saving session note");
       sessionContextRef.current.addSessionNote(sessionNote);
       sessionContextRef.current.saveToLocalStorage(sessionId);
       setSessionNote('');
       setShowNoteInput(false);
       
-      // Afficher un message de confirmation
-      setError("Note sauvegardée avec succès!");
+      // Show confirmation message
+      setError("Note saved successfully!");
       setTimeout(() => setError(null), 2000);
+    } catch (err) {
+      console.error("Error saving note:", err);
+      setError(`Unable to save note: ${err.message}`);
+      setTimeout(() => setError(null), 3000);
     }
   }, [sessionNote, sessionId]);
   
