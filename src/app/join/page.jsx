@@ -46,6 +46,7 @@ function JoinContent() {
   const [step, setStep] = useState(1); // 1: Enter code, 2: Enter profile info
   const [showDebug, setShowDebug] = useState(false);
   const [debugInfo, setDebugInfo] = useState({});
+  const [currentParticipantsCount, setCurrentParticipantsCount] = useState(0);
   
   // Get auth status for debugging
   useEffect(() => {
@@ -86,305 +87,120 @@ function JoinContent() {
     setError(null);
     
     try {
+      // Normalize the input code to uppercase and trim whitespace
       const normalizedCode = sessionCode.trim().toUpperCase();
-      console.log(`Searching for session with normalized code: ${normalizedCode}`);
+      console.log(`Attempting to find session with code: ${normalizedCode}`);
       
-      // Get all active sessions to help with debugging and to show available codes
+      // STEP 1: Fetch ALL active sessions first - this ensures we always have data to show users
       const { data: allActiveSessions, error: activeSessionsError } = await supabase
         .from("sessions")
-        .select("id, name, code, session_code, title, status")
+        .select("id, name, title, code, session_code, status")
         .eq("status", "active");
-        
+      
       console.log("All active sessions:", allActiveSessions);
       
       if (activeSessionsError) {
         console.error("Error fetching active sessions:", activeSessionsError);
-      }
-      
-      // First, check if the session exists at all (without status filter)
-      // This helps distinguish between "not found" and "not active" errors
-      const { data: sessionExists, error: existsError } = await supabase
-        .from("sessions")
-        .select("id, status, session_code, code")
-        .or(`session_code.eq."${normalizedCode}",code.eq."${normalizedCode}"`)
-        .limit(1);
-      
-      console.log("Session existence check:", { sessionExists, error: existsError });
-      
-      if (existsError) {
-        console.error("Error checking if session exists:", existsError);
-      } else if (sessionExists && sessionExists.length > 0) {
-        // Session exists, but might not be active
-        if (sessionExists[0].status !== 'active') {
-          setError(`Session found but it's not active (status: ${sessionExists[0].status || 'unknown'}). Please contact the session organizer.`);
-          setIsVerifyingCode(false);
-          
-          // Update debug info
-          setDebugInfo(prev => ({
-            ...prev,
-            sessionExists: true,
-            sessionStatus: sessionExists[0].status,
-            sessionId: sessionExists[0].id,
-            errorReason: 'inactive_session',
-            lastQueryTime: new Date().toISOString(),
-            availableSessions: allActiveSessions?.map(s => ({
-              id: s.id.substring(0, 8),
-              name: s.name,
-              code: s.code,
-              session_code: s.session_code
-            })) || []
-          }));
-          return;
-        }
-      }
-      
-      // First attempt: Use filter syntax with quotes for string values
-      const { data: sessions, error: sessionError } = await supabase
-        .from("sessions")
-        .select("id, title, name, status, settings, max_participants, session_code, code")
-        .or(`session_code.eq."${normalizedCode}",code.eq."${normalizedCode}"`)
-        .eq("status", "active")
-        .limit(1);
-      
-      console.log("Session search result:", { sessions, error: sessionError });
-      
-      if (sessionError) {
-        console.error("Error fetching session:", sessionError);
-        if (sessionError.code === 'PGRST301') {
-          setError(`Authentication error: ${sessionError.message}. This may be due to RLS policies.`);
-        } else {
-          setError(`Error fetching session: ${sessionError.message}`);
-        }
+        setError(`Error retrieving available sessions: ${activeSessionsError.message}`);
         setIsVerifyingCode(false);
-        
-        // Update debug info with error details
-        setDebugInfo(prev => ({
-          ...prev,
-          lastQueryError: sessionError,
-          lastQueryTime: new Date().toISOString(),
-          availableSessions: allActiveSessions?.map(s => ({
-            id: s.id.substring(0, 8),
-            name: s.name,
-            code: s.code,
-            session_code: s.session_code
-          })) || []
-        }));
         return;
       }
       
-      if (!sessions || sessions.length === 0) {
-        // Try alternative query formats as fallbacks
-        console.log("No sessions found with first query format, trying alternative");
-        
-        // Try without quotes
-        const { data: altSessions, error: altError } = await supabase
+      // STEP 2: Process available sessions to show to users if needed
+      const availableSessions = allActiveSessions ? allActiveSessions.map(session => {
+        // Format each session with name and codes
+        const sessionName = session.name || session.title || "Unnamed Session";
+        const codes = [];
+        if (session.code) codes.push(session.code);
+        if (session.session_code && session.session_code !== session.code) codes.push(session.session_code);
+        return { id: session.id, name: sessionName, codes, status: session.status };
+      }) : [];
+      
+      console.log("Processed available sessions:", availableSessions);
+      
+      // STEP 3: Look for an exact match in the fetched sessions
+      let foundSession = null;
+      for (const session of availableSessions) {
+        if (session.codes.some(code => code.toUpperCase() === normalizedCode)) {
+          foundSession = allActiveSessions.find(s => s.id === session.id);
+          console.log("Found matching session:", foundSession);
+          break;
+        }
+      }
+      
+      // STEP 4: If no exact match found, also check for a session where code matches
+      // even if it's not active (for better error messages)
+      let inactiveSession = null;
+      if (!foundSession) {
+        const { data: anySession, error: anySessionError } = await supabase
           .from("sessions")
-          .select("id, title, name, status, settings, max_participants, session_code, code")
-          .or(`session_code.eq.${normalizedCode},code.eq.${normalizedCode}`)
-          .eq("status", "active")
+          .select("id, status, code, session_code")
+          .or(`session_code.eq."${normalizedCode}",code.eq."${normalizedCode}"`)
           .limit(1);
           
-        console.log("Alternative search result:", { altSessions, error: altError });
-        
-        if (altError) {
-          console.error("Error in alternative fetch:", altError);
+        if (anySession && anySession.length > 0) {
+          inactiveSession = anySession[0];
+          console.log("Found non-active session:", inactiveSession);
         }
-        
-        if (!altSessions || altSessions.length === 0) {
-          // Try with .in() filter instead of .or()
-          console.log("Trying with .in() filter method");
-          
-          const { data: inSessions, error: inError } = await supabase
-            .from("sessions")
-            .select("id, title, name, status, settings, max_participants, session_code, code")
-            .in("session_code", [normalizedCode])
-            .eq("status", "active")
-            .limit(1);
-            
-          console.log("In filter search result:", { inSessions, error: inError });
-          
-          if (inError) {
-            console.error("Error in .in() filter query:", inError);
-          }
-          
-          if (!inSessions || inSessions.length === 0) {
-            // Try case-insensitive search using ilike
-            console.log("Trying case-insensitive search with ilike");
-            
-            const { data: ilikeSessions, error: ilikeError } = await supabase
-              .from("sessions")
-              .select("id, title, name, status, settings, max_participants, session_code, code")
-              .or(`session_code.ilike.${normalizedCode},code.ilike.${normalizedCode}`)
-              .eq("status", "active")
-              .limit(1);
-              
-            console.log("Case-insensitive search result:", { ilikeSessions, error: ilikeError });
-            
-            if (ilikeError) {
-              console.error("Error in case-insensitive search:", ilikeError);
-            }
-            
-            if (!ilikeSessions || ilikeSessions.length === 0) {
-              // Last attempt - try exact match with .eq
-              console.log("Trying exact match with .eq filter");
-              
-              const { data: exactSessions, error: exactError } = await supabase
-                .from("sessions")
-                .select("id, title, name, status, settings, max_participants, session_code, code")
-                .eq("session_code", normalizedCode)
-                .eq("status", "active")
-                .limit(1);
-                
-              console.log("Exact match search result:", { exactSessions, error: exactError });
-              
-              if (exactError) {
-                console.error("Error in exact match query:", exactError);
-              }
-              
-              if (!exactSessions || exactSessions.length === 0) {
-                // If session exists check found something but active queries found nothing
-                if (sessionExists && sessionExists.length > 0) {
-                  setError(`Session found but cannot be joined (status: ${sessionExists[0].status || 'unknown'}). Please contact the session organizer.`);
-                } else {
-                  // Prepare a better error message with available session codes
-                  let errorMsg = "No session found with this code. Please check and try again.";
-                  
-                  // If we have other active sessions, suggest them
-                  if (allActiveSessions && allActiveSessions.length > 0) {
-                    const availableCodes = allActiveSessions
-                      .filter(s => s.status === 'active')
-                      .map(s => {
-                        // Use both codes if available
-                        const codes = [];
-                        if (s.code) codes.push(s.code);
-                        if (s.session_code && s.session_code !== s.code) codes.push(s.session_code);
-                        return { name: s.name || s.title, codes };
-                      });
-                      
-                    if (availableCodes.length > 0) {
-                      errorMsg += " Available sessions:";
-                      availableCodes.forEach(s => {
-                        if (s.codes.length > 0) {
-                          errorMsg += ` "${s.name}" (${s.codes.join(', ')})`;
-                        }
-                      });
-                    }
-                  }
-                  
-                  setError(errorMsg);
-                }
-                
-                setIsVerifyingCode(false);
-                
-                // Update debug info with all search attempts
-                setDebugInfo(prev => ({
-                  ...prev,
-                  searchAttempts: 5, // Now 5 with the case-insensitive search
-                  normalizedCode,
-                  queriesSuccessful: true,
-                  noSessionsFound: !(sessionExists && sessionExists.length > 0),
-                  sessionExistsButInactive: sessionExists && sessionExists.length > 0,
-                  sessionStatus: sessionExists && sessionExists.length > 0 ? sessionExists[0].status : null,
-                  availableSessions: allActiveSessions?.map(s => ({
-                    id: s.id.substring(0, 8),
-                    name: s.name || s.title,
-                    code: s.code,
-                    session_code: s.session_code,
-                    status: s.status
-                  })) || [],
-                  lastQueryTime: new Date().toISOString()
-                }));
-                return;
-              }
-              
-              // Session found with exact match
-              setSessionData(exactSessions[0]);
-              setStep(2);
-              setIsVerifyingCode(false);
-              
-              // Update debug info with success
-              setDebugInfo(prev => ({
-                ...prev,
-                foundSession: true,
-                searchMethod: "exact_match",
-                sessionId: exactSessions[0].id,
-                lastQueryTime: new Date().toISOString()
-              }));
-              return;
-            }
-            
-            // Session found with case-insensitive search
-            setSessionData(ilikeSessions[0]);
-            setStep(2);
-            setIsVerifyingCode(false);
-            
-            // Update debug info with success
-            setDebugInfo(prev => ({
-              ...prev,
-              foundSession: true,
-              searchMethod: "case_insensitive",
-              sessionId: ilikeSessions[0].id,
-              lastQueryTime: new Date().toISOString()
-            }));
-            return;
-          }
-          
-          // Session found with .in() filter
-          setSessionData(inSessions[0]);
-          setStep(2);
-          setIsVerifyingCode(false);
-          
-          // Update debug info with success
-          setDebugInfo(prev => ({
-            ...prev,
-            foundSession: true,
-            searchMethod: "in_filter",
-            sessionId: inSessions[0].id,
-            lastQueryTime: new Date().toISOString()
-          }));
-          return;
-        }
-        
-        // Session found with alternative query
-        setSessionData(altSessions[0]);
+      }
+      
+      // STEP 5: Handle results based on what we found
+      if (foundSession) {
+        // Success! We found a matching active session
+        setSessionData(foundSession);
         setStep(2);
-        setIsVerifyingCode(false);
-        
-        // Update debug info with success
         setDebugInfo(prev => ({
           ...prev,
           foundSession: true,
-          searchMethod: "alt_query",
-          sessionId: altSessions[0].id,
-          lastQueryTime: new Date().toISOString()
+          sessionId: foundSession.id,
+          matchedCode: normalizedCode,
+          lastQueryTime: new Date().toISOString(),
+          availableSessions: availableSessions
         }));
-        return;
+      } else if (inactiveSession) {
+        // Session exists but is not active
+        setError(`Session found but it's not active (status: ${inactiveSession.status || 'unknown'}). Please contact the session organizer.`);
+        setDebugInfo(prev => ({
+          ...prev,
+          sessionExists: true,
+          sessionNotActive: true,
+          sessionStatus: inactiveSession.status,
+          lastQueryTime: new Date().toISOString(),
+          availableSessions: availableSessions
+        }));
+      } else {
+        // No session found with this code - show available sessions
+        let errorMsg = "No session found with this code. Please check and try again.";
+        
+        if (availableSessions.length > 0) {
+          // Build a message showing all available sessions and their codes
+          errorMsg += " Available sessions:";
+          availableSessions.forEach(session => {
+            if (session.codes.length > 0) {
+              errorMsg += ` "${session.name}" (${session.codes.join(', ')})`;
+            }
+          });
+        }
+        
+        setError(errorMsg);
+        setDebugInfo(prev => ({
+          ...prev,
+          noSessionFound: true,
+          searchedCode: normalizedCode,
+          lastQueryTime: new Date().toISOString(),
+          availableSessions: availableSessions
+        }));
       }
-      
-      // Session found with first query
-      setSessionData(sessions[0]);
-      setStep(2);
-      setIsVerifyingCode(false);
-      
-      // Update debug info with success
-      setDebugInfo(prev => ({
-        ...prev,
-        foundSession: true,
-        searchMethod: "primary_query",
-        sessionId: sessions[0].id,
-        lastQueryTime: new Date().toISOString()
-      }));
     } catch (error) {
       console.error("Error verifying session code:", error);
-      setError(`An error occurred while verifying the session code: ${error.message}`);
-      setIsVerifyingCode(false);
-      
-      // Update debug info with error
+      setError(`An error occurred: ${error.message}. Please try again.`);
       setDebugInfo(prev => ({
         ...prev,
         error: error.message,
         lastQueryTime: new Date().toISOString()
       }));
+    } finally {
+      setIsVerifyingCode(false);
     }
   };
   
@@ -396,6 +212,32 @@ function JoinContent() {
       verifySessionCode();
     }
   }, []);
+  
+  // Effect to fetch participant count when session data is available
+  useEffect(() => {
+    const fetchParticipantCount = async () => {
+      if (sessionData?.id) {
+        try {
+          const { count, error } = await supabase
+            .from("session_participants")
+            .select("*", { count: "exact", head: true })
+            .eq("session_id", sessionData.id)
+            .is("deleted_at", null);
+            
+          if (error) {
+            console.error("Error fetching participant count:", error);
+          } else {
+            console.log(`Current participant count: ${count}`);
+            setCurrentParticipantsCount(count || 0);
+          }
+        } catch (err) {
+          console.error("Exception fetching participant count:", err);
+        }
+      }
+    };
+    
+    fetchParticipantCount();
+  }, [sessionData?.id, supabase]);
   
   // Join the session
   const joinSession = async (e) => {
@@ -409,7 +251,8 @@ function JoinContent() {
     // Additional validations based on anonymity level
     const anonymityLevel = sessionData?.settings?.connection?.anonymityLevel || "anonymous";
     
-    if (anonymityLevel === "not_anonymous" || anonymityLevel === "semi_anonymous") {
+    if (anonymityLevel === "not_anonymous" || anonymityLevel === "semi_anonymous" || 
+        anonymityLevel === "semi-anonymous") { // Add support for hyphenated format
       if (!email.trim()) {
         setError("Please enter your email");
         return;
@@ -433,8 +276,15 @@ function JoinContent() {
     
     try {
       // Check max participants
-      if (participants.length >= (sessionData?.max_participants || sessionData?.settings?.maxParticipants || 30)) {
-        setError(`This session is full (maximum ${sessionData?.max_participants || sessionData?.settings?.maxParticipants || 30} participants)`);
+      const maxParticipants = sessionData?.max_participants || 
+                             sessionData?.settings?.maxParticipants || 
+                             sessionData?.settings?.connection?.maxParticipants || 
+                             30;
+                              
+      console.log(`Checking participant count: ${currentParticipantsCount} vs max: ${maxParticipants}`);
+      
+      if (currentParticipantsCount >= maxParticipants) {
+        setError(`This session is full (maximum ${maxParticipants} participants)`);
         setLoading(false);
         return;
       }
@@ -442,26 +292,43 @@ function JoinContent() {
       // Determine participant fields based on anonymity level
       const participantData = {
         session_id: sessionData.id,
-        name: participantName,
+        nickname: participantName,
         display_name: participantName,
-        is_anonymous: anonymityLevel === "anonymous",
+        anonymous: anonymityLevel === "anonymous"
       };
       
       // Add additional fields for semi-anonymous and not-anonymous levels
-      if (anonymityLevel === "semi_anonymous" || anonymityLevel === "not_anonymous") {
+      if (anonymityLevel === "semi_anonymous" || anonymityLevel === "not_anonymous" || 
+          anonymityLevel === "semi-anonymous") {
         participantData.email = email;
       }
       
+      // Store additional fields in links JSON if needed
       if (anonymityLevel === "not_anonymous") {
-        participantData.organization = organization;
-        participantData.role = role;
+        participantData.links = {
+          organization: organization,
+          role: role
+        };
       }
       
       console.log("Creating participant with data:", participantData);
       
-      // Create participant
+      // Add debug info for troubleshooting
+      setDebugInfo(prev => ({
+        ...prev,
+        joinAttempt: {
+          participantData,
+          anonymityLevel,
+          sessionId: sessionData.id,
+          maxParticipants: maxParticipants,
+          currentCount: currentParticipantsCount,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      
+      // Create participant in session_participants table
       const { data: participant, error: participantError } = await supabase
-        .from("participants")
+        .from("session_participants")
         .insert([participantData])
         .select();
       
@@ -492,7 +359,8 @@ function JoinContent() {
       const participantInfo = {
         id: participant[0].id,
         name: participantName,
-        sessionId: sessionData.id
+        sessionId: sessionData.id,
+        anonymousToken: participant[0].anonymous_token
       };
       
       try {
@@ -502,9 +370,9 @@ function JoinContent() {
         console.warn("Could not save participant info to localStorage:", e);
       }
       
-      // Redirect to participate page with participant ID
+      // Redirect to participate page with correct parameters
       console.log("Successfully joined session, redirecting to participate page");
-      router.push(`/sessions/${sessionData.id}/participate?participantId=${participant[0].id}`);
+      router.push(`/sessions/${sessionData.id}/participate?participantId=${participant[0].id}&token=${encodeURIComponent(participant[0].anonymous_token || '')}`);
     } catch (error) {
       console.error("Error joining session:", error);
       setError(`An unexpected error occurred: ${error.message}`);
