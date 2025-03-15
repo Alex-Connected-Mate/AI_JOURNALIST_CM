@@ -34,15 +34,10 @@ interface AIPromptConfig {
       themes: string[];
     }[];
     visualStyle: {
-      colorScheme: string;
-      fontStyle: string;
-      coverImagePrompt: string;
+      theme: string;
+      showParticipantName: boolean;
       generateImages: boolean;
       imageStyle: string;
-      pageBackgroundColor: string;
-      textColor: string;
-      accentColor: string;
-      logoUrl?: string;
     };
   };
 }
@@ -88,15 +83,10 @@ const DEFAULT_ANALYSIS_CONFIG = {
 const DEFAULT_BOOK_CONFIG = {
   sections: [],
   visualStyle: {
-    colorScheme: 'professional',
-    fontStyle: 'modern',
-    coverImagePrompt: '',
+    theme: 'modern',
+    showParticipantName: true,
     generateImages: true,
-    imageStyle: 'realistic',
-    pageBackgroundColor: '#ffffff',
-    textColor: '#333333',
-    accentColor: '#4f46e5',
-    logoUrl: ''
+    imageStyle: 'realistic'
   }
 };
 
@@ -251,25 +241,12 @@ ${index + 1}. "${q.question}"`).join('\n')}
           ],
           visualStyle: {
             ...prev.bookConfig.visualStyle,
-            logoUrl: ''
+            theme: newBookSection.themes[0]
           }
         }
       }));
       setNewBookSection({ title: '', description: '', themes: [] });
     }
-  };
-
-  const handleBookVisualStyleChange = (visualStyle: any) => {
-    setConfig(prev => ({
-      ...prev,
-      bookConfig: {
-        ...prev.bookConfig,
-        visualStyle: {
-          ...prev.bookConfig.visualStyle,
-          ...visualStyle
-        }
-      }
-    }));
   };
 
   return (
@@ -482,176 +459,21 @@ ${index + 1}. "${q.question}"`).join('\n')}
                     updateConfig('bookConfig', newConfig);
                   }}
                   agentType={agentType}
+                  participantName={config.teacherName || "Participant"}
                 />
-              </div>
-              
-              {/* Visual Styling Section */}
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6">
-                <h3 className="font-medium text-lg mb-4">Visual Style</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Color Scheme Selection */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Schéma de Couleurs</label>
-                    <select 
-                      className="w-full p-2 border rounded-md"
-                      value={config.bookConfig.visualStyle.colorScheme}
-                      onChange={(e) => handleBookVisualStyleChange({ colorScheme: e.target.value })}
-                    >
-                      <option value="professional">Professionnel</option>
-                      <option value="creative">Créatif</option>
-                      <option value="academic">Académique</option>
-                      <option value="elegant">Élégant</option>
-                      <option value="bold">Dynamique</option>
-                    </select>
-                  </div>
-                  
-                  {/* Font Style Selection */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Style de Police</label>
-                    <select 
-                      className="w-full p-2 border rounded-md"
-                      value={config.bookConfig.visualStyle.fontStyle}
-                      onChange={(e) => handleBookVisualStyleChange({ fontStyle: e.target.value })}
-                    >
-                      <option value="modern">Moderne</option>
-                      <option value="classic">Classique</option>
-                      <option value="minimalist">Minimaliste</option>
-                      <option value="playful">Ludique</option>
-                      <option value="technical">Technique</option>
-                    </select>
-                  </div>
-                  
-                  {/* Custom Colors */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Couleur de Fond</label>
-                    <div className="flex items-center space-x-2">
-                      <input 
-                        type="color" 
-                        value={config.bookConfig.visualStyle.pageBackgroundColor}
-                        onChange={(e) => handleBookVisualStyleChange({ pageBackgroundColor: e.target.value })}
-                        className="w-8 h-8 rounded-md cursor-pointer"
-                      />
-                      <input 
-                        type="text"
-                        value={config.bookConfig.visualStyle.pageBackgroundColor}
-                        onChange={(e) => handleBookVisualStyleChange({ pageBackgroundColor: e.target.value })}
-                        className="flex-1 p-2 border rounded-md"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Couleur du Texte</label>
-                    <div className="flex items-center space-x-2">
-                      <input 
-                        type="color" 
-                        value={config.bookConfig.visualStyle.textColor}
-                        onChange={(e) => handleBookVisualStyleChange({ textColor: e.target.value })}
-                        className="w-8 h-8 rounded-md cursor-pointer"
-                      />
-                      <input 
-                        type="text"
-                        value={config.bookConfig.visualStyle.textColor}
-                        onChange={(e) => handleBookVisualStyleChange({ textColor: e.target.value })}
-                        className="flex-1 p-2 border rounded-md"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Couleur d'Accent</label>
-                    <div className="flex items-center space-x-2">
-                      <input 
-                        type="color" 
-                        value={config.bookConfig.visualStyle.accentColor}
-                        onChange={(e) => handleBookVisualStyleChange({ accentColor: e.target.value })}
-                        className="w-8 h-8 rounded-md cursor-pointer"
-                      />
-                      <input 
-                        type="text"
-                        value={config.bookConfig.visualStyle.accentColor}
-                        onChange={(e) => handleBookVisualStyleChange({ accentColor: e.target.value })}
-                        className="flex-1 p-2 border rounded-md"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Image Generation Options */}
-                <div className="mt-6 space-y-4">
-                  <h4 className="font-medium">Génération d'Images</h4>
-                  
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      id="generateImages"
-                      checked={config.bookConfig.visualStyle.generateImages}
-                      onChange={(e) => handleBookVisualStyleChange({ generateImages: e.target.checked })}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="generateImages" className="text-sm">
-                      Générer des images avec OpenAI
-                    </label>
-                  </div>
-                  
-                  {config.bookConfig.visualStyle.generateImages && (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Style d'Image</label>
-                        <select 
-                          className="w-full p-2 border rounded-md"
-                          value={config.bookConfig.visualStyle.imageStyle}
-                          onChange={(e) => handleBookVisualStyleChange({ imageStyle: e.target.value })}
-                        >
-                          <option value="realistic">Réaliste</option>
-                          <option value="abstract">Abstrait</option>
-                          <option value="cartoon">Cartoon</option>
-                          <option value="watercolor">Aquarelle</option>
-                          <option value="minimalist">Minimaliste</option>
-                        </select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Prompt pour Image de Couverture</label>
-                        <textarea 
-                          value={config.bookConfig.visualStyle.coverImagePrompt}
-                          onChange={(e) => handleBookVisualStyleChange({ coverImagePrompt: e.target.value })}
-                          placeholder="Décrivez l'image de couverture que vous souhaitez générer..."
-                          className="w-full p-2 border rounded-md h-24"
-                        />
-                        <p className="text-xs text-gray-500">
-                          Laissez vide pour une génération automatique basée sur le contenu.
-                        </p>
-                      </div>
-                    </>
-                  )}
-                  
-                  <div className="space-y-2 mt-4">
-                    <label className="text-sm font-medium">URL du Logo (optionnel)</label>
-                    <Input
-                      value={config.bookConfig.visualStyle.logoUrl || ''}
-                      onChange={(e) => handleBookVisualStyleChange({ logoUrl: e.target.value })}
-                      placeholder="https://example.com/logo.png"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Logo à afficher sur la couverture et les en-têtes du book.
-                    </p>
-                  </div>
-                </div>
               </div>
               
               <h3 className="font-medium text-lg">Book Sections</h3>
               <div className="space-y-4">
                 <div className="grid gap-4">
                   <Input
-                    label="Titre de la Section"
+                    label="Section Title"
                     value={newBookSection.title}
                     onChange={(e) => setNewBookSection(prev => ({
                       ...prev,
                       title: e.target.value
                     }))}
-                    placeholder="Ex: Innovations Technologiques"
+                    placeholder="Ex: Key Insights"
                   />
                   <Input
                     label="Description"
@@ -660,10 +482,10 @@ ${index + 1}. "${q.question}"`).join('\n')}
                       ...prev,
                       description: e.target.value
                     }))}
-                    placeholder="Description de la section"
+                    placeholder="Description of the section"
                   />
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Thèmes Associés</label>
+                    <label className="text-sm font-medium">Related Themes</label>
                     <div className="flex flex-wrap gap-2">
                       {config.analysisConfig.themes.map((theme, index) => (
                         <button
@@ -691,7 +513,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                 </div>
 
                 <Button onClick={addBookSection} className="w-full">
-                  Ajouter la Section
+                  Add Section
                 </Button>
 
                 <div className="space-y-4">
