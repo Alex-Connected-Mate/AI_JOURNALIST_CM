@@ -1,12 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 /**
  * FlowMapTimer Component
  * 
- * Displays the timer in the flow map and allows users to modify it
- * by clicking on it, which opens a small popover with timer configuration.
- * The popover stays open until explicitly closed by clicking the timer button again
- * or the close button.
+ * Displays the timer in the flow map and allows users to modify it.
+ * Clicking on the timer button toggles a popup that remains open until 
+ * explicitly closed by clicking the timer button again or the Apply button.
  * 
  * @param {boolean} enabled - Whether the timer is enabled
  * @param {number} duration - The duration of the timer in minutes
@@ -21,76 +20,63 @@ const FlowMapTimer = ({
 }) => {
   const [showPopover, setShowPopover] = useState(false);
   const [localDuration, setLocalDuration] = useState(duration);
-  const popoverRef = useRef(null);
-  const buttonRef = useRef(null);
+  
+  // Update local duration when prop changes
+  useEffect(() => {
+    setLocalDuration(duration);
+  }, [duration]);
 
-  // Toggle timer enabled/disabled
-  const handleToggleTimer = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
+  // Toggle timer enabled state
+  const handleToggleTimer = () => {
     onEnabledChange(!enabled);
   };
-
-  // Apply duration change and close popover
-  const handleApplyDuration = () => {
-    onDurationChange(localDuration);
-    setShowPopover(false);
-  };
-
+  
   // Toggle popover visibility
-  const togglePopover = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const togglePopover = () => {
     setShowPopover(!showPopover);
-  };
-
-  // Close popover (X button)
-  const closePopover = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setShowPopover(false);
   };
 
   // Set preset duration
   const setPresetDuration = (value) => {
     setLocalDuration(value);
   };
-
-  const timerButton = (
-    <div 
-      ref={buttonRef}
-      className={`inline-flex items-center px-2.5 py-1 rounded-full cursor-pointer transition-colors ${
-        enabled 
-          ? "text-red-600 bg-red-50 border border-red-200 hover:bg-red-100" 
-          : "text-gray-600 bg-gray-100 border border-gray-300 hover:bg-gray-200"
-      }`}
-      onClick={togglePopover}
-    >
-      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      <span className="text-xs font-medium">
-        {enabled ? `${duration} MIN TIMER` : "Timer disabled"}
-      </span>
-    </div>
-  );
+  
+  // Apply duration changes and close popover
+  const handleApply = () => {
+    onDurationChange(localDuration);
+    setShowPopover(false);
+  };
 
   return (
     <div className="relative">
-      {timerButton}
+      {/* Timer Button */}
+      <div 
+        className={`inline-flex items-center px-2.5 py-1 rounded-full cursor-pointer transition-colors ${
+          enabled 
+            ? "text-red-600 bg-red-50 border border-red-200 hover:bg-red-100" 
+            : "text-gray-600 bg-gray-100 border border-gray-300 hover:bg-gray-200"
+        }`}
+        onClick={togglePopover}
+      >
+        <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span className="text-xs font-medium">
+          {enabled ? `${duration} MIN TIMER` : "Timer disabled"}
+        </span>
+      </div>
       
+      {/* Popover */}
       {showPopover && (
         <div 
-          ref={popoverRef}
           className="absolute z-50 right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200"
-          onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling
         >
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Timer Configuration</h3>
               <button 
-                onClick={closePopover}
+                onClick={togglePopover}
                 className="text-gray-400 hover:text-gray-500"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -158,7 +144,7 @@ const FlowMapTimer = ({
             
             <div className="pt-2">
               <button
-                onClick={handleApplyDuration}
+                onClick={handleApply}
                 className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md transition-colors"
               >
                 Apply
