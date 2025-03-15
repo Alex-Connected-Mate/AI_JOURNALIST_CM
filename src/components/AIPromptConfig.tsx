@@ -85,7 +85,7 @@ const DEFAULT_BOOK_CONFIG = {
   visualStyle: {
     theme: 'modern',
     showParticipantName: true,
-    generateImages: true,
+    generateImages: false,
     imageStyle: 'realistic'
   }
 };

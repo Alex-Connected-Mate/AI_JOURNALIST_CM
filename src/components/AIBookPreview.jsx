@@ -47,7 +47,17 @@ const AIBookPreview = ({
         borderRadius: "0.75rem",
         boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
         fontFamily: "'Inter', sans-serif",
-        pattern: null
+        pattern: null,
+        imageDesign: {
+          withImage: {
+            placeholder: "grid",
+            style: "box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 0.5rem; background: linear-gradient(45deg, #f0f0f0 25%, #e0e0e0 25%, #e0e0e0 50%, #f0f0f0 50%, #f0f0f0 75%, #e0e0e0 75%, #e0e0e0 100%); background-size: 20px 20px;"
+          },
+          withoutImage: {
+            design: "text-heavy",
+            style: "font-size: 1.25rem; letter-spacing: -0.025em;"
+          }
+        }
       },
       pageStyle: {
         background: "#ffffff", 
@@ -64,59 +74,89 @@ const AIBookPreview = ({
       name: "Medieval Parchment",
       description: "Aged parchment design with elegant serif typography",
       coverStyle: {
-        background: "#f3e8c8", 
-        textColor: "#4b3621",
-        accentColor: "#8b0000",
-        borderRadius: "0.375rem",
-        boxShadow: "0 4px 14px -2px rgba(75, 54, 33, 0.3)",
-        fontFamily: "'EB Garamond', serif",
-        pattern: "url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJESURBVGhD7ZixahRRFIb/WdRCMCpEAoKkEIJVEIJYWFgFH8BCfAELX8BKrCx9AhsrX8DGwkpIoWBjYWEXiCJJsNBdz/ffc2dn7t2Z3cwUM7PnhwP3zNm7c//MOfeembOJk5wS5GHkpCKR/x15KBU/xt/z/Rr1/Unj/j7UmUXqH1KV3jE9Z3U6vWxcK4s+8XAeJRLZ2dm5Z/Y6AeNtRc8V8e52u73Z6XRWU8jYbO3v7z80ex0Se8rsNXrG3vb29m2ztTGWyMbGxiOzNWtQxK8wPAQ6kkhjHNGHdpZ4N2FILgfGEhGhG46TcHZMJGJmZ8JYzUPkUY3T7rVs0wgyqbknkUQiUxHZ3d19IRGLN9rt1g3LaoTYX6WIRUZa14dNjRGqZUzkMSuTl+9dLdnc3DzUeodMzLd8M0yjqVXGcBxzLqtGIpGpizwqzuROKpVeyEOr7mq1Wn3GuxWdJ5HmSCKRqYsMaoK/dGwVuBuNZsB04rZELH4xvJRKpXfmvpUPGZmO9czW7vKGRB5oxLI76VwZRWQonWdCyZFEIlMR+WPvz0fxjUQ+M9y3G4qr3d4t5iJqOKwY5qpyN3+Y3RG6FYyvqbKncj4y84eVLttnNRmL5B1JJHJ8IvqD8VyVIE6c/GX4QhVhrUf7HzVBMZnuBQ37lnvWYl1WVf7gPvIU65JFHHWNU2vEbhFfTCQS+f9FYtfuZZ2sZOZKcg2kVlKR0whDwpxLtXAcJ5jkH6aHOb8WU+OGAAAAAElFTkSuQmCC')"
+        background: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/parchment-texture.jpg')", 
+        textColor: "#3a2c1a",
+        accentColor: "#8b4513",
+        borderRadius: "0.25rem",
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+        fontFamily: "'Cinzel', serif",
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-pattern.png')",
+        imageDesign: {
+          withImage: {
+            placeholder: "framed-portrait",
+            style: "border: 12px solid #8b4513; box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5); background: linear-gradient(45deg, #d2b48c 25%, #c19a6b 25%, #c19a6b 50%, #d2b48c 50%, #d2b48c 75%, #c19a6b 75%, #c19a6b 100%); background-size: 10px 10px;"
+          },
+          withoutImage: {
+            design: "illuminated-manuscript",
+            style: "font-family: 'Cinzel Decorative', cursive; text-transform: uppercase; letter-spacing: 0.1em;"
+          }
+        }
       },
       pageStyle: {
-        background: "#f8f4e8", 
-        textColor: "#4b3621",
-        accentColor: "#8b0000",
-        borderRadius: "0.375rem",
-        boxShadow: "0 4px 14px -2px rgba(75, 54, 33, 0.2)",
+        background: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/parchment-texture-light.jpg')", 
+        textColor: "#3a2c1a",
+        accentColor: "#8b4513",
+        borderRadius: "0.25rem",
+        boxShadow: "0 6px 15px -3px rgba(0, 0, 0, 0.2)",
         fontFamily: "'EB Garamond', serif",
-        bulletStyle: "square",
-        pattern: "url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJESURBVGhD7ZixahRRFIb/WdRCMCpEAoKkEIJVEIJYWFgFH8BCfAELX8BKrCx9AhsrX8DGwkpIoWBjYWEXiCJJsNBdz/ffc2dn7t2Z3cwUM7PnhwP3zNm7c//MOfeembOJk5wS5GHkpCKR/x15KBU/xt/z/Rr1/Unj/j7UmUXqH1KV3jE9Z3U6vWxcK4s+8XAeJRLZ2dm5Z/Y6AeNtRc8V8e52u73Z6XRWU8jYbO3v7z80ex0Se8rsNXrG3vb29m2ztTGWyMbGxiOzNWtQxK8wPAQ6kkhjHNGHdpZ4N2FILgfGEhGhG46TcHZMJGJmZ8JYzUPkUY3T7rVs0wgyqbknkUQiUxHZ3d19IRGLN9rt1g3LaoTYX6WIRUZa14dNjRGqZUzkMSuTl+9dLdnc3DzUeodMzLd8M0yjqVXGcBxzLqtGIpGpizwqzuROKpVeyEOr7mq1Wn3GuxWdJ5HmSCKRqYsMaoK/dGwVuBuNZsB04rZELH4xvJRKpXfmvpUPGZmO9czW7vKGRB5oxLI76VwZRWQonWdCyZFEIlMR+WPvz0fxjUQ+M9y3G4qr3d4t5iJqOKwY5qpyN3+Y3RG6FYyvqbKncj4y84eVLttnNRmL5B1JJHJ8IvqD8VyVIE6c/GX4QhVhrUf7HzVBMZnuBQ37lnvWYl1WVf7gPvIU65JFHHWNU2vEbhFfTCQS+f9FYtfuZZ2sZOZKcg2kVlKR0whDwpxLtXAcJ5jkH6aHOb8WU+OGAAAAAElFTkSuQmCC')"
+        bulletStyle: "medieval-fleuron",
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-pattern.png')"
       }
     },
     futuristic: {
       name: "Futuristic",
-      description: "Bold, tech-inspired design with modern elements",
+      description: "Sci-fi inspired design with neon elements and glowing effects",
       coverStyle: {
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", 
-        textColor: "#e2e8f0",
-        accentColor: "#38bdf8",
-        borderRadius: "0.5rem",
-        boxShadow: "0 10px 30px -5px rgba(14, 165, 233, 0.3)",
-        fontFamily: "'Space Mono', monospace",
-        pattern: null
+        background: "linear-gradient(135deg, #000000 0%, #0a0a0a 100%)", 
+        textColor: "#00ffff",
+        accentColor: "#ff00ff",
+        borderRadius: "0",
+        boxShadow: "0 0 30px 5px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(255, 0, 255, 0.2)",
+        fontFamily: "'Orbitron', sans-serif",
+        pattern: "radial-gradient(circle, rgba(16,16,16,1) 0%, rgba(0,0,0,1) 100%)",
+        imageDesign: {
+          withImage: {
+            placeholder: "hologram",
+            style: "border: 2px solid #00ffff; box-shadow: 0 0 15px #00ffff; background: linear-gradient(45deg, rgba(0,0,0,0.7) 25%, rgba(20,20,20,0.7) 25%, rgba(20,20,20,0.7) 50%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.7) 75%, rgba(20,20,20,0.7) 75%, rgba(20,20,20,0.7) 100%); background-size: 4px 4px; animation: pulse 2s infinite alternate;"
+          },
+          withoutImage: {
+            design: "cyber-terminal",
+            style: "font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.2em; text-shadow: 0 0 10px #00ffff;"
+          }
+        }
       },
       pageStyle: {
-        background: "#0f172a", 
-        textColor: "#e2e8f0",
-        accentColor: "#38bdf8",
-        borderRadius: "0.5rem",
-        boxShadow: "0 10px 30px -5px rgba(14, 165, 233, 0.2)",
-        fontFamily: "'Space Mono', monospace",
-        bulletStyle: "none",
-        pattern: null
+        background: "#0a0a0a", 
+        textColor: "#ffffff",
+        accentColor: "#00ffff", 
+        borderRadius: "0",
+        boxShadow: "0 0 20px rgba(0, 255, 255, 0.2)",
+        fontFamily: "'Share Tech Mono', monospace",
+        bulletStyle: "circuit",
+        pattern: "linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px)"
       }
     },
     nature: {
       name: "Natural",
       description: "Organic design inspired by natural elements",
       coverStyle: {
-        background: "#f0f9e8", 
-        textColor: "#2d3b29",
-        accentColor: "#588157",
+        background: "linear-gradient(135deg, #2d6a4f 0%, #40916c 100%)", 
+        textColor: "#ffffff",
+        accentColor: "#d8f3dc",
         borderRadius: "1rem",
-        boxShadow: "0 10px 25px -5px rgba(88, 129, 87, 0.2)",
+        boxShadow: "0 10px 25px -5px rgba(45, 106, 79, 0.4), 0 0 0 8px rgba(216, 243, 220, 0.2)",
         fontFamily: "'Quicksand', sans-serif",
-        pattern: null
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/leaf-pattern.png')",
+        imageDesign: {
+          withImage: {
+            placeholder: "organic-frame",
+            style: "border: 8px solid #40916c; border-radius: 12px; background: repeating-linear-gradient(45deg, #d8f3dc, #d8f3dc 10px, #b7e4c7 10px, #b7e4c7 20px);"
+          },
+          withoutImage: {
+            design: "vine-decorated",
+            style: "font-family: 'Quicksand', sans-serif; background: url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/vine-decoration.png') no-repeat top center; background-size: 100% auto; padding-top: 60px;"
+          }
+        }
       },
       pageStyle: {
         background: "#f8fafc", 
@@ -126,7 +166,7 @@ const AIBookPreview = ({
         boxShadow: "0 6px 15px -3px rgba(88, 129, 87, 0.1)",
         fontFamily: "'Quicksand', sans-serif",
         bulletStyle: "leaf",
-        pattern: null
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/leaf-pattern-light.png')"
       }
     },
     elegant: {
@@ -137,9 +177,19 @@ const AIBookPreview = ({
         textColor: "#f5f5f4",
         accentColor: "#ca8a04",
         borderRadius: "0.5rem",
-        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)",
+        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(202, 138, 4, 0.3)",
         fontFamily: "'Playfair Display', serif",
-        pattern: null
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/elegant-pattern.png')",
+        imageDesign: {
+          withImage: {
+            placeholder: "gold-frame",
+            style: "border: 6px solid #ca8a04; box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5); background: repeating-linear-gradient(45deg, #1c1917, #1c1917 5px, #292524 5px, #292524 10px);"
+          },
+          withoutImage: {
+            design: "gold-embossed",
+            style: "font-family: 'Playfair Display', serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: linear-gradient(to bottom, #ffd700, #ca8a04); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"
+          }
+        }
       },
       pageStyle: {
         background: "#ffffff", 
@@ -149,7 +199,73 @@ const AIBookPreview = ({
         boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
         fontFamily: "'Playfair Display', serif",
         bulletStyle: "diamond",
-        pattern: null
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/elegant-pattern-light.png')"
+      }
+    },
+    artistic: {
+      name: "Artistic",
+      description: "Creative, abstract design with vibrant colors and expressive typography",
+      coverStyle: {
+        background: "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)", 
+        textColor: "#ffffff",
+        accentColor: "#fef08a",
+        borderRadius: "1.5rem",
+        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(254, 240, 138, 0.2)",
+        fontFamily: "'Comfortaa', cursive",
+        pattern: "radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.3) 0%, transparent 70%)",
+        imageDesign: {
+          withImage: {
+            placeholder: "paint-splash",
+            style: "border-radius: 40% 5% 40% 5%; box-shadow: 0 0 0 4px #ffffff, 0 0 0 8px #ec4899; background: radial-gradient(circle, #ec4899 0%, #6366f1 100%);"
+          },
+          withoutImage: {
+            design: "brush-strokes",
+            style: "font-family: 'Permanent Marker', cursive; background: url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/brush-strokes.png') no-repeat center; background-size: contain; padding: 30px;"
+          }
+        }
+      },
+      pageStyle: {
+        background: "#ffffff", 
+        textColor: "#18181b",
+        accentColor: "#ec4899",
+        borderRadius: "1rem",
+        boxShadow: "10px 10px 0 -3px #6366f1",
+        fontFamily: "'Quicksand', sans-serif",
+        bulletStyle: "star",
+        pattern: "linear-gradient(135deg, rgba(236, 72, 153, 0.03) 25%, transparent 25%, transparent 50%, rgba(236, 72, 153, 0.03) 50%, rgba(236, 72, 153, 0.03) 75%, transparent 75%, transparent)"
+      }
+    },
+    retro: {
+      name: "Retro",
+      description: "Vintage design with nostalgic elements from the 80s and 90s",
+      coverStyle: {
+        background: "linear-gradient(0deg, #e9c46a 0%, #f4a261 50%, #e76f51 100%)", 
+        textColor: "#264653",
+        accentColor: "#2a9d8f",
+        borderRadius: "0",
+        boxShadow: "6px 6px 0 0 #264653",
+        fontFamily: "'VT323', monospace",
+        pattern: "repeating-linear-gradient(45deg, rgba(42, 157, 143, 0.2) 0%, rgba(42, 157, 143, 0.2) 2%, transparent 2%, transparent 4%)",
+        imageDesign: {
+          withImage: {
+            placeholder: "tv-screen",
+            style: "border: 8px solid #264653; box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3); background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 50%, transparent 50%, transparent 51%, rgba(0, 0, 0, 0.2) 51%, rgba(0, 0, 0, 0.2) 100%); background-size: 100% 4px;"
+          },
+          withoutImage: {
+            design: "arcade-style",
+            style: "font-family: 'Press Start 2P', cursive; color: #2a9d8f; text-shadow: 2px 2px 0 #264653; letter-spacing: 0.1em;"
+          }
+        }
+      },
+      pageStyle: {
+        background: "#e9c46a", 
+        textColor: "#264653",
+        accentColor: "#2a9d8f",
+        borderRadius: "0",
+        boxShadow: "4px 4px 0 0 #264653",
+        fontFamily: "'Space Mono', monospace",
+        bulletStyle: "pixel",
+        pattern: "radial-gradient(circle, rgba(42, 157, 143, 0.1) 10%, transparent 10%), radial-gradient(circle, rgba(42, 157, 143, 0.1) 10%, transparent 10%)"
       }
     }
   };
@@ -205,6 +321,7 @@ const AIBookPreview = ({
   const BookCover = () => {
     const theme = currentTheme.coverStyle;
     const showParticipantName = config.visualStyle?.showParticipantName ?? true;
+    const generateImages = config.visualStyle?.generateImages ?? false; // Default to false as requested
     
     return (
       <div 
@@ -229,60 +346,88 @@ const AIBookPreview = ({
           </div>
         )}
         
-        {/* Image placeholder */}
-        {config.visualStyle?.generateImages && (
-          <div className="absolute inset-0 opacity-30 bg-cover bg-center" style={{
-            backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/sample-cover-bg.jpg')"
-          }}></div>
-        )}
-        
-        {/* Cover content overlay */}
-        <div className="absolute inset-0 flex flex-col justify-between p-6">
-          {/* Logo if available */}
-          {config.visualStyle?.logoUrl && (
-            <div className="w-full flex justify-end">
-              <img 
-                src={config.visualStyle.logoUrl} 
-                alt="Logo" 
-                className="w-16 h-16 object-contain"
-              />
+        {/* Dynamic cover content based on whether images are enabled */}
+        <div className="absolute inset-0 p-6 flex flex-col justify-between">
+          {/* Custom image placeholder if images are enabled */}
+          {generateImages ? (
+            <div className="w-full h-40 mb-4" style={{ 
+              ...(theme.imageDesign?.withImage?.style && { cssText: theme.imageDesign.withImage.style }) 
+            }}>
+              <div className="text-center p-2 h-full flex items-center justify-center">
+                <div className="text-xs mb-1" style={{ color: theme.accentColor }}>
+                  Image will be generated based on insights
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-40 mb-4 flex items-center justify-center" style={{
+              ...(theme.imageDesign?.withoutImage?.style && { cssText: theme.imageDesign.withoutImage.style })
+            }}>
+              {/* Extra decorative elements or alternative layout for image-less design */}
             </div>
           )}
           
-          {/* Title and info */}
-          <div className="mx-auto text-center mt-8 z-10">
-            <h2 className="text-xl font-bold mb-3" style={{ color: theme.textColor }}>
-              {agentType === 'nuggets' ? 'Insights & Discoveries' : 'Creative Innovations'}
+          {/* Title area */}
+          <div className="text-center mb-4">
+            <h2 
+              className="text-2xl font-bold mb-1"
+              style={{ color: theme.accentColor }}
+            >
+              {agentType === 'nuggets' ? 'Key Insights' : 'Creative Ideas'}
             </h2>
-            
-            <p className="text-sm opacity-90">Session insights 
-              {showParticipantName && participantName ? ` for ${participantName}` : ''}
-            </p>
-            
-            <div 
-              className="w-20 h-1 mx-auto my-4"
-              style={{ backgroundColor: theme.accentColor }}
-            ></div>
-            
-            <p className="text-lg mt-2">
-              {agentType === 'nuggets' ? 'Elias' : 'Sonia'}
+            <p className="text-sm opacity-90">
+              {agentType === 'nuggets' 
+                ? 'Valuable information extracted from your discussions' 
+                : 'Innovative concepts developed from your discussions'}
             </p>
           </div>
           
-          {/* Bottom decoration */}
-          <div className="flex justify-center mb-6">
-            <div 
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ 
-                backgroundColor: `${theme.accentColor}20`,
-                borderColor: theme.textColor
-              }}
-            >
-              <span className="text-2xl" style={{ color: theme.accentColor }}>
-                {agentType === 'nuggets' ? 'E' : 'S'}
-              </span>
+          {/* Author area */}
+          {showParticipantName && (
+            <div className="text-center mt-auto">
+              <p className="text-sm opacity-80">Prepared for</p>
+              <p 
+                className="font-semibold"
+                style={{ color: theme.accentColor }}
+              >
+                {participantName}
+              </p>
             </div>
-          </div>
+          )}
+          
+          {/* Add extra decorative elements based on theme */}
+          {currentThemeName === 'medieval' && (
+            <div className="absolute top-2 left-2 right-2 h-8" style={{ 
+              borderTop: `2px solid ${theme.accentColor}`,
+              borderBottom: `2px solid ${theme.accentColor}`,
+              opacity: 0.7
+            }}></div>
+          )}
+          
+          {currentThemeName === 'futuristic' && (
+            <div className="absolute bottom-3 left-6 right-6 h-1" style={{ 
+              background: `linear-gradient(to right, transparent, ${theme.accentColor}, transparent)`,
+              boxShadow: `0 0 10px ${theme.accentColor}`,
+              opacity: 0.8
+            }}></div>
+          )}
+          
+          {currentThemeName === 'artistic' && (
+            <div className="absolute top-0 right-0 w-20 h-20" style={{ 
+              background: `radial-gradient(circle, ${theme.accentColor}80 0%, transparent 70%)`,
+              opacity: 0.6
+            }}></div>
+          )}
+          
+          {currentThemeName === 'retro' && (
+            <div className="absolute top-3 left-3 right-3 text-center" style={{ 
+              fontFamily: "'VT323', monospace",
+              color: theme.accentColor,
+              textShadow: `1px 1px 0 ${theme.textColor}`
+            }}>
+              VOL. 01
+            </div>
+          )}
         </div>
       </div>
     );
@@ -306,7 +451,7 @@ const AIBookPreview = ({
     // Get insights for this page
     const pageInsights = sampleInsights.slice(0, 3);
     
-    // Image placeholder styling
+    // Image placeholder styling - only shown if generateImages is true
     const imagePlaceholder = config.visualStyle?.generateImages ? (
       <div className="w-full h-32 bg-gray-200 rounded mb-4 flex items-center justify-center" style={{
         backgroundColor: `${theme.accentColor}10`,
@@ -378,87 +523,79 @@ const AIBookPreview = ({
           ></div>
           
           {/* Content */}
-          <div className="flex-grow">
-            <ul className="space-y-3">
-              {pageInsights.map((insight, index) => (
-                <li key={index} className="flex items-start">
-                  <BulletPoint type={theme.bulletStyle} color={theme.accentColor} />
-                  <p className="text-sm ml-2">
-                    {insight}
-                  </p>
+          <div className="flex-1">
+            <ul className="space-y-2">
+              {pageInsights.map((insight, i) => (
+                <li key={i} className="flex items-start">
+                  <span 
+                    className="flex-shrink-0 mr-2 mt-1"
+                    style={{ color: theme.accentColor }}
+                  >
+                    {getBulletPoint(theme.bulletStyle)}
+                  </span>
+                  <span>{insight}</span>
                 </li>
               ))}
             </ul>
           </div>
           
-          {/* Footer with agent branding */}
-          <div className="flex justify-between items-center mt-6 pt-3 border-t" style={{ borderColor: `${theme.accentColor}30` }}>
-            <span className="text-xs opacity-70">
-              {agentType === 'nuggets' ? 'Elias AI Nuggets' : 'Sonia AI Lightbulbs'}
-              {showParticipantName && participantName ? ` - ${participantName}` : ''}
-            </span>
-            <span className="text-xs opacity-70">
-              Connected Mate
-            </span>
-          </div>
+          {/* Footer with attribution if showing participant name */}
+          {showParticipantName && (
+            <div className="mt-6 text-xs opacity-70 text-right">
+              <p>From {participantName}'s session</p>
+            </div>
+          )}
         </div>
       </div>
     );
   };
   
-  // Custom bullet point component
-  const BulletPoint = ({ type, color }) => {
-    switch(type) {
-      case 'square':
-        return (
-          <div className="w-3 h-3 mt-1 mr-1 flex-shrink-0" 
-            style={{ backgroundColor: color }}></div>
-        );
-      case 'diamond':
-        return (
-          <div className="w-3 h-3 mt-1 mr-1 flex-shrink-0 rotate-45" 
-            style={{ backgroundColor: color }}></div>
-        );
-      case 'leaf':
-        return (
-          <div className="flex-shrink-0 mt-1 mr-1 text-lg" style={{ color }}>•</div>
-        );
-      case 'none':
-        return (
-          <div className="w-4 flex-shrink-0"></div>
-        );
-      case 'circle':
-      default:
-        return (
-          <div className="w-3 h-3 mt-1 mr-1 rounded-full flex-shrink-0" 
-            style={{ backgroundColor: color }}></div>
-        );
+  // Function to get appropriate bullet point based on style
+  const getBulletPoint = (style) => {
+    const bulletStyles = {
+      'circle': '•',
+      'diamond': '◆',
+      'arrow': '→',
+      'star': '★',
+      'leaf': '☘️',
+      'medieval-fleuron': '❧',
+      'circuit': '⦿',
+      'pixel': '█',
+    };
+    
+    return bulletStyles[style] || bulletStyles.circle;
+  };
+
+  // Toggle between cover and page view
+  const toggleView = () => {
+    setShowCover(!showCover);
+    // Reset to first page when returning to pages
+    if (showCover) {
+      setPreviewPage(0);
     }
   };
   
   return (
-    <div className="ai-book-preview space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">
-          Book Preview
-        </h3>
-        <div className="space-x-2">
-          <button 
+    <div className="book-preview space-y-8">
+      {/* View toggle */}
+      <div className="flex justify-center mb-2">
+        <div className="inline-flex rounded-md shadow-sm" role="group">
+          <button
             onClick={() => setShowCover(true)}
-            className={`px-3 py-1 text-sm rounded-md ${
+            className={`px-4 py-2 text-sm font-medium rounded-l-md ${
               showCover 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-blue-600 text-white' 
+                : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
           >
             Cover
           </button>
-          <button 
+          <button
             onClick={() => setShowCover(false)}
-            className={`px-3 py-1 text-sm rounded-md ${
+            className={`px-4 py-2 text-sm font-medium rounded-r-md ${
               !showCover 
-                ? 'bg-blue-100 text-blue-700' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-blue-600 text-white' 
+                : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
           >
             Pages
@@ -466,7 +603,6 @@ const AIBookPreview = ({
         </div>
       </div>
       
-      {/* Preview area */}
       <div className="preview-container">
         {showCover ? (
           <BookCover />
@@ -546,7 +682,7 @@ const AIBookPreview = ({
               <label className="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  checked={config.visualStyle?.generateImages ?? true}
+                  checked={config.visualStyle?.generateImages ?? false}
                   onChange={(e) => handleStyleChange('generateImages', e.target.checked)}
                   className="mr-2 h-4 w-4 rounded border-gray-300"
                 />
