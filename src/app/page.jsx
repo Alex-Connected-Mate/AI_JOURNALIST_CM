@@ -98,6 +98,33 @@ export default function HomePage() {
                 <li>The application has a diagnostics system accessible at <code className="bg-gray-200 px-2 py-1 rounded">/admin/diagnostics</code></li>
               </ul>
             </div>
+            
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <h3 className="text-lg font-medium mb-2">Troubleshooting Tools:</h3>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <Link 
+                  href="/debug" 
+                  className="text-center px-3 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-sm font-medium"
+                >
+                  Diagnostic Page
+                </Link>
+                <Link 
+                  href="/force-dashboard" 
+                  className="text-center px-3 py-2 bg-purple-50 text-purple-600 rounded hover:bg-purple-100 text-sm font-medium"
+                >
+                  Emergency Dashboard Access
+                </Link>
+                <a 
+                  href="/emergency.html" 
+                  className="text-center px-3 py-2 bg-amber-50 text-amber-600 rounded hover:bg-amber-100 text-sm font-medium col-span-2"
+                >
+                  Emergency Recovery Page
+                </a>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                These tools are designed to help resolve application loading or initialization issues.
+              </p>
+            </div>
           </div>
         </div>
       </main>
