@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import TimerSettings from './TimerSettings';
@@ -62,6 +62,68 @@ const AIInteractionConfig = ({
 
   // Determine which agent to display based on the mode parameter
   const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
+  
+  // Extract settings from sessionConfig
+  const ai_settings = sessionConfig.settings?.ai_configuration || {};
+  
+  // Global timer settings
+  const timerEnabled = sessionConfig.timerEnabled || ai_settings.timerEnabled || DEFAULT_AI_CONFIGURATION.timerEnabled;
+  const timerDuration = sessionConfig.timerDuration || ai_settings.timerDuration || DEFAULT_AI_CONFIGURATION.timerDuration;
+  
+  // Agent configurations
+  const nuggets = ai_settings.nuggets || DEFAULT_NUGGETS_AGENT;
+  const lightbulbs = ai_settings.lightbulbs || DEFAULT_LIGHTBULBS_AGENT;
+
+  // Final analysis configuration
+  const [analysisItems, setAnalysisItems] = useState(
+    sessionConfig.settings?.finalAnalysis?.items || DEFAULT_AI_CONFIGURATION.finalAnalysis.items
+  );
+
+  // Selected analysis item for configuration in final analysis step
+  const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
+
+  // Handlers for agent configuration changes - MOVED UP before they are used
+  const handleNuggetsChange = useCallback((field, value) => {
+    updateSessionConfig({
+      ...sessionConfig,
+      settings: {
+        ...sessionConfig.settings,
+        ai_configuration: {
+          ...ai_settings,
+          nuggets: {
+            ...nuggets,
+            [field]: value
+          }
+        }
+      }
+    });
+  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
+  
+  const handleLightbulbsChange = useCallback((field, value) => {
+    updateSessionConfig({
+      ...sessionConfig,
+      settings: {
+        ...sessionConfig.settings,
+        ai_configuration: {
+          ...ai_settings,
+          lightbulbs: {
+            ...lightbulbs,
+            [field]: value
+          }
+        }
+      }
+    });
+  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
+
+  // Helper function to get current agent data based on mode parameter
+  const getCurrentAgent = useCallback(() => {
+    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
+  }, [activeAgentType, nuggets, lightbulbs]);
+
+  // Helper function to get current agent handler based on mode parameter
+  const getCurrentAgentHandler = useCallback(() => {
+    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+  }, [activeAgentType, handleNuggetsChange, handleLightbulbsChange]);
 
   // Update active section when currentSection changes
   useEffect(() => {
@@ -80,30 +142,9 @@ const AIInteractionConfig = ({
     setShowFullPrompt(false);
     console.log(`Mode changed to: ${mode}, activeAgentType set to: ${activeAgentType}`);
   }, [mode, currentStep, activeAgentType]);
-  
-  // Extract settings from sessionConfig
-  const ai_settings = sessionConfig.settings?.ai_configuration || {};
-  
-  // Global timer settings
-  const timerEnabled = sessionConfig.timerEnabled || ai_settings.timerEnabled || DEFAULT_AI_CONFIGURATION.timerEnabled;
-  const timerDuration = sessionConfig.timerDuration || ai_settings.timerDuration || DEFAULT_AI_CONFIGURATION.timerDuration;
-  
-  // Agent configurations
-  const nuggets = ai_settings.nuggets || DEFAULT_NUGGETS_AGENT;
-  const lightbulbs = ai_settings.lightbulbs || DEFAULT_LIGHTBULBS_AGENT;
-
-  // Helper function to get current agent data based on mode parameter
-  const getCurrentAgent = () => {
-    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
-  };
-
-  // Helper function to get current agent handler based on mode parameter
-  const getCurrentAgentHandler = () => {
-    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
-  };
 
   // Extraire les variables du template une seule fois au niveau principal
-  const extractTemplateVariables = () => {
+  const extractTemplateVariables = useCallback(() => {
     const agent = getCurrentAgent();
     const promptText = agent?.prompt || '';
     const variables = {};
@@ -121,13 +162,10 @@ const AIInteractionConfig = ({
     }
     
     return variables;
-  };
-  
-  // Obtenir les variables du template une fois
-  const templateVariables = extractTemplateVariables();
+  }, [activeAgentType, getCurrentAgent, sessionConfig]);
   
   // Fonction pour mettre à jour le prompt complet
-  const updatePromptWithVariables = (variables) => {
+  const updatePromptWithVariables = useCallback((variables) => {
     const agent = getCurrentAgent();
     // Ne pas modifier le prompt de base, juste pour l'affichage
     let updatedPrompt = agent?.prompt || '';
@@ -154,120 +192,13 @@ const AIInteractionConfig = ({
     }
     
     return updatedPrompt;
-  };
+  }, [activeAgentType, getCurrentAgent]);
+  
+  // Obtenir les variables du template une fois
+  const templateVariables = extractTemplateVariables();
   
   // Prompt mis à jour avec les variables
   const displayPrompt = updatePromptWithVariables(templateVariables);
-
-  // Final analysis configuration
-  const [analysisItems, setAnalysisItems] = useState(
-    sessionConfig.settings?.finalAnalysis?.items || DEFAULT_AI_CONFIGURATION.finalAnalysis.items
-  );
-
-  // Selected analysis item for configuration in final analysis step
-  const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
-
-  // Default prompt for AI Nuggets
-  const DEFAULT_NUGGETS_PROMPT = `# Objective
-You are a dedicated support agent named "AGENT NAMED" responsible for engaging participants in the "PROGRAME NAME" event questionnaire. Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
-
-# Style
-"Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional."
-
-# Rules
-
-1.  Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data. 
-2. **Sequential Flow**: 
-   - Ask each required question in order and proceed only after receiving a full response.
-3. **Clarification**: 
-   - If a response is incomplete or unclear, ask for additional details politely before moving on.
-4. **No Skipped Questions**: 
-   - All the required questions must be addressed without skipping or rephrasing unless necessary for clarity.
-5. **End of Conversation**: 
-   - Conclude the conversation only after confirming that all responses are complete.
-
-# Interaction Example
-
-### Step 1: Welcome
-- Start the conversation: 
-  "Hi! Welcome to "PROGRAME NAMED". Participants told ole that your had a great story ! Im your AI Journalist for today. So tell me what's your famous story !  😊"
-
-### Step 2: Required Questions (this question are template)
-1. **Problem and Opportunity**:  
-   "What is the main problem or opportunity your business is addressing?"
-   
-2. **Unique Solution**:  
-   "How does your solution stand out from others in the market?"
-   
-3. **Target Audience**:  
-   "Who are your primary customers or users, and what do they value most?"
-   
-4. **Impact and Results**:  
-   "What measurable impact have you achieved so far, or what are you aiming for?"
-   
-5. **Scalability and Vision**:  
-   "How do you plan to scale this solution, and what is your long-term vision?"
-
-### Step 3: Closing the Discussion
-- End on a positive and engaging note:  
-  "Ok, now let's refocus back on "TEATCHER NAME", and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
-
-  // Default prompt for AI Lightbulbs
-  const DEFAULT_LIGHTBULBS_PROMPT = `You are a dedicated support agent named "AGENT NAME" responsible for conducting the "PRGRAMENAME" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
-
-Style:
-
-Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.
-
-Rules:
-	1.	Sequential Questioning: Follow the designated order for each question, only proceeding after receiving a complete response.
-	2.	Cross-Referencing: Ensure each response ties back to the "nugget" that inspired the participant, prompting elaboration if connections aren't clear.
-	3.	Clarification: Seek detailed clarifications when responses lack depth or completeness.
-	4.	Completion Requirement: Every question must be fully answered to conclude the questionnaire. Confirm all necessary details are captured for each response.
-
-Steps:
-
-Step 1: Inspiration Nugget Reference
-	•	Required Question: "Which nugget specifically inspired you? Could you briefly describe it?"
-	•	Objective: "Identify the inspiration source to ensure a clear cross-reference between nuggets and insights."
-
-Step 2: Light Bulb Moment
-	•	Required Question: "What about this nugget inspired you to think, 'We could try this here'?"
-	•	Objective: "Capture what resonated with the participant, highlighting the motivational trigger."
-
-Step 4: From Inspiration to Action
-	•	Required Question: "What did this nugget inspire you to do? Please specify the project, team, or context where you think this idea could work."
-	•	Objective: "Link inspiration to a concrete action plan or context for application."
-
-Step 5: Implementation Steps
-	•	Required Question: "What concrete steps will you take to bring this idea to life in your own context?"
-	•	Objective: "Define specific, actionable steps, encouraging clear and practical strategies."
-
-Step 6: Timeline for Action
-	•	Required Question: "By when do you plan to test or implement this idea?"
-	•	Objective: "Establish a timeline, prompting commitment to a timeframe."
-
-Step 7: Testing and Success Measures
-	•	Required Question: "How will you test this idea to see if it gains traction? What will success look like?"
-	•	Objective: "Promote experimentation, defining success metrics for evaluation."
-
-Step 8: Challenges and Solutions
-	•	Required Question: "What potential challenges do you anticipate in implementing this idea, and how could you overcome them?"
-	•	Objective: "Encourage proactive thinking about obstacles and solutions."
-
-Step 9: Long-Term Impact
-	•	Required Question: "If this idea works, what could the long-term impact be for your team or business unit?"
-	•	Objective: "Have participants reflect on potential broader impacts and strategic alignment with Nexus goals."
-
-Closing the Discussion:
-
-After confirming all responses are complete, the agent should conclude with a personalized and lighthearted closing message.
-
-Rules for the Closing Message:
-	1.	"Mention Annecy and the specific context (e.g., being at the Palace de Menthon, the weather, etc.)."
-	2.	Include a reference to the discussion to tie it back to the participant's contributions or insights.
-	3.	"Add a touch of humor to make the participant smile (e.g., a joke about the rain, the lake, or the setting)."
-	4.	"Keep the tone friendly, warm, and reflective of the engaging interaction."`;
 
   // S'assurer que les prompts par défaut sont utilisés si nécessaire
   useEffect(() => {
@@ -279,10 +210,10 @@ Rules for the Closing Message:
     else if (activeAgentType === 'lightbulbs' && (!lightbulbs.prompt || lightbulbs.prompt.trim() === '')) {
       handleLightbulbsChange('prompt', DEFAULT_LIGHTBULBS_PROMPT);
     }
-  }, [activeAgentType, nuggets, lightbulbs, handleNuggetsChange, handleLightbulbsChange, DEFAULT_NUGGETS_PROMPT, DEFAULT_LIGHTBULBS_PROMPT]);
+  }, [activeAgentType, nuggets, lightbulbs, handleNuggetsChange, handleLightbulbsChange]);
 
   // Handler for timer settings changes
-  const handleTimerEnabledChange = (enabled) => {
+  const handleTimerEnabledChange = useCallback((enabled) => {
     const updatedConfig = {
       ...sessionConfig,
       settings: {
@@ -300,9 +231,9 @@ Rules for the Closing Message:
     if (onTimerConfigChange) {
       onTimerConfigChange({ enabled, duration: timerDuration });
     }
-  };
+  }, [sessionConfig, updateSessionConfig, ai_settings, timerDuration, onTimerConfigChange]);
   
-  const handleTimerDurationChange = (duration) => {
+  const handleTimerDurationChange = useCallback((duration) => {
     const updatedConfig = {
       ...sessionConfig,
       settings: {
@@ -320,43 +251,10 @@ Rules for the Closing Message:
     if (onTimerConfigChange) {
       onTimerConfigChange({ enabled: timerEnabled, duration });
     }
-  };
-  
-  // Handlers for agent configuration changes
-  const handleNuggetsChange = (field, value) => {
-    updateSessionConfig({
-      ...sessionConfig,
-      settings: {
-        ...sessionConfig.settings,
-        ai_configuration: {
-          ...ai_settings,
-          nuggets: {
-            ...nuggets,
-            [field]: value
-          }
-        }
-      }
-    });
-  };
-  
-  const handleLightbulbsChange = (field, value) => {
-    updateSessionConfig({
-      ...sessionConfig,
-      settings: {
-        ...sessionConfig.settings,
-        ai_configuration: {
-          ...ai_settings,
-          lightbulbs: {
-            ...lightbulbs,
-            [field]: value
-          }
-        }
-      }
-    });
-  };
+  }, [sessionConfig, updateSessionConfig, ai_settings, timerEnabled, onTimerConfigChange]);
 
   // Handle book configuration changes
-  const handleNuggetsBookConfigChange = (bookConfig) => {
+  const handleNuggetsBookConfigChange = useCallback((bookConfig) => {
     updateSessionConfig({
       ...sessionConfig,
       settings: {
@@ -370,9 +268,9 @@ Rules for the Closing Message:
         }
       }
     });
-  };
+  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
   
-  const handleLightbulbsBookConfigChange = (bookConfig) => {
+  const handleLightbulbsBookConfigChange = useCallback((bookConfig) => {
     updateSessionConfig({
       ...sessionConfig,
       settings: {
@@ -386,10 +284,10 @@ Rules for the Closing Message:
         }
       }
     });
-  };
+  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
 
   // Handle analysis items changes
-  const handleAnalysisItemsChange = (newItems) => {
+  const handleAnalysisItemsChange = useCallback((newItems) => {
     setAnalysisItems(newItems);
     
     const updatedConfig = {
@@ -409,36 +307,36 @@ Rules for the Closing Message:
     if (onAnalysisOrderChange) {
       onAnalysisOrderChange(newItems);
     }
-  };
+  }, [sessionConfig, updateSessionConfig, onAnalysisOrderChange]);
 
   // Toggle analysis item enabled state
-  const toggleAnalysisItemEnabled = (id) => {
+  const toggleAnalysisItemEnabled = useCallback((id) => {
     const updatedItems = analysisItems.map(item => 
       item.id === id ? { ...item, enabled: !item.enabled } : item
     );
     handleAnalysisItemsChange(updatedItems);
-  };
+  }, [analysisItems, handleAnalysisItemsChange]);
 
   // Handle image upload for agents
-  const handleNuggetsImageUploaded = (imageUrl) => {
+  const handleNuggetsImageUploaded = useCallback((imageUrl) => {
     handleNuggetsChange('imageUrl', imageUrl);
-  };
+  }, [handleNuggetsChange]);
 
-  const handleLightbulbsImageUploaded = (imageUrl) => {
+  const handleLightbulbsImageUploaded = useCallback((imageUrl) => {
     handleLightbulbsChange('imageUrl', imageUrl);
-  };
+  }, [handleLightbulbsChange]);
 
   // Reset agent images to defaults
-  const resetNuggetsImage = () => {
+  const resetNuggetsImage = useCallback(() => {
     handleNuggetsChange('imageUrl', DEFAULT_AGENT_IMAGES.nuggets);
-  };
+  }, [handleNuggetsChange]);
 
-  const resetLightbulbsImage = () => {
+  const resetLightbulbsImage = useCallback(() => {
     handleLightbulbsChange('imageUrl', DEFAULT_AGENT_IMAGES.lightbulbs);
-  };
+  }, [handleLightbulbsChange]);
 
   // Function to generate a preview response
-  const generatePreview = () => {
+  const generatePreview = useCallback(() => {
     if (!previewInput.trim()) return;
     
     setIsGeneratingPreview(true);
@@ -463,7 +361,7 @@ Rules for the Closing Message:
       setPreviewResponse(response);
       setIsGeneratingPreview(false);
     }, 1500);
-  };
+  }, [activeAgentType, previewInput]);
 
   // Render agent configuration section
   const renderAgentConfigSection = () => {

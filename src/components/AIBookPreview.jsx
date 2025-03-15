@@ -679,7 +679,7 @@ const AIBookPreview = ({
               textShadow: `1px 1px 0 ${theme.textColor}`
             }}>
               VOL. 01
-          </div>
+            </div>
           )}
           
           {currentThemeName === 'retroPlus' && (
@@ -722,7 +722,7 @@ const AIBookPreview = ({
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat'
               }}></div>
-          </div>
+            </div>
           )}
           
           {currentThemeName === 'developer' && (
@@ -749,7 +749,7 @@ const AIBookPreview = ({
                 fontWeight: 'bold',
                 fontFamily: "'Montserrat', sans-serif"
               }}>C</div>
-            </div>
+          </div>
           )}
         </div>
       </div>
@@ -789,7 +789,7 @@ const AIBookPreview = ({
     
     return (
       <div 
-        className={`book-page theme-${currentThemeName} relative overflow-hidden rounded-lg shadow-lg`}
+        className="book-page relative overflow-hidden rounded-lg shadow-lg"
         style={{
           aspectRatio: '1/1.4',
           backgroundColor: theme.background,
@@ -807,135 +807,6 @@ const AIBookPreview = ({
             <div className="w-full h-full bg-repeat" style={{
               backgroundImage: theme.pattern
             }}></div>
-          </div>
-        )}
-        
-        {/* Custom theme decorations */}
-        {currentThemeName === 'retroPlus' && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute bottom-0 left-0 right-0 h-20" 
-                style={{ 
-                  background: 'linear-gradient(to top, rgba(255, 41, 117, 0.2), transparent)',
-                  zIndex: 1 
-                }}>
-            </div>
-            <div className="absolute top-2 left-2 text-xs" 
-                style={{ 
-                  fontFamily: "'VT323', monospace",
-                  color: '#ff2975',
-                  opacity: 0.7,
-                  zIndex: 1
-                }}>
-              // SYNTHWAVE_DATA
-            </div>
-          </div>
-        )}
-
-        {currentThemeName === 'medievalIntense' && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-0 right-0 h-10" 
-                style={{ 
-                  borderBottom: '2px solid rgba(166, 60, 6, 0.3)',
-                  backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-border-top.png')",
-                  backgroundRepeat: 'repeat-x',
-                  backgroundSize: 'auto 10px',
-                  backgroundPosition: 'center bottom',
-                  opacity: 0.5,
-                  zIndex: 1
-                }}>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 h-10"
-                style={{ 
-                  borderTop: '2px solid rgba(166, 60, 6, 0.3)',
-                  backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-border-bottom.png')",
-                  backgroundRepeat: 'repeat-x',
-                  backgroundSize: 'auto 10px',
-                  backgroundPosition: 'center top',
-                  opacity: 0.5,
-                  zIndex: 1
-                }}>
-            </div>
-          </div>
-        )}
-
-        {currentThemeName === 'aiFuture' && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-4 right-4 h-6 w-6" 
-                style={{ 
-                  border: '1px solid rgba(100, 255, 218, 0.5)',
-                  borderRadius: '50%',
-                  animation: 'pulse 2s infinite alternate',
-                  zIndex: 1
-                }}>
-            </div>
-            <div className="absolute bottom-4 left-4 text-xs" 
-                style={{ 
-                  fontFamily: "'Exo 2', sans-serif",
-                  color: 'rgba(100, 255, 218, 0.5)',
-                  zIndex: 1
-                }}>
-              AI.SYSTEM.v7.3
-            </div>
-          </div>
-        )}
-
-        {currentThemeName === 'developer' && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-0 right-0 h-6" 
-                style={{ 
-                  background: '#21252b',
-                  borderBottom: '1px solid #4b5263',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '0 8px',
-                  fontSize: '10px',
-                  fontFamily: "'Fira Code', monospace",
-                  color: '#abb2bf',
-                  zIndex: 1
-                }}>
-              <span style={{ marginRight: '8px', color: '#e06c75' }}>●</span>
-              <span style={{ marginRight: '8px', color: '#98c379' }}>●</span>
-              <span style={{ marginRight: '12px', color: '#e5c07b' }}>●</span>
-              <span>insights.jsx</span>
-            </div>
-            <div className="absolute top-6 left-0 bottom-0 w-6" 
-                style={{ 
-                  borderRight: '1px solid rgba(97, 175, 239, 0.1)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '8px 0',
-                  fontSize: '10px',
-                  color: '#636d83',
-                  zIndex: 1
-                }}>
-              {Array.from({ length: 10 }, (_, i) => (
-                <div key={i} style={{ marginBottom: '4px' }}>{i + 1}</div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {currentThemeName === 'corporate' && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-2 right-2" 
-                style={{ 
-                  width: '30px',
-                  height: '30px',
-                  backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/corporate-logo.png')",
-                  backgroundSize: 'contain',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'center',
-                  opacity: 0.1,
-                  zIndex: 1
-                }}>
-            </div>
-            <div className="absolute bottom-2 left-0 right-0 h-1" 
-                style={{ 
-                  background: `linear-gradient(to right, transparent, ${theme.accentColor}30, transparent)`,
-                  zIndex: 1
-                }}>
-            </div>
           </div>
         )}
         
