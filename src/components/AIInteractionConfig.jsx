@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import TimerSettings from './TimerSettings';
@@ -28,11 +28,11 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
  * - Book configuration for generated output from AI agents
  * - Final analysis ordering for presentation of agent insights
  */
-const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = 'standard' }) => {
-  // Active agent state
-  const [activeAgent, setActiveAgent] = useState('nuggets');
+const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = 'standard', currentStep = 'nuggets' }) => {
+  // Active agent state based on current step in the flow
+  const [activeAgent, setActiveAgent] = useState(currentStep || 'nuggets');
   
-  // Active section state (config vs analysis vs book vs final)
+  // Active section state (config vs analysis vs book)
   const [activeSection, setActiveSection] = useState('config');
   
   // State for preview mode
@@ -40,6 +40,13 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
   const [previewInput, setPreviewInput] = useState('');
   const [previewResponse, setPreviewResponse] = useState('');
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+
+  // Update active agent when currentStep changes
+  useEffect(() => {
+    if (currentStep) {
+      setActiveAgent(currentStep);
+    }
+  }, [currentStep]);
   
   // Extract settings from sessionConfig
   const ai_settings = sessionConfig.settings?.ai_configuration || {};
@@ -56,6 +63,9 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
   const [analysisItems, setAnalysisItems] = useState(
     sessionConfig.settings?.finalAnalysis?.items || DEFAULT_AI_CONFIGURATION.finalAnalysis.items
   );
+
+  // Selected analysis item for configuration in final analysis step
+  const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
 
   // Handler for timer settings changes
   const handleTimerEnabledChange = (enabled) => {
@@ -165,20 +175,6 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
     });
   };
 
-  // Handle drag and drop for analysis items
-  const handleDragEnd = (result) => {
-    // Dropped outside the list
-    if (!result.destination) {
-      return;
-    }
-    
-    const items = Array.from(analysisItems);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    
-    handleAnalysisItemsChange(items);
-  };
-
   // Toggle analysis item enabled state
   const toggleAnalysisItemEnabled = (id) => {
     const updatedItems = analysisItems.map(item => 
@@ -266,7 +262,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
               ? 'Personnalisez l\'agent AI Nuggets (Elias) qui extrait les informations importantes des discussions.'
               : 'Personnalisez l\'agent AI Lightbulbs (Sonia) qui développe des idées créatives basées sur les discussions.'}
           </p>
-                </div>
+        </div>
 
         <div className="flex flex-col md:flex-row gap-6">
           {/* Agent image and basic info */}
@@ -297,9 +293,9 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                     placeholder={`Nom de l'agent ${activeAgent === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}`}
                   />
                 </div>
-                  </div>
-                </div>
               </div>
+            </div>
+          </div>
               
           {/* Agent configuration */}
           <div className="w-full md:w-2/3">
@@ -324,7 +320,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                 <p className="mt-1 text-xs text-gray-500">
                   Définissez les instructions que l'agent doit suivre pour interagir avec les participants.
                 </p>
-      </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -337,7 +333,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                     <option value="gpt-4">GPT-4 (Recommandé)</option>
                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                   </select>
-          </div>
+                </div>
           
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Température</label>
@@ -354,11 +350,11 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                     <span>Précis (0)</span>
                     <span>{agent.temperature || (activeAgent === 'nuggets' ? 0.7 : 0.8)}</span>
                     <span>Créatif (1)</span>
+                  </div>
                 </div>
               </div>
-              </div>
-              </div>
-              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -370,8 +366,8 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
     const handleAgentChange = getCurrentAgentHandler();
     const primaryColor = activeAgent === 'nuggets' ? 'blue' : 'amber';
 
-  return (
-    <div className="space-y-6">
+    return (
+      <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
           <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>
             Analyse des conversations pour {activeAgent === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}
@@ -380,8 +376,8 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
             {activeAgent === 'nuggets'
               ? 'Configurez comment l\'agent AI Nuggets (Elias) analyse et extrait les informations des discussions.'
               : 'Configurez comment l\'agent AI Lightbulbs (Sonia) identifie et développe les idées créatives.'}
-            </p>
-          </div>
+          </p>
+        </div>
           
         <Card className="p-4">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Paramètres d'analyse</h3>
@@ -412,7 +408,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                 <option value="paragraph">Paragraphes</option>
                 <option value="structured">Structure hiérarchique</option>
               </select>
-          </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -426,7 +422,7 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                   ? 'Instructions détaillées pour l\'extraction des informations importantes...'
                   : 'Instructions détaillées pour le développement des idées créatives...'}
               />
-          </div>
+            </div>
           
             <div className="flex flex-col space-y-2">
               <label className="flex items-center">
@@ -451,11 +447,11 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                 <span className="ml-2 text-sm text-gray-700">
                   Inclure les informations des participants dans l'analyse
                 </span>
-                  </label>
-                </div>
-              </div>
+              </label>
+            </div>
+          </div>
         </Card>
-                </div>
+      </div>
     );
   };
 
@@ -506,14 +502,8 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
     );
   };
 
-  // Render final analysis section with drag and drop
+  // Render final analysis section with drag and drop and configuration
   const renderFinalAnalysisSection = () => {
-    // State for selected analysis item
-    const [selectedItemId, setSelectedItemId] = useState(analysisItems[0]?.id || '');
-    
-    // Find the selected item object
-    const selectedItem = analysisItems.find(item => item.id === selectedItemId);
-    
     // Initialize analysisConfiguration if it doesn't exist
     const analysisConfiguration = sessionConfig.analysisConfiguration || {
       includeParticipantNames: true,
@@ -521,6 +511,9 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
       generateKeyInsights: true,
       analysisGenerationTime: 60
     };
+    
+    // Find the selected item object
+    const selectedItem = analysisItems.find(item => item.id === selectedAnalysisItemId);
     
     return (
       <div className="space-y-6">
@@ -540,8 +533,8 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                 items={analysisItems}
                 onReorder={handleAnalysisItemsChange}
                 onToggleItem={toggleAnalysisItemEnabled}
-                selectedItemId={selectedItemId}
-                onSelectItem={setSelectedItemId}
+                selectedItemId={selectedAnalysisItemId}
+                onSelectItem={setSelectedAnalysisItemId}
               />
               
               <div className="mt-6 bg-yellow-50 p-4 rounded-md border border-yellow-200">
@@ -578,13 +571,13 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
       <div className="mt-6 border-t pt-4">
         <div className="flex justify-between items-center mb-2">
           <h4 className="font-medium">Prévisualisation de l'agent</h4>
-                    <button
+          <button
             onClick={() => setPreviewMode(!previewMode)}
             className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
           >
             {previewMode ? "Masquer" : "Afficher"} la prévisualisation
-                    </button>
-            </div>
+          </button>
+        </div>
             
         {previewMode && (
           <div className="bg-gray-50 rounded-md p-3 mt-2">
@@ -597,13 +590,13 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
             />
             
             <div className="flex justify-end">
-                    <button
+              <button
                 onClick={generatePreview}
                 disabled={isGeneratingPreview || !previewInput.trim()}
                 className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
               >
                 {isGeneratingPreview ? "Génération..." : "Générer une réponse"}
-                    </button>
+              </button>
             </div>
             
             {previewResponse && (
@@ -612,61 +605,72 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
                 <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
               </div>
             )}
-            </div>
+          </div>
         )}
       </div>
     );
   };
 
+  // Render the current step in the flow
+  const renderCurrentStepContent = () => {
+    // Show only the final analysis section if we're in the final step
+    if (activeAgent === 'final-analysis') {
+      return renderFinalAnalysisSection();
+    }
+    
+    // Otherwise, show the current agent configuration based on activeSection
+    switch (activeSection) {
+      case 'config':
+        return renderAgentConfigSection();
+      case 'analysis':
+        return renderAgentAnalysisSection();
+      case 'book':
+        return renderBookConfigSection();
+      default:
+        return renderAgentConfigSection();
+    }
+  };
+
   return (
     <div className="space-y-8">
-      {/* Agent Selection Tabs */}
-      <Tabs defaultValue="nuggets" value={activeAgent} onValueChange={setActiveAgent}>
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="nuggets">AI Nuggets (Elias)</TabsTrigger>
-          <TabsTrigger value="lightbulbs">AI Lightbulbs (Sonia)</TabsTrigger>
+      {/* Flow navigation tabs */}
+      <Tabs defaultValue={activeAgent} value={activeAgent} onValueChange={setActiveAgent}>
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="nuggets">1. AI Nuggets</TabsTrigger>
+          <TabsTrigger value="lightbulbs">2. AI Lightbulbs</TabsTrigger>
+          <TabsTrigger value="final-analysis">3. Analyse Finale</TabsTrigger>
         </TabsList>
       </Tabs>
       
-      {/* Configuration Sections */}
-      <Tabs defaultValue="config" value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="grid grid-cols-4 mb-4">
-          <TabsTrigger value="config">Configuration Agent</TabsTrigger>
-          <TabsTrigger value="analysis">Analyse Cornea</TabsTrigger>
-          <TabsTrigger value="book">Book</TabsTrigger>
-          <TabsTrigger value="final">Analyse Finale</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="config">
-          {renderAgentConfigSection()}
-        </TabsContent>
-        
-        <TabsContent value="analysis">
-          {renderAgentAnalysisSection()}
-        </TabsContent>
-        
-        <TabsContent value="book">
-          {renderBookConfigSection()}
-        </TabsContent>
-
-        <TabsContent value="final">
-          {renderFinalAnalysisSection()}
-        </TabsContent>
-      </Tabs>
+      {/* Configuration tabs - only shown for agent config, not for final analysis */}
+      {activeAgent !== 'final-analysis' && (
+        <Tabs defaultValue="config" value={activeSection} onValueChange={setActiveSection}>
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="config">Configuration Agent</TabsTrigger>
+            <TabsTrigger value="analysis">Analyse Cornea</TabsTrigger>
+            <TabsTrigger value="book">Book</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
       
-      {/* Timer Settings Card */}
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-4">Paramètres du Timer</h2>
-        <TimerSettings
-          timerEnabled={timerEnabled}
-          timerDuration={timerDuration}
-          onTimerEnabledChange={handleTimerEnabledChange}
-          onTimerDurationChange={handleTimerDurationChange}
-        />
-      </Card>
+      {/* Dynamic content based on current step and section */}
+      {renderCurrentStepContent()}
       
-      {/* Preview Section */}
-      {previewMode && renderPreviewSection()}
+      {/* Timer Settings Card - only shown for agent configuration */}
+      {activeAgent !== 'final-analysis' && (
+        <Card className="p-4">
+          <h2 className="text-lg font-semibold mb-4">Paramètres du Timer</h2>
+          <TimerSettings
+            timerEnabled={timerEnabled}
+            timerDuration={timerDuration}
+            onTimerEnabledChange={handleTimerEnabledChange}
+            onTimerDurationChange={handleTimerDurationChange}
+          />
+        </Card>
+      )}
+      
+      {/* Preview Section - only shown for agent configuration */}
+      {activeAgent !== 'final-analysis' && previewMode && renderPreviewSection()}
     </div>
   );
 };
