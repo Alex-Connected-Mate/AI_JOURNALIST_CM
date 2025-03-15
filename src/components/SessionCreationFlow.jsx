@@ -481,6 +481,166 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
             mode="lightbulb"
           />
         );
+      case 'analysis-config':
+        // Préparer les éléments d'analyse pour le composant de réorganisation
+        const analysisItems = sessionConfig.analysisConfiguration?.items || [
+          { id: 'nuggets', type: 'nuggets', title: 'Nuggets Analysis', enabled: true },
+          { id: 'lightbulbs', type: 'lightbulbs', title: 'Lightbulbs Analysis', enabled: true },
+          { id: 'global', type: 'global', title: 'Overall Analysis', enabled: true }
+        ];
+        
+        const handleReorderAnalysis = (newItems) => {
+          updateSessionConfig({
+            ...sessionConfig,
+            analysisConfiguration: {
+              ...sessionConfig.analysisConfiguration,
+              items: newItems
+            }
+          });
+        };
+        
+        const handleToggleAnalysisItem = (itemId) => {
+          const updatedItems = analysisItems.map(item => 
+            item.id === itemId ? { ...item, enabled: !item.enabled } : item
+          );
+          
+          handleReorderAnalysis(updatedItems);
+        };
+        
+        return (
+          <div className="space-y-6">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <h3 className="text-lg font-medium text-blue-800 mb-2">Configuration de l'Analyse Finale</h3>
+              <p className="text-sm text-blue-700 mb-4">
+                Réorganisez et configurez les étapes d'analyse qui seront présentées dans le rapport final. 
+                Utilisez le glisser-déposer ou les flèches pour changer l'ordre.
+              </p>
+              
+              <div className="bg-white p-4 rounded-md border border-gray-200">
+                <h4 className="text-md font-medium text-gray-800 mb-4">Ordre des Analyses</h4>
+                
+                {analysisItems.map((item, index) => (
+                  <div 
+                    key={item.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border mb-2 ${
+                      item.enabled 
+                        ? item.type === 'nuggets' 
+                          ? 'bg-indigo-50 border-indigo-200' 
+                          : item.type === 'lightbulbs' 
+                            ? 'bg-amber-50 border-amber-200' 
+                            : 'bg-emerald-50 border-emerald-200'
+                        : 'bg-gray-100 border-gray-300 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {item.type === 'nuggets' && (
+                        <svg className="w-4 h-4 text-indigo-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l4 4M17 3h-4v4M13 21l4-4M17 21h-4v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      {item.type === 'lightbulbs' && (
+                        <svg className="w-4 h-4 text-amber-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707M12 21v-1M5.6 18.6l.7-.7m12.1.7l-.7-.7M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      {item.type === 'global' && (
+                        <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 3v18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M18.4 9L8 14.4l6.4 6.4L19 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      <span className={`text-sm font-medium ${!item.enabled ? 'text-gray-400' : ''}`}>
+                        {index + 1}. {item.title}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => handleToggleAnalysisItem(item.id)}
+                        className={`w-8 h-5 rounded-full relative mx-1 transition-colors ${item.enabled ? 'bg-purple-500' : 'bg-gray-300'}`}
+                      >
+                        <span 
+                          className={`absolute top-0.5 ${item.enabled ? 'right-0.5' : 'left-0.5'} bg-white w-4 h-4 rounded-full transition-all`}
+                        />
+                      </button>
+                      
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => {
+                            if (index === 0) return;
+                            const newItems = [...analysisItems];
+                            [newItems[index], newItems[index - 1]] = [newItems[index - 1], newItems[index]];
+                            handleReorderAnalysis(newItems);
+                          }}
+                          disabled={index === 0}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 15l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (index === analysisItems.length - 1) return;
+                            const newItems = [...analysisItems];
+                            [newItems[index], newItems[index + 1]] = [newItems[index + 1], newItems[index]];
+                            handleReorderAnalysis(newItems);
+                          }}
+                          disabled={index === analysisItems.length - 1}
+                          className="text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <h3 className="text-lg font-medium text-blue-800 mb-2">Aperçu du Flux d'Analyse</h3>
+              <p className="text-sm text-blue-700 mb-4">
+                L'analyse finale se déroulera dans l'ordre défini ci-dessus, en n'incluant que les étapes activées.
+              </p>
+              
+              <div className="bg-white p-4 rounded-md border border-gray-200">
+                <div className="space-y-2">
+                  {analysisItems
+                    .filter(item => item.enabled)
+                    .map((item, index) => (
+                      <div 
+                        key={item.id}
+                        className={`p-3 rounded-lg border ${
+                          item.type === 'nuggets' 
+                            ? 'bg-indigo-50 border-indigo-200' 
+                            : item.type === 'lightbulbs' 
+                              ? 'bg-amber-50 border-amber-200' 
+                              : 'bg-emerald-50 border-emerald-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-700">{index + 1}.</span>
+                          <span className="font-medium">
+                            {item.title}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  
+                  {analysisItems.filter(item => item.enabled).length === 0 && (
+                    <div className="p-4 text-center text-gray-500 italic">
+                      Aucune étape d'analyse activée. Activez au moins une étape pour générer un rapport.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       case 'analysis':
         return null;
       case 'nuggets-analysis':
@@ -1107,6 +1267,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       { id: 'discussion', label: 'First Step' },
       { id: 'ai-interaction', label: 'AI Journalist: Nuggets' },
       { id: 'lightbulb', label: 'AI Journalist: Lightbulbs' },
+      { id: 'analysis-config', label: 'Configure Analysis' },
       { id: 'analysis', label: 'Final Analysis' }
     ];
     

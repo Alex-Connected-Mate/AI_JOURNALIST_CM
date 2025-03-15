@@ -1,6 +1,9 @@
 {
   "session": {
     "flow": {
+      "analysis_config": "Configuration de l'Analyse",
+      "analysis_config_short": "Config Analyse",
+      "analysis_config_desc": "Configurer l'ordre et les paramètres de l'analyse finale",
       "lightbulb_desc": "Configuration des règles pour la détection des idées innovantes",
       "lightbulb_short": "Idées innovantes",
       "ai_interaction_desc": "Configuration de l'interaction avec l'IA",
