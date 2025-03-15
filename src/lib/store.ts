@@ -316,13 +316,16 @@ export const useStore = create<AppState>()(
         }
         
         logAction('initApp started');
+        console.log('🔄 [STORE] initApp started - Beginning app initialization');
         set({ loading: true, error: null });
         
         try {
           // Vérifier si l'utilisateur est connecté
+          console.log('🔄 [STORE] initApp - Checking session');
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
           if (sessionError) {
+            console.error('❌ [STORE] initApp - Session check failed', sessionError);
             logAction('initApp session check failed', sessionError);
             set({ 
               authChecked: true, 
@@ -334,6 +337,7 @@ export const useStore = create<AppState>()(
           }
           
           if (!session) {
+            console.log('ℹ️ [STORE] initApp - No session found, continuing as unauthenticated');
             logAction('initApp no session found');
             set({ 
               user: null, 
@@ -342,14 +346,23 @@ export const useStore = create<AppState>()(
               loading: false, 
               appInitialized: true 
             });
+            console.log('✅ [STORE] initApp - Initialization completed (unauthenticated)');
             return;
           }
+          
+          // Log de diagnostic plus détaillé
+          console.log('ℹ️ [STORE] initApp - Session found', { 
+            userId: session.user.id, 
+            email: session.user.email,
+            sessionExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
+          });
           
           logAction('initApp session found', { userId: session.user.id });
           set({ user: session.user });
           
           // Synchroniser les données entre auth.users et public.users
           try {
+            console.log('🔄 [STORE] initApp - Ensuring user record exists');
             logAction('initApp ensuring user record sync');
             const { data: syncedProfile, error: syncError } = await ensureUserRecord(
               session.user.id, 
@@ -388,6 +401,7 @@ export const useStore = create<AppState>()(
             // Charger les sessions de l'utilisateur
             await get().fetchSessions();
           } catch (error) {
+            console.error('❌ [STORE] initApp - Unexpected error during user record sync', error);
             logAction('initApp unexpected error', error);
             set({ error: error instanceof Error ? error.message : 'Unknown error during initialization' });
           }
@@ -396,6 +410,7 @@ export const useStore = create<AppState>()(
           // TODO: Implémenter si nécessaire
           
           // Finaliser l'initialisation
+          console.log('✅ [STORE] initApp - Initialization completed successfully');
           set({ 
             authChecked: true, 
             loading: false, 
@@ -404,6 +419,7 @@ export const useStore = create<AppState>()(
           
           logAction('initApp completed successfully');
         } catch (error) {
+          console.error('❌ [STORE] initApp - Critical error during initialization', error);
           logAction('initApp failed', error);
           set({ 
             error: error instanceof Error ? error.message : 'Failed to initialize app',

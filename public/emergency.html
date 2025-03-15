@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accès d'urgence - Connected Mate AI</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f9fafb;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #1f2937;
+    }
+    
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      color: #1f2937;
+      font-size: 24px;
+      margin-top: 0;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 15px;
+    }
+    
+    h2 {
+      color: #374151;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    
+    p {
+      margin: 15px 0;
+      line-height: 1.5;
+      color: #4b5563;
+    }
+    
+    .button {
+      display: inline-block;
+      background-color: #1d4ed8;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-size: 16px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .button:hover {
+      background-color: #1e40af;
+    }
+    
+    .button.secondary {
+      background-color: #f3f4f6;
+      color: #1f2937;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .button.secondary:hover {
+      background-color: #e5e7eb;
+    }
+    
+    .button.danger {
+      background-color: #f87171;
+      color: white;
+    }
+    
+    .button.danger:hover {
+      background-color: #ef4444;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    
+    .alert {
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+    
+    .alert.warning {
+      background-color: #fffbeb;
+      border: 1px solid #fef3c7;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Connected Mate AI - Accès d'urgence</h1>
+    
+    <p>Cette page permet de contourner les problèmes d'initialisation de l'application.</p>
+    
+    <div class="alert warning">
+      <strong>Note :</strong> Utilisez ces options uniquement si l'application ne se charge pas normalement.
+    </div>
+    
+    <h2>Accès direct aux pages</h2>
+    <p>Essayez d'accéder directement à ces pages :</p>
+    
+    <div class="grid">
+      <a href="/debug" class="button secondary">Page de diagnostic</a>
+      <a href="/force-dashboard" class="button">Forcer le dashboard</a>
+    </div>
+    
+    <h2>Actions de maintenance</h2>
+    
+    <button id="clearStorage" class="button danger" style="width: 100%">
+      Effacer le stockage et recharger
+    </button>
+    
+    <button id="forceInit" class="button" style="width: 100%; margin-top: 10px">
+      Forcer l'initialisation
+    </button>
+  </div>
+  
+  <script>
+    // Fonction pour effacer le stockage local
+    document.getElementById('clearStorage').addEventListener('click', function() {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        alert('Stockage effacé avec succès. La page va être rechargée.');
+        window.location.href = '/';
+      } catch (e) {
+        alert('Erreur lors de l\'effacement du stockage : ' + e);
+      }
+    });
+    
+    // Fonction pour forcer l'initialisation
+    document.getElementById('forceInit').addEventListener('click', function() {
+      try {
+        localStorage.setItem('app_emergency_override', 'true');
+        localStorage.setItem('app_emergency_override_time', new Date().toISOString());
+        localStorage.setItem('app_force_initialized', 'true');
+        
+        alert('Initialisation forcée. Redirection vers la page principale...');
+        window.location.href = '/';
+      } catch (e) {
+        alert('Erreur lors du forçage de l\'initialisation : ' + e);
+      }
+    });
+  </script>
+</body>
+</html> 
