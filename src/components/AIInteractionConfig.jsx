@@ -76,6 +76,8 @@ const AIInteractionConfig = ({
     setPreviewMode(false);
     setPreviewInput('');
     setPreviewResponse('');
+    // Réinitialiser également l'état d'affichage du prompt complet
+    setShowFullPrompt(false);
     console.log(`Mode changed to: ${mode}, activeAgentType set to: ${activeAgentType}`);
   }, [mode, currentStep, activeAgentType]);
   
@@ -89,6 +91,63 @@ const AIInteractionConfig = ({
   // Agent configurations
   const nuggets = ai_settings.nuggets || DEFAULT_NUGGETS_AGENT;
   const lightbulbs = ai_settings.lightbulbs || DEFAULT_LIGHTBULBS_AGENT;
+
+  // Extraire les variables du template une seule fois au niveau principal
+  const extractTemplateVariables = () => {
+    const agent = getCurrentAgent();
+    const promptText = agent?.prompt || '';
+    const variables = {};
+    const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
+    
+    if (activeAgentType === 'nuggets') {
+      // Variables spécifiques à Nuggets
+      variables.agentName = agent?.agentName || agentName;
+      variables.programName = sessionConfig.title || '';
+      variables.teacherName = sessionConfig.teacherName || '';
+    } else if (activeAgentType === 'lightbulbs') {
+      // Variables spécifiques à Lightbulbs
+      variables.agentName = agent?.agentName || agentName;
+      variables.programName = sessionConfig.title || '';
+    }
+    
+    return variables;
+  };
+  
+  // Obtenir les variables du template une fois
+  const templateVariables = extractTemplateVariables();
+  
+  // Fonction pour mettre à jour le prompt complet
+  const updatePromptWithVariables = (variables) => {
+    const agent = getCurrentAgent();
+    // Ne pas modifier le prompt de base, juste pour l'affichage
+    let updatedPrompt = agent?.prompt || '';
+    
+    // Remplacer les variables dans le prompt selon le type d'agent
+    if (activeAgentType === 'nuggets') {
+      if (variables.agentName) {
+        updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
+      }
+      if (variables.programName) {
+        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
+        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
+      }
+      if (variables.teacherName) {
+        updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
+      }
+    } else if (activeAgentType === 'lightbulbs') {
+      if (variables.agentName) {
+        updatedPrompt = updatedPrompt.replace(/\"AGENT NAME\"/g, `"${variables.agentName}"`);
+      }
+      if (variables.programName) {
+        updatedPrompt = updatedPrompt.replace(/\"PRGRAMENAME\"/g, `"${variables.programName}"`);
+      }
+    }
+    
+    return updatedPrompt;
+  };
+  
+  // Prompt mis à jour avec les variables
+  const displayPrompt = updatePromptWithVariables(templateVariables);
 
   // Final analysis configuration
   const [analysisItems, setAnalysisItems] = useState(
@@ -421,68 +480,6 @@ Rules for the Closing Message:
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
     
-    // Extraction des variables du template
-    const extractTemplateVariables = () => {
-      const promptText = agent.prompt || '';
-      const variables = {};
-      
-      if (activeAgentType === 'nuggets') {
-        // Variables spécifiques à Nuggets
-        const agentNameMatch = promptText.match(/\"AGENT NAMED\"/);
-        const programNameMatch = promptText.match(/\"PROGRAME NAME\"/);
-        const programNamedMatch = promptText.match(/\"PROGRAME NAMED\"/);
-        const teacherNameMatch = promptText.match(/\"TEATCHER NAME\"/);
-        
-        variables.agentName = agent.agentName || agentName;
-        variables.programName = programNamedMatch ? sessionConfig.title || '' : '';
-        variables.teacherName = teacherNameMatch ? sessionConfig.teacherName || '' : '';
-      } else if (activeAgentType === 'lightbulbs') {
-        // Variables spécifiques à Lightbulbs
-        const agentNameMatch = promptText.match(/\"AGENT NAME\"/);
-        const programNameMatch = promptText.match(/\"PRGRAMENAME\"/);
-        
-        variables.agentName = agent.agentName || agentName;
-        variables.programName = programNameMatch ? sessionConfig.title || '' : '';
-      }
-      
-      return variables;
-    };
-    
-    // Récupération des variables du template
-    const templateVariables = extractTemplateVariables();
-    
-    // Fonction pour mettre à jour le prompt complet
-    const updatePromptWithVariables = (variables) => {
-      // Ne pas modifier le prompt de base, juste pour l'affichage
-      let updatedPrompt = agent.prompt || '';
-      
-      // Remplacer les variables dans le prompt selon le type d'agent
-      if (activeAgentType === 'nuggets') {
-        if (variables.agentName) {
-          updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
-        }
-        if (variables.programName) {
-          updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
-          updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
-        }
-        if (variables.teacherName) {
-          updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
-        }
-      } else if (activeAgentType === 'lightbulbs') {
-        if (variables.agentName) {
-          updatedPrompt = updatedPrompt.replace(/\"AGENT NAME\"/g, `"${variables.agentName}"`);
-        }
-        if (variables.programName) {
-          updatedPrompt = updatedPrompt.replace(/\"PRGRAMENAME\"/g, `"${variables.programName}"`);
-        }
-      }
-      
-      return updatedPrompt;
-    };
-    
-    // Prompt mis à jour avec les variables
-    const displayPrompt = updatePromptWithVariables(templateVariables);
-    
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
@@ -776,209 +773,20 @@ Rules for the Closing Message:
     );
   };
 
-  // Render book configuration section
-  const renderBookConfigSection = () => {
-    const bookConfigProps = {
-      initialConfig: {
-        agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
-        programName: '',
-        teacherName: '',
-        customRules: [],
-        customQuestions: [],
-        analysisConfig: {
-          themes: [],
-          keywordsPerTheme: {},
-          sentimentAnalysis: true,
-          extractKeyInsights: true
-        },
-        bookConfig: activeAgentType === 'nuggets' 
-          ? (nuggets.bookConfig || { sections: [], visualStyle: {} }) 
-          : (lightbulbs.bookConfig || { sections: [], visualStyle: {} })
-      },
-      agentType: activeAgentType,
-      onSave: (config) => {
-        if (activeAgentType === 'nuggets') {
-          handleNuggetsBookConfigChange(config.bookConfig);
-        } else {
-          handleLightbulbsBookConfigChange(config.bookConfig);
-        }
-      }
-    };
-
-    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
-    
-    return (
-      <div className="space-y-6">
-        <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
-          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Book Configuration for {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
-          <p className={`text-${primaryColor}-700 text-sm`}>
-            {activeAgentType === 'nuggets' 
-              ? 'Customize the appearance and content of the book generated from AI Nuggets agent analyses.'
-              : 'Customize the appearance and content of the book generated from AI Lightbulbs agent analyses.'}
-          </p>
-        </div>
-        
-        <AIPromptConfig {...bookConfigProps} />
-      </div>
-    );
-  };
-
-  // Render final analysis section with drag and drop and configuration
-  const renderFinalAnalysisSection = () => {
-    // Initialize analysisConfiguration if it doesn't exist
-    const analysisConfiguration = sessionConfig.analysisConfiguration || {
-      includeParticipantNames: true,
-      includeQuotesInAnalysis: true,
-      generateKeyInsights: true,
-      analysisGenerationTime: 60
-    };
-    
-    // Find the selected item object
-    const selectedItem = analysisItems.find(item => item.id === selectedAnalysisItemId);
-    
-    return (
-      <div className="space-y-6">
-        <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-md mb-4">
-          <h3 className="font-semibold text-purple-800 mb-2">Final Analysis Configuration</h3>
-          <p className="text-purple-700 text-sm">
-            Organize the presentation order of the different analyses and configure each section according to your needs.
-            Use the left panel to reorganize the analyses, and the right panel to configure the selected analysis.
-          </p>
-        </div>
-        
-        <Card className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Panel - Analysis Order List */}
-            <div className="border-r pr-6">
-              <AnalysisOrderList 
-                items={analysisItems}
-                onReorder={handleAnalysisItemsChange}
-                onToggleItem={toggleAnalysisItemEnabled}
-                selectedItemId={selectedAnalysisItemId}
-                onSelectItem={setSelectedAnalysisItemId}
-              />
-              
-              <div className="mt-6 bg-yellow-50 p-4 rounded-md border border-yellow-200">
-                <h4 className="font-medium text-yellow-800 mb-2">Usage Tips</h4>
-                <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
-                  <li>The order of analyses directly impacts the learning experience</li>
-                  <li>Start with the most relevant analysis for your educational context</li>
-                  <li>The global analysis is generally more effective as a conclusion</li>
-                </ul>
-              </div>
-            </div>
-            
-            {/* Right Panel - Analysis Configuration */}
-            <div className="pl-0 md:pl-6">
-              <AnalysisConfigPanel
-                selectedItem={selectedItem}
-                items={analysisItems}
-                updateSessionConfig={updateSessionConfig}
-                sessionConfig={sessionConfig}
-                analysisConfiguration={analysisConfiguration}
-              />
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  };
-
-  // Render preview section
-  const renderPreviewSection = () => {
-    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
-    
-    return (
-      <div className="mt-6 border-t pt-4">
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="font-medium">Agent Preview</h4>
-          <button
-            onClick={() => setPreviewMode(!previewMode)}
-            className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
-          >
-            {previewMode ? "Hide" : "Show"} preview
-          </button>
-        </div>
-            
-        {previewMode && (
-          <div className="bg-gray-50 rounded-md p-3 mt-2">
-            <textarea
-              className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 mb-2`}
-              value={previewInput}
-              onChange={(e) => setPreviewInput(e.target.value)}
-              placeholder="Enter a message to test the agent..."
-              rows={2}
-            />
-            
-            <div className="flex justify-end">
-              <button
-                onClick={generatePreview}
-                disabled={isGeneratingPreview || !previewInput.trim()}
-                className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
-              >
-                {isGeneratingPreview ? "Generating..." : "Generate a response"}
-              </button>
-            </div>
-            
-            {previewResponse && (
-              <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-                <h5 className="text-sm font-medium text-gray-700 mb-1">Agent response:</h5>
-                <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Main rendering logic based on current step
-  if (currentStep === 'final-analysis') {
-    // For final analysis, only show the analysis configuration
-    return renderFinalAnalysisSection();
-  }
-  
-  // For AI agents (nuggets/lightbulbs), show the relevant config based on activeSection
   return (
-    <div className="space-y-8">
-      {/* Agent-specific tabs for subsections */}
-      <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="config">Agent Configuration</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
-          <TabsTrigger value="book">Book</TabsTrigger>
-        </TabsList>
-      
-        <TabsContent value="config">
+    <div className="space-y-6">
+      {activeSection === 'config' && (
+        <>
           {renderAgentConfigSection()}
-        </TabsContent>
-        
-        <TabsContent value="analysis">
+        </>
+      )}
+      {activeSection === 'analysis' && (
+        <>
           {renderAgentAnalysisSection()}
-        </TabsContent>
-        
-        <TabsContent value="book">
-          {renderBookConfigSection()}
-        </TabsContent>
-      </Tabs>
-      
-      {/* Preview Section */}
-      {previewMode && renderPreviewSection()}
+        </>
+      )}
     </div>
   );
 };
 
-// Export helper function to get default timer values - can be used in flow map
-export const getDefaultTimerConfig = () => {
-  return {
-    enabled: DEFAULT_AI_CONFIGURATION.timerEnabled || true,
-    duration: DEFAULT_AI_CONFIGURATION.timerDuration || 15
-  };
-};
-
-// Export helper function to get default analysis items - can be used in flow map
-export const getDefaultAnalysisOrder = () => {
-  return DEFAULT_AI_CONFIGURATION.finalAnalysis.items || [];
-};
-
-export default AIInteractionConfig; 
+export default AIInteractionConfig;
