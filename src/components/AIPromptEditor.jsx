@@ -46,13 +46,39 @@ You are a dedicated support agent named "{{agentName}}" responsible for engaging
 - End on a positive and engaging note:  
   "Ok, now let's refocus back on "{{teacherName}}", and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
 
-// Default values
-const DEFAULT_AGENT_NAME = "Elias";
-const DEFAULT_PROGRAM_NAME = "Connected Mate Workshop";
-const DEFAULT_TEACHER_NAME = "the instructor";
-const DEFAULT_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional.";
+/**
+ * Lightbulbs Agent Default Prompt Template
+ */
+const DEFAULT_LIGHTBULBS_PROMPT = `# Objective
+You are a dedicated support agent named "{{agentName}}" responsible for conducting the "{{programName}}" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
 
-const DEFAULT_RULES = [
+# Style
+{{styleDescription}}
+
+# Rules
+{{rules}}
+
+# Steps
+{{questions}}
+
+# Closing the Discussion
+After confirming all responses are complete, the agent should conclude with a personalized and lighthearted closing message.
+
+Rules for the Closing Message:
+1. Mention Annecy and the specific context (e.g., being at the Palace de Menthon, the weather, etc.).
+2. Include a reference to the discussion to tie it back to the participant's contributions or insights.
+3. Add a touch of humor to make the participant smile (e.g., a joke about the rain, the lake, or the setting).
+4. Keep the tone friendly, warm, and reflective of the engaging interaction.
+
+End with a reference back to "{{teacherName}}" to transition back to the workshop context.`;
+
+// Nuggets agent default values
+const DEFAULT_NUGGETS_AGENT_NAME = "Elias";
+const DEFAULT_NUGGETS_PROGRAM_NAME = "Connected Mate Workshop";
+const DEFAULT_NUGGETS_TEACHER_NAME = "the instructor";
+const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional.";
+
+const DEFAULT_NUGGETS_RULES = [
   {
     id: "rule1",
     text: "Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data."
@@ -75,7 +101,7 @@ const DEFAULT_RULES = [
   }
 ];
 
-const DEFAULT_QUESTIONS = [
+const DEFAULT_NUGGETS_QUESTIONS = [
   {
     id: "q1",
     title: "Problem and Opportunity",
@@ -103,6 +129,74 @@ const DEFAULT_QUESTIONS = [
   }
 ];
 
+// Lightbulbs agent default values
+const DEFAULT_LIGHTBULBS_AGENT_NAME = "Sonia";
+const DEFAULT_LIGHTBULBS_PROGRAM_NAME = "Connected Mate Workshop";
+const DEFAULT_LIGHTBULBS_TEACHER_NAME = "the instructor";
+const DEFAULT_LIGHTBULBS_STYLE = "Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.";
+
+const DEFAULT_LIGHTBULBS_RULES = [
+  {
+    id: "rule1",
+    text: "Sequential Questioning: Follow the designated order for each question, only proceeding after receiving a complete response."
+  },
+  {
+    id: "rule2",
+    text: "Cross-Referencing: Ensure each response ties back to the \"nugget\" that inspired the participant, prompting elaboration if connections aren't clear."
+  },
+  {
+    id: "rule3",
+    text: "Clarification: Seek detailed clarifications when responses lack depth or completeness."
+  },
+  {
+    id: "rule4",
+    text: "Completion Requirement: Every question must be fully answered to conclude the questionnaire. Confirm all necessary details are captured for each response."
+  }
+];
+
+const DEFAULT_LIGHTBULBS_QUESTIONS = [
+  {
+    id: "q1",
+    title: "Step 1: Inspiration Nugget Reference",
+    text: "Which nugget specifically inspired you? Could you briefly describe it?\n\nObjective: Identify the inspiration source to ensure a clear cross-reference between nuggets and insights."
+  },
+  {
+    id: "q2",
+    title: "Step 2: Light Bulb Moment",
+    text: "What about this nugget inspired you to think, 'We could try this here'?\n\nObjective: Capture what resonated with the participant, highlighting the motivational trigger."
+  },
+  {
+    id: "q3",
+    title: "Step 3: From Inspiration to Action",
+    text: "What did this nugget inspire you to do? Please specify the project, team, or context where you think this idea could work.\n\nObjective: Link inspiration to a concrete action plan or context for application."
+  },
+  {
+    id: "q4",
+    title: "Step 4: Implementation Steps",
+    text: "What concrete steps will you take to bring this idea to life in your own context?\n\nObjective: Define specific, actionable steps, encouraging clear and practical strategies."
+  },
+  {
+    id: "q5",
+    title: "Step 5: Timeline for Action",
+    text: "By when do you plan to test or implement this idea?\n\nObjective: Establish a timeline, prompting commitment to a timeframe."
+  },
+  {
+    id: "q6",
+    title: "Step 6: Testing and Success Measures",
+    text: "How will you test this idea to see if it gains traction? What will success look like?\n\nObjective: Promote experimentation, defining success metrics for evaluation."
+  },
+  {
+    id: "q7",
+    title: "Step 7: Challenges and Solutions",
+    text: "What potential challenges do you anticipate in implementing this idea, and how could you overcome them?\n\nObjective: Encourage proactive thinking about obstacles and solutions."
+  },
+  {
+    id: "q8",
+    title: "Step 8: Long-Term Impact",
+    text: "If this idea works, what could the long-term impact be for your team or business unit?\n\nObjective: Have participants reflect on potential broader impacts and strategic alignment with Nexus goals."
+  }
+];
+
 /**
  * AI Prompt Editor Component
  * 
@@ -116,16 +210,40 @@ const AIPromptEditor = ({
   onValidate, 
   agentType = 'nuggets'
 }) => {
+  // Get default values based on agent type
+  const getDefaultValues = () => {
+    if (agentType === 'lightbulbs') {
+      return {
+        agentName: DEFAULT_LIGHTBULBS_AGENT_NAME,
+        programName: DEFAULT_LIGHTBULBS_PROGRAM_NAME,
+        teacherName: DEFAULT_LIGHTBULBS_TEACHER_NAME,
+        styleDescription: DEFAULT_LIGHTBULBS_STYLE,
+        rules: [...DEFAULT_LIGHTBULBS_RULES],
+        questions: [...DEFAULT_LIGHTBULBS_QUESTIONS],
+        customContext: "",
+        rawPrompt: null
+      };
+    }
+    
+    // Default to nuggets
+    return {
+      agentName: DEFAULT_NUGGETS_AGENT_NAME,
+      programName: DEFAULT_NUGGETS_PROGRAM_NAME,
+      teacherName: DEFAULT_NUGGETS_TEACHER_NAME,
+      styleDescription: DEFAULT_NUGGETS_STYLE,
+      rules: [...DEFAULT_NUGGETS_RULES],
+      questions: [...DEFAULT_NUGGETS_QUESTIONS],
+      customContext: "",
+      rawPrompt: null
+    };
+  };
+
   // Initialize state with default or provided configuration
-  const [config, setConfig] = useState({
-    agentName: initialConfig?.agentName || DEFAULT_AGENT_NAME,
-    programName: initialConfig?.programName || DEFAULT_PROGRAM_NAME,
-    teacherName: initialConfig?.teacherName || DEFAULT_TEACHER_NAME,
-    styleDescription: initialConfig?.styleDescription || DEFAULT_STYLE,
-    rules: initialConfig?.rules || [...DEFAULT_RULES],
-    questions: initialConfig?.questions || [...DEFAULT_QUESTIONS],
-    customContext: initialConfig?.customContext || "",
-    rawPrompt: initialConfig?.rawPrompt || null
+  const [config, setConfig] = useState(() => {
+    if (initialConfig) {
+      return initialConfig;
+    }
+    return getDefaultValues();
   });
 
   const [activeTab, setActiveTab] = useState('basics');
@@ -147,10 +265,13 @@ const AIPromptEditor = ({
       return;
     }
 
-    let prompt = DEFAULT_NUGGETS_PROMPT;
+    // Select the appropriate template based on agent type
+    let promptTemplate = agentType === 'lightbulbs' 
+      ? DEFAULT_LIGHTBULBS_PROMPT 
+      : DEFAULT_NUGGETS_PROMPT;
     
     // Replace placeholders with values
-    prompt = prompt.replace(/{{agentName}}/g, config.agentName);
+    let prompt = promptTemplate.replace(/{{agentName}}/g, config.agentName);
     prompt = prompt.replace(/{{programName}}/g, config.programName);
     prompt = prompt.replace(/{{teacherName}}/g, config.teacherName);
     prompt = prompt.replace(/{{styleDescription}}/g, config.styleDescription);
@@ -161,10 +282,17 @@ const AIPromptEditor = ({
     ).join('\n\n');
     prompt = prompt.replace(/{{rules}}/g, formattedRules);
 
-    // Format questions
-    const formattedQuestions = config.questions.map((question, index) => 
-      `${index + 1}. **${question.title}**:  \n   "${question.text}"`
-    ).join('\n   \n');
+    // Format questions differently based on agent type
+    let formattedQuestions;
+    if (agentType === 'lightbulbs') {
+      formattedQuestions = config.questions.map((question) => 
+        `## ${question.title}\n- **Required Question**: "${question.text.split('\n\n')[0]}"\n- **Objective**: ${question.text.split('\n\n')[1] || ''}`
+      ).join('\n\n');
+    } else {
+      formattedQuestions = config.questions.map((question, index) => 
+        `${index + 1}. **${question.title}**:  \n   "${question.text}"`
+      ).join('\n   \n');
+    }
     prompt = prompt.replace(/{{questions}}/g, formattedQuestions);
 
     // Add custom context if provided
@@ -173,7 +301,7 @@ const AIPromptEditor = ({
     }
 
     setPromptPreview(prompt);
-  }, [config, useCustomPrompt]);
+  }, [config, useCustomPrompt, agentType]);
 
   // Handle changes to basic configuration
   const handleBasicConfigChange = (field, value) => {
@@ -368,16 +496,8 @@ const AIPromptEditor = ({
 
   // Reset to default configuration
   const handleResetToDefault = () => {
-    setConfig({
-      agentName: DEFAULT_AGENT_NAME,
-      programName: DEFAULT_PROGRAM_NAME,
-      teacherName: DEFAULT_TEACHER_NAME,
-      styleDescription: DEFAULT_STYLE,
-      rules: [...DEFAULT_RULES],
-      questions: [...DEFAULT_QUESTIONS],
-      customContext: "",
-      rawPrompt: null
-    });
+    const defaultValues = getDefaultValues();
+    setConfig(defaultValues);
     setUseCustomPrompt(false);
   };
 
@@ -580,10 +700,16 @@ const AIPromptEditor = ({
                 <div className="flex justify-end">
                   <Button 
                     variant="outline" 
-                    onClick={() => setConfig(prev => ({
-                      ...prev,
-                      rules: [...DEFAULT_RULES]
-                    }))}
+                    onClick={() => {
+                      const defaultRules = agentType === 'lightbulbs' 
+                        ? [...DEFAULT_LIGHTBULBS_RULES] 
+                        : [...DEFAULT_NUGGETS_RULES];
+                      
+                      setConfig(prev => ({
+                        ...prev,
+                        rules: defaultRules
+                      }));
+                    }}
                   >
                     Reset to Default Rules
                   </Button>
@@ -704,10 +830,16 @@ const AIPromptEditor = ({
                 <div className="flex justify-end">
                   <Button 
                     variant="outline" 
-                    onClick={() => setConfig(prev => ({
-                      ...prev,
-                      questions: [...DEFAULT_QUESTIONS]
-                    }))}
+                    onClick={() => {
+                      const defaultQuestions = agentType === 'lightbulbs' 
+                        ? [...DEFAULT_LIGHTBULBS_QUESTIONS] 
+                        : [...DEFAULT_NUGGETS_QUESTIONS];
+                      
+                      setConfig(prev => ({
+                        ...prev,
+                        questions: defaultQuestions
+                      }));
+                    }}
                   >
                     Reset to Default Questions
                   </Button>
