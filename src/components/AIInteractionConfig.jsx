@@ -31,7 +31,7 @@ import { useTranslation } from './LocaleProvider';
  * 
  * @param {Object} sessionConfig - The current session configuration
  * @param {Function} updateSessionConfig - Function to update the session configuration
- * @param {string} mode - The mode of the component (standard, compact, etc.)
+ * @param {string} mode - The mode of the component (nuggets or lightbulb)
  * @param {string} currentStep - The currently selected step in the flow map (nuggets, lightbulbs, final-analysis)
  * @param {string} currentSection - The currently selected sub-section for agent config (config, analysis, book)
  * @param {Function} onTimerConfigChange - Optional callback when timer configuration changes, used by parent for flow map updates
@@ -58,6 +58,9 @@ const AIInteractionConfig = ({
   const [previewResponse, setPreviewResponse] = useState('');
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
 
+  // Determine which agent to display based on the mode parameter
+  const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
+
   // Update active section when currentSection changes
   useEffect(() => {
     if (currentSection && (currentStep === 'nuggets' || currentStep === 'lightbulbs')) {
@@ -65,13 +68,14 @@ const AIInteractionConfig = ({
     }
   }, [currentSection, currentStep]);
   
-  // When currentStep changes, we should update the UI completely
+  // When mode or currentStep changes, we should update the UI completely
   useEffect(() => {
     // Reset preview state when switching agents
     setPreviewMode(false);
     setPreviewInput('');
     setPreviewResponse('');
-  }, [currentStep]);
+    console.log(`Mode changed to: ${mode}, activeAgentType set to: ${activeAgentType}`);
+  }, [mode, currentStep, activeAgentType]);
   
   // Extract settings from sessionConfig
   const ai_settings = sessionConfig.settings?.ai_configuration || {};
@@ -239,16 +243,16 @@ const AIInteractionConfig = ({
     try {
       // Simulate API call for preview
       setTimeout(() => {
-        const agentName = currentStep === 'nuggets' ? nuggets.agentName : lightbulbs.agentName;
-        const agentType = currentStep === 'nuggets' ? 'Nuggets' : 'Lightbulbs';
+        const agentName = activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName;
+        const agentType = activeAgentType === 'nuggets' ? 'Nuggets' : 'Lightbulbs';
         setPreviewResponse(`
           As ${agentName}, here's my response:
           
           ${previewInput.includes('?') 
-            ? `Thank you for your question. As an AI ${agentType} agent, I'll help you ${currentStep === 'nuggets' ? 'identify important information' : 'develop this creative idea'}.`
+            ? `Thank you for your question. As an AI ${agentType} agent, I'll help you ${activeAgentType === 'nuggets' ? 'identify important information' : 'develop this creative idea'}.`
             : `I've analyzed your message and here are my observations as an AI ${agentType} agent.`}
           
-          ${currentStep === 'nuggets' 
+          ${activeAgentType === 'nuggets' 
             ? 'Key points identified:\n- Important business insight\n- Strategic observation\n- Development opportunity'
             : 'Creative development:\n- Innovative concept based on your idea\n- Potential applications\n- Recommended next steps'}
           
@@ -281,32 +285,32 @@ const AIInteractionConfig = ({
     handleLightbulbsChange('imageUrl', DEFAULT_AGENT_IMAGES.lightbulbs);
   };
 
-  // Helper function to get current agent data based on current step
+  // Helper function to get current agent data based on mode parameter
   const getCurrentAgent = () => {
-    return currentStep === 'nuggets' ? nuggets : lightbulbs;
+    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
   };
 
-  // Helper function to get current agent handler based on current step
+  // Helper function to get current agent handler based on mode parameter
   const getCurrentAgentHandler = () => {
-    return currentStep === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
   };
 
   // Render agent configuration section
   const renderAgentConfigSection = () => {
     const agent = getCurrentAgent();
     const handleAgentChange = getCurrentAgentHandler();
-    const handleImageUploaded = currentStep === 'nuggets' ? handleNuggetsImageUploaded : handleLightbulbsImageUploaded;
-    const resetImage = currentStep === 'nuggets' ? resetNuggetsImage : resetLightbulbsImage;
-    const defaultImage = currentStep === 'nuggets' ? DEFAULT_AGENT_IMAGES.nuggets : DEFAULT_AGENT_IMAGES.lightbulbs;
-    const primaryColor = currentStep === 'nuggets' ? 'blue' : 'amber';
-    const agentName = currentStep === 'nuggets' ? 'Elias' : 'Sonia';
+    const handleImageUploaded = activeAgentType === 'nuggets' ? handleNuggetsImageUploaded : handleLightbulbsImageUploaded;
+    const resetImage = activeAgentType === 'nuggets' ? resetNuggetsImage : resetLightbulbsImage;
+    const defaultImage = activeAgentType === 'nuggets' ? DEFAULT_AGENT_IMAGES.nuggets : DEFAULT_AGENT_IMAGES.lightbulbs;
+    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
+    const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
     
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
-          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Configuration of {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent</h3>
+          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Configuration of {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent</h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
-            {currentStep === 'nuggets' 
+            {activeAgentType === 'nuggets' 
               ? 'Customize the AI Nuggets agent (Elias) that extracts important information from discussions.'
               : 'Customize the AI Lightbulbs agent (Sonia) that develops creative ideas based on discussions.'}
           </p>
@@ -320,7 +324,7 @@ const AIInteractionConfig = ({
                 bucket="ai-agent"
                 defaultImage={agent.imageUrl || defaultImage}
                 onImageUploaded={handleImageUploaded}
-                filePrefix={`ai-${currentStep}`}
+                filePrefix={`ai-${activeAgentType}`}
                 size="lg"
                 shape="circle"
                 buttonText="Change Image"
@@ -338,7 +342,7 @@ const AIInteractionConfig = ({
                     className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2`}
                     value={agent.agentName}
                     onChange={(e) => handleAgentChange('agentName', e.target.value)}
-                    placeholder={`Name for the ${currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
+                    placeholder={`Name for the ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
                   />
                 </div>
               </div>
@@ -348,10 +352,10 @@ const AIInteractionConfig = ({
           {/* Agent configuration */}
           <div className="w-full md:w-2/3">
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent Prompt
+              {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent Prompt
             </h3>
             <p className="text-sm text-gray-500 mb-4">
-              {currentStep === 'nuggets'
+              {activeAgentType === 'nuggets'
                 ? 'This agent extracts valuable information from discussions and synthesizes important ideas.'
                 : 'This agent helps develop creative ideas and innovative concepts based on discussions.'}
             </p>
@@ -363,7 +367,7 @@ const AIInteractionConfig = ({
                   className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
                   value={agent.prompt}
                   onChange={(e) => handleAgentChange('prompt', e.target.value)}
-                  placeholder={`Detailed instructions for the ${currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
+                  placeholder={`Detailed instructions for the ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Define the instructions that the agent should follow when interacting with participants.
@@ -391,12 +395,12 @@ const AIInteractionConfig = ({
                     max="1"
                     step="0.1"
                     className="w-full"
-                    value={agent.temperature || (currentStep === 'nuggets' ? 0.7 : 0.8)}
+                    value={agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}
                     onChange={(e) => handleAgentChange('temperature', parseFloat(e.target.value))}
                   />
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Precise (0)</span>
-                    <span>{agent.temperature || (currentStep === 'nuggets' ? 0.7 : 0.8)}</span>
+                    <span>{agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}</span>
                     <span>Creative (1)</span>
                   </div>
                 </div>
@@ -412,16 +416,16 @@ const AIInteractionConfig = ({
   const renderAgentAnalysisSection = () => {
     const agent = getCurrentAgent();
     const handleAgentChange = getCurrentAgentHandler();
-    const primaryColor = currentStep === 'nuggets' ? 'blue' : 'amber';
+    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
 
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
           <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>
-            Conversation Analysis for {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}
+            Conversation Analysis for {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}
           </h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
-            {currentStep === 'nuggets'
+            {activeAgentType === 'nuggets'
               ? 'Configure how the AI Nuggets agent (Elias) analyzes and extracts information from discussions.'
               : 'Configure how the AI Lightbulbs agent (Sonia) identifies and develops creative ideas.'}
           </p>
@@ -433,13 +437,13 @@ const AIInteractionConfig = ({
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {currentStep === 'nuggets' ? 'Nugget Extraction Criteria' : 'Idea Development Criteria'}
+                {activeAgentType === 'nuggets' ? 'Nugget Extraction Criteria' : 'Idea Development Criteria'}
               </label>
               <textarea
                 className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[100px]`}
                 value={agent.analysisCriteria || ''}
                 onChange={(e) => handleAgentChange('analysisCriteria', e.target.value)}
-                placeholder={currentStep === 'nuggets'
+                placeholder={activeAgentType === 'nuggets'
                   ? 'Example: Extract information with strategic impact, relevant insights, innovative concepts...'
                   : 'Example: Identify ideas with development potential, disruptive concepts, innovation opportunities...'}
               />
@@ -466,7 +470,7 @@ const AIInteractionConfig = ({
                 className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
                 value={agent.analysisInstructions || ''}
                 onChange={(e) => handleAgentChange('analysisInstructions', e.target.value)}
-                placeholder={currentStep === 'nuggets'
+                placeholder={activeAgentType === 'nuggets'
                   ? 'Detailed instructions for extracting important information...'
                   : 'Detailed instructions for developing creative ideas...'}
               />
@@ -507,7 +511,7 @@ const AIInteractionConfig = ({
   const renderBookConfigSection = () => {
     const bookConfigProps = {
       initialConfig: {
-        agentName: currentStep === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
+        agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
         programName: '',
         teacherName: '',
         customRules: [],
@@ -518,13 +522,13 @@ const AIInteractionConfig = ({
           sentimentAnalysis: true,
           extractKeyInsights: true
         },
-        bookConfig: currentStep === 'nuggets' 
+        bookConfig: activeAgentType === 'nuggets' 
           ? (nuggets.bookConfig || { sections: [], visualStyle: {} }) 
           : (lightbulbs.bookConfig || { sections: [], visualStyle: {} })
       },
-      agentType: currentStep,
+      agentType: activeAgentType,
       onSave: (config) => {
-        if (currentStep === 'nuggets') {
+        if (activeAgentType === 'nuggets') {
           handleNuggetsBookConfigChange(config.bookConfig);
         } else {
           handleLightbulbsBookConfigChange(config.bookConfig);
@@ -532,14 +536,14 @@ const AIInteractionConfig = ({
       }
     };
 
-    const primaryColor = currentStep === 'nuggets' ? 'blue' : 'amber';
+    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
-          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Book Configuration for {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
+          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Book Configuration for {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
-            {currentStep === 'nuggets' 
+            {activeAgentType === 'nuggets' 
               ? 'Customize the appearance and content of the book generated from AI Nuggets agent analyses.'
               : 'Customize the appearance and content of the book generated from AI Lightbulbs agent analyses.'}
           </p>
@@ -631,7 +635,7 @@ const AIInteractionConfig = ({
 
   // Render preview section
   const renderPreviewSection = () => {
-    const primaryColor = currentStep === 'nuggets' ? 'blue' : 'amber';
+    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     
     return (
       <div className="mt-6 border-t pt-4">
