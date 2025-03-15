@@ -22,8 +22,8 @@ import { useTranslation } from './LocaleProvider';
  * AIInteractionConfig Component
  * 
  * Provides configuration options for the currently selected element in the session flow:
- * - When "AI Nuggets" is selected: Shows only Nuggets agent configuration
- * - When "AI Lightbulbs" is selected: Shows only Lightbulbs agent configuration
+ * - When "AI Nuggets" is selected: Shows only Nuggets agent configuration (Elias)
+ * - When "AI Lightbulbs" is selected: Shows only Lightbulbs agent configuration (Sonia)
  * - When "Analyse Finale" is selected: Shows only Final Analysis configuration
  * 
  * The component doesn't include navigation between these sections as that's handled by
@@ -64,6 +64,14 @@ const AIInteractionConfig = ({
       setActiveSection(currentSection);
     }
   }, [currentSection, currentStep]);
+  
+  // When currentStep changes, we should update the UI completely
+  useEffect(() => {
+    // Reset preview state when switching agents
+    setPreviewMode(false);
+    setPreviewInput('');
+    setPreviewResponse('');
+  }, [currentStep]);
   
   // Extract settings from sessionConfig
   const ai_settings = sessionConfig.settings?.ai_configuration || {};
@@ -234,34 +242,34 @@ const AIInteractionConfig = ({
         const agentName = currentStep === 'nuggets' ? nuggets.agentName : lightbulbs.agentName;
         const agentType = currentStep === 'nuggets' ? 'Nuggets' : 'Lightbulbs';
         setPreviewResponse(`
-          En tant que ${agentName}, voici ma réponse:
+          As ${agentName}, here's my response:
           
           ${previewInput.includes('?') 
-            ? `Merci pour votre question. En tant qu'agent AI ${agentType}, je vais vous aider à ${currentStep === 'nuggets' ? 'identifier les informations importantes' : 'développer cette idée créative'}.`
-            : `J'ai analysé votre message et voici mes observations en tant qu'agent AI ${agentType}.`}
+            ? `Thank you for your question. As an AI ${agentType} agent, I'll help you ${currentStep === 'nuggets' ? 'identify important information' : 'develop this creative idea'}.`
+            : `I've analyzed your message and here are my observations as an AI ${agentType} agent.`}
           
           ${currentStep === 'nuggets' 
-            ? 'Points clés identifiés:\n- Insight commercial important\n- Observation stratégique\n- Opportunité de développement'
-            : 'Développement créatif:\n- Concept innovant basé sur votre idée\n- Applications potentielles\n- Prochaines étapes recommandées'}
+            ? 'Key points identified:\n- Important business insight\n- Strategic observation\n- Development opportunity'
+            : 'Creative development:\n- Innovative concept based on your idea\n- Potential applications\n- Recommended next steps'}
           
-          N'hésitez pas à me poser d'autres questions pour approfondir ces points.
+          Feel free to ask more questions to explore these points further.
         `);
         setIsGeneratingPreview(false);
       }, 1500);
     } catch (error) {
-      setPreviewResponse("Une erreur est survenue lors de la génération de l'aperçu.");
+      setPreviewResponse("An error occurred while generating the preview.");
       setIsGeneratingPreview(false);
     }
   };
 
-  // Handlers pour gérer les images des agents avec le nouveau composant
+  // Handlers for agent images with the new component
   const handleNuggetsImageUploaded = (imageUrl) => {
-    console.log('Nouvelle image AI Nuggets:', imageUrl);
+    console.log('New AI Nuggets image:', imageUrl);
     handleNuggetsChange('imageUrl', imageUrl);
   };
 
   const handleLightbulbsImageUploaded = (imageUrl) => {
-    console.log('Nouvelle image AI Lightbulbs:', imageUrl);
+    console.log('New AI Lightbulbs image:', imageUrl);
     handleLightbulbsChange('imageUrl', imageUrl);
   };
 
@@ -291,15 +299,16 @@ const AIInteractionConfig = ({
     const resetImage = currentStep === 'nuggets' ? resetNuggetsImage : resetLightbulbsImage;
     const defaultImage = currentStep === 'nuggets' ? DEFAULT_AGENT_IMAGES.nuggets : DEFAULT_AGENT_IMAGES.lightbulbs;
     const primaryColor = currentStep === 'nuggets' ? 'blue' : 'amber';
+    const agentName = currentStep === 'nuggets' ? 'Elias' : 'Sonia';
     
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
-          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Configuration de l'agent {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
+          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Configuration of {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent</h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
             {currentStep === 'nuggets' 
-              ? 'Personnalisez l\'agent AI Nuggets (Elias) qui extrait les informations importantes des discussions.'
-              : 'Personnalisez l\'agent AI Lightbulbs (Sonia) qui développe des idées créatives basées sur les discussions.'}
+              ? 'Customize the AI Nuggets agent (Elias) that extracts important information from discussions.'
+              : 'Customize the AI Lightbulbs agent (Sonia) that develops creative ideas based on discussions.'}
           </p>
         </div>
 
@@ -314,22 +323,22 @@ const AIInteractionConfig = ({
                 filePrefix={`ai-${currentStep}`}
                 size="lg"
                 shape="circle"
-                buttonText="Modifier l'image"
+                buttonText="Change Image"
                 resetButton={true}
                 onReset={resetImage}
-                resetButtonText="Réinitialiser"
+                resetButtonText="Reset"
                 className="mb-4"
               />
               
               <div className="space-y-2 w-full">                    
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'agent</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Agent Name</label>
                   <input
                     type="text"
                     className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2`}
                     value={agent.agentName}
                     onChange={(e) => handleAgentChange('agentName', e.target.value)}
-                    placeholder={`Nom de l'agent ${currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}`}
+                    placeholder={`Name for the ${currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
                   />
                 </div>
               </div>
@@ -339,43 +348,43 @@ const AIInteractionConfig = ({
           {/* Agent configuration */}
           <div className="w-full md:w-2/3">
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Prompt de l'agent {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}
+              {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent Prompt
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {currentStep === 'nuggets'
-                ? 'Cet agent extrait des informations précieuses des discussions et synthétise les idées importantes.'
-                : 'Cet agent aide à développer des idées créatives et des concepts innovants basés sur les discussions.'}
+                ? 'This agent extracts valuable information from discussions and synthesizes important ideas.'
+                : 'This agent helps develop creative ideas and innovative concepts based on discussions.'}
             </p>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prompt de l'agent</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Agent Prompt</label>
                 <textarea
                   className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
                   value={agent.prompt}
                   onChange={(e) => handleAgentChange('prompt', e.target.value)}
-                  placeholder={`Instructions détaillées pour l'agent ${currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}`}
+                  placeholder={`Detailed instructions for the ${currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Définissez les instructions que l'agent doit suivre pour interagir avec les participants.
+                  Define the instructions that the agent should follow when interacting with participants.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Modèle d'IA</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">AI Model</label>
                   <select
                     className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
                     value={agent.model || "gpt-4"}
                     onChange={(e) => handleAgentChange('model', e.target.value)}
                   >
-                    <option value="gpt-4">GPT-4 (Recommandé)</option>
+                    <option value="gpt-4">GPT-4 (Recommended)</option>
                     <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                   </select>
                 </div>
           
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Température</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Temperature</label>
                   <input
                     type="range"
                     min="0"
@@ -386,9 +395,9 @@ const AIInteractionConfig = ({
                     onChange={(e) => handleAgentChange('temperature', parseFloat(e.target.value))}
                   />
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>Précis (0)</span>
+                    <span>Precise (0)</span>
                     <span>{agent.temperature || (currentStep === 'nuggets' ? 0.7 : 0.8)}</span>
-                    <span>Créatif (1)</span>
+                    <span>Creative (1)</span>
                   </div>
                 </div>
               </div>
@@ -409,57 +418,57 @@ const AIInteractionConfig = ({
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
           <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>
-            Analyse des conversations pour {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}
+            Conversation Analysis for {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}
           </h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
             {currentStep === 'nuggets'
-              ? 'Configurez comment l\'agent AI Nuggets (Elias) analyse et extrait les informations des discussions.'
-              : 'Configurez comment l\'agent AI Lightbulbs (Sonia) identifie et développe les idées créatives.'}
+              ? 'Configure how the AI Nuggets agent (Elias) analyzes and extracts information from discussions.'
+              : 'Configure how the AI Lightbulbs agent (Sonia) identifies and develops creative ideas.'}
           </p>
         </div>
           
         <Card className="p-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Paramètres d'analyse</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Analysis Parameters</h3>
           
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {currentStep === 'nuggets' ? 'Critères d\'extraction des nuggets' : 'Critères de développement des idées'}
+                {currentStep === 'nuggets' ? 'Nugget Extraction Criteria' : 'Idea Development Criteria'}
               </label>
               <textarea
                 className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[100px]`}
                 value={agent.analysisCriteria || ''}
                 onChange={(e) => handleAgentChange('analysisCriteria', e.target.value)}
                 placeholder={currentStep === 'nuggets'
-                  ? 'Ex: Extraire les informations ayant un impact stratégique, les insights pertinents, les concepts innovants...'
-                  : 'Ex: Identifier les idées ayant un potentiel de développement, les concepts disruptifs, les opportunités d\'innovation...'}
+                  ? 'Example: Extract information with strategic impact, relevant insights, innovative concepts...'
+                  : 'Example: Identify ideas with development potential, disruptive concepts, innovation opportunities...'}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Format des réponses</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Response Format</label>
               <select
                 className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
                 value={agent.responseFormat || 'bullet'}
                 onChange={(e) => handleAgentChange('responseFormat', e.target.value)}
               >
-                <option value="bullet">Points clés (bullet points)</option>
-                <option value="paragraph">Paragraphes</option>
-                <option value="structured">Structure hiérarchique</option>
+                <option value="bullet">Key points (bullet points)</option>
+                <option value="paragraph">Paragraphs</option>
+                <option value="structured">Hierarchical structure</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Instructions spécifiques pour l'analyse
+                Specific Instructions for Analysis
               </label>
               <textarea
                 className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
                 value={agent.analysisInstructions || ''}
                 onChange={(e) => handleAgentChange('analysisInstructions', e.target.value)}
                 placeholder={currentStep === 'nuggets'
-                  ? 'Instructions détaillées pour l\'extraction des informations importantes...'
-                  : 'Instructions détaillées pour le développement des idées créatives...'}
+                  ? 'Detailed instructions for extracting important information...'
+                  : 'Detailed instructions for developing creative ideas...'}
               />
             </div>
           
@@ -472,7 +481,7 @@ const AIInteractionConfig = ({
                   onChange={(e) => handleAgentChange('summarizeConversation', e.target.checked)}
                 />
                 <span className="ml-2 text-sm text-gray-700">
-                  Résumer la conversation avant analyse
+                  Summarize conversation before analysis
                 </span>
               </label>
               
@@ -484,7 +493,7 @@ const AIInteractionConfig = ({
                   onChange={(e) => handleAgentChange('includeParticipantInfo', e.target.checked)}
                 />
                 <span className="ml-2 text-sm text-gray-700">
-                  Inclure les informations des participants dans l'analyse
+                  Include participant information in analysis
                 </span>
               </label>
             </div>
@@ -528,11 +537,11 @@ const AIInteractionConfig = ({
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
-          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Configuration du Book pour {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
+          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Book Configuration for {currentStep === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
             {currentStep === 'nuggets' 
-              ? 'Personnalisez l\'apparence et le contenu du book généré à partir des analyses de l\'agent AI Nuggets.'
-              : 'Personnalisez l\'apparence et le contenu du book généré à partir des analyses de l\'agent AI Lightbulbs.'}
+              ? 'Customize the appearance and content of the book generated from AI Nuggets agent analyses.'
+              : 'Customize the appearance and content of the book generated from AI Lightbulbs agent analyses.'}
           </p>
         </div>
         
@@ -557,10 +566,10 @@ const AIInteractionConfig = ({
     return (
       <div className="space-y-6">
         <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-md mb-4">
-          <h3 className="font-semibold text-purple-800 mb-2">Configuration de l'Analyse Finale</h3>
+          <h3 className="font-semibold text-purple-800 mb-2">Final Analysis Configuration</h3>
           <p className="text-purple-700 text-sm">
-            Organisez l'ordre de présentation des différentes analyses et configurez chaque section selon vos besoins.
-            Utilisez le panneau de gauche pour réorganiser les analyses, et le panneau de droite pour configurer l'analyse sélectionnée.
+            Organize the presentation order of the different analyses and configure each section according to your needs.
+            Use the left panel to reorganize the analyses, and the right panel to configure the selected analysis.
           </p>
         </div>
         
@@ -577,11 +586,11 @@ const AIInteractionConfig = ({
               />
               
               <div className="mt-6 bg-yellow-50 p-4 rounded-md border border-yellow-200">
-                <h4 className="font-medium text-yellow-800 mb-2">Conseils d'utilisation</h4>
+                <h4 className="font-medium text-yellow-800 mb-2">Usage Tips</h4>
                 <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
-                  <li>L'ordre des analyses impacte directement l'expérience d'apprentissage</li>
-                  <li>Commencez par l'analyse la plus pertinente pour votre contexte pédagogique</li>
-                  <li>L'analyse globale est généralement plus efficace en conclusion</li>
+                  <li>The order of analyses directly impacts the learning experience</li>
+                  <li>Start with the most relevant analysis for your educational context</li>
+                  <li>The global analysis is generally more effective as a conclusion</li>
                 </ul>
               </div>
             </div>
@@ -606,7 +615,7 @@ const AIInteractionConfig = ({
   const renderTimerSettingsSection = () => {
     return (
       <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-4">Paramètres du Timer</h2>
+        <h2 className="text-lg font-semibold mb-4">Timer Settings</h2>
         <TimerSettings
           timerEnabled={timerEnabled}
           timerDuration={timerDuration}
@@ -614,7 +623,7 @@ const AIInteractionConfig = ({
           onTimerDurationChange={handleTimerDurationChange}
         />
         <p className="mt-3 text-sm text-gray-500 italic">
-          Note: Vous pouvez également modifier ces paramètres en cliquant directement sur le timer dans le flow map.
+          Note: You can also modify these settings by clicking directly on the timer in the flow map.
         </p>
       </Card>
     );
@@ -627,12 +636,12 @@ const AIInteractionConfig = ({
     return (
       <div className="mt-6 border-t pt-4">
         <div className="flex justify-between items-center mb-2">
-          <h4 className="font-medium">Prévisualisation de l'agent</h4>
+          <h4 className="font-medium">Agent Preview</h4>
           <button
             onClick={() => setPreviewMode(!previewMode)}
             className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
           >
-            {previewMode ? "Masquer" : "Afficher"} la prévisualisation
+            {previewMode ? "Hide" : "Show"} preview
           </button>
         </div>
             
@@ -642,7 +651,7 @@ const AIInteractionConfig = ({
               className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 mb-2`}
               value={previewInput}
               onChange={(e) => setPreviewInput(e.target.value)}
-              placeholder="Entrez un message pour tester l'agent..."
+              placeholder="Enter a message to test the agent..."
               rows={2}
             />
             
@@ -652,13 +661,13 @@ const AIInteractionConfig = ({
                 disabled={isGeneratingPreview || !previewInput.trim()}
                 className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
               >
-                {isGeneratingPreview ? "Génération..." : "Générer une réponse"}
+                {isGeneratingPreview ? "Generating..." : "Generate a response"}
               </button>
             </div>
             
             {previewResponse && (
               <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-                <h5 className="text-sm font-medium text-gray-700 mb-1">Réponse de l'agent:</h5>
+                <h5 className="text-sm font-medium text-gray-700 mb-1">Agent response:</h5>
                 <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
               </div>
             )}
@@ -680,8 +689,8 @@ const AIInteractionConfig = ({
       {/* Agent-specific tabs for subsections */}
       <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
         <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="config">Configuration Agent</TabsTrigger>
-          <TabsTrigger value="analysis">Analyse Cornea</TabsTrigger>
+          <TabsTrigger value="config">Agent Configuration</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
           <TabsTrigger value="book">Book</TabsTrigger>
         </TabsList>
       

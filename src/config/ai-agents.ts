@@ -21,8 +21,8 @@ export interface AIAgent {
 }
 
 export const DEFAULT_AGENT_IMAGES = {
-  nuggets: "https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent//elias.png",
-  lightbulbs: "https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent//sonia.png"
+  nuggets: "https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/elias.png",
+  lightbulbs: "https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/sonia.png"
 };
 
 // Configuration par défaut pour l'agent AI Nuggets
@@ -45,7 +45,7 @@ Remember to:
 - Emphasize concrete, practical information
 - Avoid speculating beyond what's in the discussion
 - Prioritize insights that could lead to tangible outcomes`,
-  imageUrl: "/images/agents/elias.png",
+  imageUrl: "https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/elias.png",
   model: "gpt-4",
   temperature: 0.7,
   
@@ -92,7 +92,7 @@ Remember to:
 - Look for connections between different concepts in the discussion
 - Consider both immediate applications and long-term possibilities
 - Prioritize ideas that could create significant positive impact`,
-  imageUrl: "/images/agents/sonia.png",
+  imageUrl: "https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/sonia.png",
   model: "gpt-4",
   temperature: 0.8,
   
