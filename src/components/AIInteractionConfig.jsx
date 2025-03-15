@@ -615,36 +615,6 @@ const AIInteractionConfig = ({
     );
   };
 
-  // Render timer settings section
-  const renderTimerSettingsSection = () => {
-    return (
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-4">Timer Settings</h2>
-        
-        <div className="bg-blue-50 border border-blue-200 p-3 rounded-md mb-4">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-blue-500 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p className="text-sm text-blue-700">
-              Ce timer s'applique globalement à toutes les interactions AI, à la fois pour l'agent Nuggets (Elias) et l'agent Lightbulbs (Sonia).
-            </p>
-          </div>
-        </div>
-        
-        <TimerSettings
-          timerEnabled={timerEnabled}
-          timerDuration={timerDuration}
-          onTimerEnabledChange={handleTimerEnabledChange}
-          onTimerDurationChange={handleTimerDurationChange}
-        />
-        <p className="mt-3 text-sm text-gray-500 italic">
-          Note: You can also modify these settings by clicking directly on the timer in the flow map.
-        </p>
-      </Card>
-    );
-  };
-
   // Render preview section
   const renderPreviewSection = () => {
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
@@ -722,9 +692,6 @@ const AIInteractionConfig = ({
           {renderBookConfigSection()}
         </TabsContent>
       </Tabs>
-      
-      {/* Timer Settings Card */}
-      {renderTimerSettingsSection()}
       
       {/* Preview Section */}
       {previewMode && renderPreviewSection()}
