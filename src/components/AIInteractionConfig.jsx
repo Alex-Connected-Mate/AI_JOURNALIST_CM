@@ -92,6 +92,16 @@ const AIInteractionConfig = ({
   const nuggets = ai_settings.nuggets || DEFAULT_NUGGETS_AGENT;
   const lightbulbs = ai_settings.lightbulbs || DEFAULT_LIGHTBULBS_AGENT;
 
+  // Helper function to get current agent data based on mode parameter
+  const getCurrentAgent = () => {
+    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
+  };
+
+  // Helper function to get current agent handler based on mode parameter
+  const getCurrentAgentHandler = () => {
+    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+  };
+
   // Extraire les variables du template une seule fois au niveau principal
   const extractTemplateVariables = () => {
     const agent = getCurrentAgent();
@@ -409,49 +419,16 @@ Rules for the Closing Message:
     handleAnalysisItemsChange(updatedItems);
   };
 
-  // Function to generate a preview response
-  const generatePreview = async () => {
-    if (!previewInput.trim()) return;
-    
-    setIsGeneratingPreview(true);
-    
-    try {
-      // Simulate API call for preview
-      setTimeout(() => {
-        const agentName = activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName;
-        const agentType = activeAgentType === 'nuggets' ? 'Nuggets' : 'Lightbulbs';
-        setPreviewResponse(`
-          As ${agentName}, here's my response:
-          
-          ${previewInput.includes('?') 
-            ? `Thank you for your question. As an AI ${agentType} agent, I'll help you ${activeAgentType === 'nuggets' ? 'identify important information' : 'develop this creative idea'}.`
-            : `I've analyzed your message and here are my observations as an AI ${agentType} agent.`}
-          
-          ${activeAgentType === 'nuggets' 
-            ? 'Key points identified:\n- Important business insight\n- Strategic observation\n- Development opportunity'
-            : 'Creative development:\n- Innovative concept based on your idea\n- Potential applications\n- Recommended next steps'}
-          
-          Feel free to ask more questions to explore these points further.
-        `);
-        setIsGeneratingPreview(false);
-      }, 1500);
-    } catch (error) {
-      setPreviewResponse("An error occurred while generating the preview.");
-      setIsGeneratingPreview(false);
-    }
-  };
-
-  // Handlers for agent images with the new component
+  // Handle image upload for agents
   const handleNuggetsImageUploaded = (imageUrl) => {
-    console.log('New AI Nuggets image:', imageUrl);
     handleNuggetsChange('imageUrl', imageUrl);
   };
 
   const handleLightbulbsImageUploaded = (imageUrl) => {
-    console.log('New AI Lightbulbs image:', imageUrl);
     handleLightbulbsChange('imageUrl', imageUrl);
   };
 
+  // Reset agent images to defaults
   const resetNuggetsImage = () => {
     handleNuggetsChange('imageUrl', DEFAULT_AGENT_IMAGES.nuggets);
   };
@@ -460,14 +437,32 @@ Rules for the Closing Message:
     handleLightbulbsChange('imageUrl', DEFAULT_AGENT_IMAGES.lightbulbs);
   };
 
-  // Helper function to get current agent data based on mode parameter
-  const getCurrentAgent = () => {
-    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
-  };
-
-  // Helper function to get current agent handler based on mode parameter
-  const getCurrentAgentHandler = () => {
-    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+  // Function to generate a preview response
+  const generatePreview = () => {
+    if (!previewInput.trim()) return;
+    
+    setIsGeneratingPreview(true);
+    setPreviewResponse('');
+    
+    // Simulate API delay
+    setTimeout(() => {
+      let response = '';
+      
+      if (activeAgentType === 'nuggets') {
+        response = `Based on your input, here are the key nuggets I've extracted:\n\n` +
+                   `• Strategic insight: ${previewInput.substring(0, 50)}...\n` +
+                   `• Important concept: Technology integration can enhance user experience\n` +
+                   `• Key observation: Customer feedback patterns indicate a need for simplification`;
+      } else {
+        response = `Your input has sparked these creative ideas:\n\n` +
+                   `• Development opportunity: ${previewInput.substring(0, 50)}...\n` +
+                   `• Innovation concept: Implementing a user-centered design approach\n` +
+                   `• Future direction: Exploring market expansion through strategic partnerships`;
+      }
+      
+      setPreviewResponse(response);
+      setIsGeneratingPreview(false);
+    }, 1500);
   };
 
   // Render agent configuration section
@@ -494,184 +489,149 @@ Rules for the Closing Message:
         <div className="flex flex-col md:flex-row gap-6">
           {/* Agent image and basic info */}
           <div className="w-full md:w-1/3">
-            <div className="flex flex-col items-center">
-              <ImageUploader
-                bucket="ai-agent"
-                defaultImage={agent.imageUrl || defaultImage}
-                onImageUploaded={handleImageUploaded}
-                filePrefix={`ai-${activeAgentType}`}
-                size="lg"
-                shape="circle"
-                buttonText="Change Image"
-                resetButton={true}
-                onReset={resetImage}
-                resetButtonText="Reset"
-                className="mb-4"
-              />
-              
-              <div className="space-y-2 w-full">                    
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Agent Name</label>
-                  <input
-                    type="text"
-                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2`}
-                    value={agent.agentName}
-                    onChange={(e) => handleAgentChange('agentName', e.target.value)}
-                    placeholder={`Name for the ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
+            <Card className="p-4">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-gray-200 relative">
+                  <Image 
+                    src={agent.imageUrl || defaultImage}
+                    alt={`${agentName} avatar`}
+                    width={128}
+                    height={128}
+                    className="object-cover"
                   />
                 </div>
-              </div>
-            </div>
-          </div>
-              
-          {/* Agent configuration */}
-          <div className="w-full md:w-2/3">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent Configuration
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {activeAgentType === 'nuggets'
-                ? 'This agent extracts valuable information from discussions and synthesizes important ideas.'
-                : 'This agent helps develop creative ideas and innovative concepts based on discussions.'}
-            </p>
-            
-            <div className="space-y-6">
-              {/* Variables de template pour les deux agents */}
-              <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
-                <h4 className="font-medium text-blue-800 mb-3">Personnalisation du prompt</h4>
-                <p className="text-sm text-blue-700 mb-4">
-                  Complétez les informations ci-dessous pour personnaliser automatiquement le prompt de l'agent {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}.
-                </p>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'agent dans le prompt</label>
-                    <input
-                      type="text"
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                      value={agent.agentName}
-                      onChange={(e) => handleAgentChange('agentName', e.target.value)}
-                      placeholder="Nom de l'agent"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Ce nom sera utilisé pour remplacer "{activeAgentType === 'nuggets' ? 'AGENT NAMED' : 'AGENT NAME'}" dans le prompt.
-                    </p>
+                <div className="flex flex-col items-center">
+                  <input
+                    type="text"
+                    className={`text-center font-medium text-lg text-${primaryColor}-600 bg-transparent border-b border-${primaryColor}-300 focus:border-${primaryColor}-500 focus:ring-0 w-40`}
+                    value={agent.agentName || agentName}
+                    onChange={(e) => handleAgentChange('agentName', e.target.value)}
+                    placeholder={agentName}
+                  />
+                  <span className="text-xs text-gray-500 mt-1">Agent Name</span>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <ImageUploader onImageUploaded={handleImageUploaded} buttonStyle="secondary" buttonText="Upload Image" />
+                  <button
+                    onClick={resetImage}
+                    className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </div>
+          
+          {/* Agent prompt and configuration */}
+          <div className="w-full md:w-2/3">
+            <Card className="p-4">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Agent Prompt</label>
+                    <button 
+                      onClick={() => setShowFullPrompt(!showFullPrompt)}
+                      className={`text-xs text-${primaryColor}-600 hover:text-${primaryColor}-800`}
+                    >
+                      {showFullPrompt ? "Hide Full Prompt" : "Show Full Prompt"}
+                    </button>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom du programme</label>
-                    <input
-                      type="text"
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                      value={sessionConfig.title || ''}
-                      onChange={(e) => {
-                        // Mise à jour du titre dans sessionConfig
-                        updateSessionConfig({
-                          ...sessionConfig,
-                          title: e.target.value
-                        });
-                      }}
-                      placeholder="Nom du programme ou de la session"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Ce nom sera utilisé pour remplacer "{activeAgentType === 'nuggets' ? 'PROGRAME NAME et PROGRAME NAMED' : 'PRGRAMENAME'}" dans le prompt.
-                    </p>
-                  </div>
-                  
-                  {activeAgentType === 'nuggets' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom du professeur</label>
-                      <input
-                        type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                        value={sessionConfig.teacherName || ''}
-                        onChange={(e) => {
-                          // Mise à jour du nom du professeur dans sessionConfig
-                          updateSessionConfig({
-                            ...sessionConfig,
-                            teacherName: e.target.value
-                          });
-                        }}
-                        placeholder="Nom du professeur ou facilitateur"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Ce nom sera utilisé pour remplacer "TEATCHER NAME" dans le prompt.
+                  {showFullPrompt ? (
+                    <div className="bg-gray-50 p-3 rounded-md mt-2 mb-4 prose-sm max-w-none whitespace-pre-wrap">
+                      <pre className="text-xs text-gray-800 font-mono">{displayPrompt}</pre>
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-500">
+                        Configure the parameters below to customize the agent's behavior.
+                        The prompt template includes variables like agent name, program name, etc.
                       </p>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Paramètres du modèle AI */}
-              <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
-                <h4 className="font-medium text-gray-800 mb-3">Paramètres du modèle AI</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Modèle AI</label>
-                    <select
-                      className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                      value={agent.model || "gpt-4"}
-                      onChange={(e) => handleAgentChange('model', e.target.value)}
-                    >
-                      <option value="gpt-4">GPT-4 (Recommandé)</option>
-                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                    </select>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Program Name
+                      </label>
+                      <input
+                        type="text"
+                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                        value={sessionConfig.title || ''}
+                        onChange={(e) => {
+                          updateSessionConfig({
+                            ...sessionConfig,
+                            title: e.target.value
+                          });
+                        }}
+                        placeholder="Enter program name"
+                      />
+                    </div>
+                    
+                    {activeAgentType === 'nuggets' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Teacher/Facilitator Name
+                        </label>
+                        <input
+                          type="text"
+                          className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                          value={sessionConfig.teacherName || ''}
+                          onChange={(e) => {
+                            updateSessionConfig({
+                              ...sessionConfig,
+                              teacherName: e.target.value
+                            });
+                          }}
+                          placeholder="Enter teacher/facilitator name"
+                        />
+                      </div>
+                    )}
                   </div>
-            
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Température</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      className="w-full"
-                      value={agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}
-                      onChange={(e) => handleAgentChange('temperature', parseFloat(e.target.value))}
-                    />
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>Précis (0)</span>
-                      <span>{agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}</span>
-                      <span>Créatif (1)</span>
+                  
+                  {/* Additional customization fields */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Agent Personality
+                      </label>
+                      <select
+                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                        value={agent.personality || 'professional'}
+                        onChange={(e) => handleAgentChange('personality', e.target.value)}
+                      >
+                        <option value="professional">Professional & Formal</option>
+                        <option value="friendly">Friendly & Approachable</option>
+                        <option value="enthusiastic">Enthusiastic & Energetic</option>
+                        <option value="concise">Concise & Direct</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Language Complexity
+                      </label>
+                      <select
+                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                        value={agent.languageComplexity || 'moderate'}
+                        onChange={(e) => handleAgentChange('languageComplexity', e.target.value)}
+                      >
+                        <option value="simple">Simple & Accessible</option>
+                        <option value="moderate">Moderate Complexity</option>
+                        <option value="advanced">Advanced & Technical</option>
+                      </select>
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Bouton pour afficher/masquer le prompt complet */}
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowFullPrompt(!showFullPrompt)}
-                  className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md hover:bg-blue-100 transition-colors"
-                >
-                  {showFullPrompt ? "Masquer le prompt complet" : "Voir le prompt complet"}
-                </button>
-              </div>
-              
-              {/* Affichage du prompt complet */}
-              {showFullPrompt && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-                  <h4 className="font-medium text-gray-800 mb-2">Prompt complet avec variables remplacées</h4>
-                  <pre className="text-xs whitespace-pre-wrap bg-white p-3 rounded border border-gray-300 overflow-auto max-h-96">
-                    {displayPrompt}
-                  </pre>
-                </div>
-              )}
-              
-              {/* Section pour modifier directement le prompt complet */}
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Modifier le prompt complet (avancé)</label>
-                <textarea
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 min-h-[150px]"
-                  value={agent.prompt}
-                  onChange={(e) => handleAgentChange('prompt', e.target.value)}
-                  placeholder={`Prompt complet pour l'agent ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}`}
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Modification avancée: les changements effectués ici remplaceront les variables personnalisées ci-dessus.
-                </p>
-              </div>
-            </div>
+            </Card>
+            
+            {/* Preview Section (shown only when previewMode is true) */}
+            {previewMode && renderPreviewSection()}
           </div>
         </div>
       </div>
@@ -773,18 +733,146 @@ Rules for the Closing Message:
     );
   };
 
+  // Render book configuration section
+  const renderBookConfigSection = () => {
+    const bookConfigProps = {
+      initialConfig: {
+        agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
+        programName: '',
+        teacherName: '',
+        customRules: [],
+        customQuestions: [],
+        analysisConfig: {
+          themes: [],
+          keywordsPerTheme: {},
+          sentimentAnalysis: true,
+          extractKeyInsights: true
+        },
+        bookConfig: activeAgentType === 'nuggets' 
+          ? (nuggets.bookConfig || { sections: [], visualStyle: {} }) 
+          : (lightbulbs.bookConfig || { sections: [], visualStyle: {} })
+      },
+      agentType: activeAgentType,
+      onSave: (config) => {
+        if (activeAgentType === 'nuggets') {
+          handleNuggetsBookConfigChange(config.bookConfig);
+        } else {
+          handleLightbulbsBookConfigChange(config.bookConfig);
+        }
+      }
+    };
+
+    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
+    
+    return (
+      <div className="space-y-6">
+        <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
+          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Book Configuration for {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
+          <p className={`text-${primaryColor}-700 text-sm`}>
+            {activeAgentType === 'nuggets' 
+              ? 'Customize the appearance and content of the book generated from AI Nuggets agent analyses.'
+              : 'Customize the appearance and content of the book generated from AI Lightbulbs agent analyses.'}
+          </p>
+        </div>
+        
+        <AIPromptConfig {...bookConfigProps} />
+      </div>
+    );
+  };
+
+  // Render preview section
+  const renderPreviewSection = () => {
+    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
+    
+    return (
+      <div className="mt-6 border-t pt-4">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="font-medium">Agent Preview</h4>
+          <button
+            onClick={() => setPreviewMode(!previewMode)}
+            className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
+          >
+            {previewMode ? "Hide" : "Show"} preview
+          </button>
+        </div>
+          
+        {previewMode && (
+          <div className="bg-gray-50 rounded-md p-3 mt-2">
+            <textarea
+              className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 mb-2`}
+              value={previewInput}
+              onChange={(e) => setPreviewInput(e.target.value)}
+              placeholder="Enter a message to test the agent..."
+              rows={2}
+            />
+            
+            <div className="flex justify-end">
+              <button
+                onClick={generatePreview}
+                disabled={isGeneratingPreview || !previewInput.trim()}
+                className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
+              >
+                {isGeneratingPreview ? "Generating..." : "Generate a response"}
+              </button>
+            </div>
+            
+            {previewResponse && (
+              <div className="mt-3 p-3 bg-white rounded border border-gray-200">
+                <h5 className="text-sm font-medium text-gray-700 mb-1">Agent response:</h5>
+                <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Main rendering logic based on current step
+  if (currentStep === 'final-analysis') {
+    // Render final analysis section
+    return (
+      <div className="space-y-6">
+        <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-md mb-4">
+          <h3 className="font-semibold text-purple-800 mb-2">Final Analysis Configuration</h3>
+          <p className="text-purple-700 text-sm">
+            Organize and configure how the different analyses will be presented to participants at the end of the session.
+          </p>
+        </div>
+        
+        <Card className="p-6">
+          <p className="text-gray-600 mb-4">Configure the final analysis settings here...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // For AI agents (nuggets/lightbulbs), show the relevant config based on activeSection
   return (
-    <div className="space-y-6">
-      {activeSection === 'config' && (
-        <>
+    <div className="space-y-8">
+      {/* Agent-specific tabs for subsections */}
+      <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="config">Agent Configuration</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
+          <TabsTrigger value="book">Book</TabsTrigger>
+        </TabsList>
+      
+        <TabsContent value="config">
           {renderAgentConfigSection()}
-        </>
-      )}
-      {activeSection === 'analysis' && (
-        <>
+        </TabsContent>
+        
+        <TabsContent value="analysis">
           {renderAgentAnalysisSection()}
-        </>
-      )}
+        </TabsContent>
+        
+        <TabsContent value="book">
+          {renderBookConfigSection()}
+        </TabsContent>
+      </Tabs>
+      
+      {/* Preview Section */}
+      {activeSection === "config" && previewMode && renderPreviewSection()}
     </div>
   );
 };

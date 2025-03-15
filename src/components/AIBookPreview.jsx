@@ -679,7 +679,7 @@ const AIBookPreview = ({
               textShadow: `1px 1px 0 ${theme.textColor}`
             }}>
               VOL. 01
-            </div>
+          </div>
           )}
           
           {currentThemeName === 'retroPlus' && (
@@ -705,7 +705,7 @@ const AIBookPreview = ({
               {Array.from({ length: 20 }, (_, i) => 
                 <span key={i} style={{ opacity: Math.random() * 0.5 + 0.5 }}>
                   {Math.random() > 0.5 ? '1' : '0'}
-                </span>
+              </span>
               )}
             </div>
           )}
@@ -722,7 +722,7 @@ const AIBookPreview = ({
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat'
               }}></div>
-            </div>
+          </div>
           )}
           
           {currentThemeName === 'developer' && (
@@ -995,7 +995,7 @@ const AIBookPreview = ({
           {showParticipantName && (
             <div className="mt-6 text-xs opacity-70 text-right">
               <p>From {participantName}'s session</p>
-            </div>
+          </div>
           )}
         </div>
       </div>
@@ -1039,7 +1039,7 @@ const AIBookPreview = ({
       {/* View toggle */}
       <div className="flex justify-center mb-2">
         <div className="inline-flex rounded-md shadow-sm" role="group">
-          <button
+          <button 
             onClick={() => setShowCover(true)}
             className={`px-4 py-2 text-sm font-medium rounded-l-md ${
               showCover 
@@ -1049,7 +1049,7 @@ const AIBookPreview = ({
           >
             Cover
           </button>
-          <button
+          <button 
             onClick={() => setShowCover(false)}
             className={`px-4 py-2 text-sm font-medium rounded-r-md ${
               !showCover 
