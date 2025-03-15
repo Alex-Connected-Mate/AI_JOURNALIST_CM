@@ -5,6 +5,8 @@ import React, { useState, useRef } from 'react';
  * 
  * Displays the timer in the flow map and allows users to modify it
  * by clicking on it, which opens a small popover with timer configuration.
+ * The popover stays open until explicitly closed by clicking the timer button again
+ * or the close button.
  * 
  * @param {boolean} enabled - Whether the timer is enabled
  * @param {number} duration - The duration of the timer in minutes
@@ -22,15 +24,30 @@ const FlowMapTimer = ({
   const popoverRef = useRef(null);
   const buttonRef = useRef(null);
 
-  // Toggle timer without popover
+  // Toggle timer enabled/disabled
   const handleToggleTimer = (e) => {
     e.stopPropagation();
+    e.preventDefault();
     onEnabledChange(!enabled);
   };
 
-  // Apply duration change
+  // Apply duration change and close popover
   const handleApplyDuration = () => {
     onDurationChange(localDuration);
+    setShowPopover(false);
+  };
+
+  // Toggle popover visibility
+  const togglePopover = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setShowPopover(!showPopover);
+  };
+
+  // Close popover (X button)
+  const closePopover = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
     setShowPopover(false);
   };
 
@@ -47,7 +64,7 @@ const FlowMapTimer = ({
           ? "text-red-600 bg-red-50 border border-red-200 hover:bg-red-100" 
           : "text-gray-600 bg-gray-100 border border-gray-300 hover:bg-gray-200"
       }`}
-      onClick={() => setShowPopover(!showPopover)}
+      onClick={togglePopover}
     >
       <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -67,12 +84,13 @@ const FlowMapTimer = ({
         <div 
           ref={popoverRef}
           className="absolute z-50 right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200"
+          onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling
         >
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Timer Configuration</h3>
               <button 
-                onClick={() => setShowPopover(false)}
+                onClick={closePopover}
                 className="text-gray-400 hover:text-gray-500"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
