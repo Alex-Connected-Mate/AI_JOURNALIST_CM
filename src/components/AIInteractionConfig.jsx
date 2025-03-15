@@ -141,14 +141,74 @@ You are a dedicated support agent named "AGENT NAMED" responsible for engaging p
 - End on a positive and engaging note:  
   "Ok, now let's refocus back on "TEATCHER NAME", and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
 
-  // S'assurer que le prompt par défaut est utilisé si nécessaire
+  // Default prompt for AI Lightbulbs
+  const DEFAULT_LIGHTBULBS_PROMPT = `You are a dedicated support agent named "AGENT NAME" responsible for conducting the "PRGRAMENAME" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
+
+Style:
+
+Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.
+
+Rules:
+	1.	Sequential Questioning: Follow the designated order for each question, only proceeding after receiving a complete response.
+	2.	Cross-Referencing: Ensure each response ties back to the "nugget" that inspired the participant, prompting elaboration if connections aren't clear.
+	3.	Clarification: Seek detailed clarifications when responses lack depth or completeness.
+	4.	Completion Requirement: Every question must be fully answered to conclude the questionnaire. Confirm all necessary details are captured for each response.
+
+Steps:
+
+Step 1: Inspiration Nugget Reference
+	•	Required Question: "Which nugget specifically inspired you? Could you briefly describe it?"
+	•	Objective: "Identify the inspiration source to ensure a clear cross-reference between nuggets and insights."
+
+Step 2: Light Bulb Moment
+	•	Required Question: "What about this nugget inspired you to think, 'We could try this here'?"
+	•	Objective: "Capture what resonated with the participant, highlighting the motivational trigger."
+
+Step 4: From Inspiration to Action
+	•	Required Question: "What did this nugget inspire you to do? Please specify the project, team, or context where you think this idea could work."
+	•	Objective: "Link inspiration to a concrete action plan or context for application."
+
+Step 5: Implementation Steps
+	•	Required Question: "What concrete steps will you take to bring this idea to life in your own context?"
+	•	Objective: "Define specific, actionable steps, encouraging clear and practical strategies."
+
+Step 6: Timeline for Action
+	•	Required Question: "By when do you plan to test or implement this idea?"
+	•	Objective: "Establish a timeline, prompting commitment to a timeframe."
+
+Step 7: Testing and Success Measures
+	•	Required Question: "How will you test this idea to see if it gains traction? What will success look like?"
+	•	Objective: "Promote experimentation, defining success metrics for evaluation."
+
+Step 8: Challenges and Solutions
+	•	Required Question: "What potential challenges do you anticipate in implementing this idea, and how could you overcome them?"
+	•	Objective: "Encourage proactive thinking about obstacles and solutions."
+
+Step 9: Long-Term Impact
+	•	Required Question: "If this idea works, what could the long-term impact be for your team or business unit?"
+	•	Objective: "Have participants reflect on potential broader impacts and strategic alignment with Nexus goals."
+
+Closing the Discussion:
+
+After confirming all responses are complete, the agent should conclude with a personalized and lighthearted closing message.
+
+Rules for the Closing Message:
+	1.	"Mention Annecy and the specific context (e.g., being at the Palace de Menthon, the weather, etc.)."
+	2.	Include a reference to the discussion to tie it back to the participant's contributions or insights.
+	3.	"Add a touch of humor to make the participant smile (e.g., a joke about the rain, the lake, or the setting)."
+	4.	"Keep the tone friendly, warm, and reflective of the engaging interaction."`;
+
+  // S'assurer que les prompts par défaut sont utilisés si nécessaire
   useEffect(() => {
-    // Si l'agent n'a pas de prompt défini et que l'onglet actif est nuggets
+    // Pour l'agent Nuggets
     if (activeAgentType === 'nuggets' && (!nuggets.prompt || nuggets.prompt.trim() === '')) {
-      // Définir le prompt par défaut pour l'agent Nuggets
       handleNuggetsChange('prompt', DEFAULT_NUGGETS_PROMPT);
     }
-  }, [activeAgentType, nuggets, handleNuggetsChange, DEFAULT_NUGGETS_PROMPT]);
+    // Pour l'agent Lightbulbs
+    else if (activeAgentType === 'lightbulbs' && (!lightbulbs.prompt || lightbulbs.prompt.trim() === '')) {
+      handleLightbulbsChange('prompt', DEFAULT_LIGHTBULBS_PROMPT);
+    }
+  }, [activeAgentType, nuggets, lightbulbs, handleNuggetsChange, handleLightbulbsChange, DEFAULT_NUGGETS_PROMPT, DEFAULT_LIGHTBULBS_PROMPT]);
 
   // Handler for timer settings changes
   const handleTimerEnabledChange = (enabled) => {
@@ -362,22 +422,29 @@ You are a dedicated support agent named "AGENT NAMED" responsible for engaging p
     // État local pour les variables du template de prompt 
     const [showFullPrompt, setShowFullPrompt] = useState(false);
 
-    // Extraction des variables du template (pour Nuggets seulement)
+    // Extraction des variables du template
     const extractTemplateVariables = () => {
-      if (activeAgentType !== 'nuggets') return {};
-      
       const promptText = agent.prompt || '';
       const variables = {};
       
-      // Extraction des variables du prompt
-      const agentNameMatch = promptText.match(/\"AGENT NAMED\"/);
-      const programNameMatch = promptText.match(/\"PROGRAME NAME\"/);
-      const programNamedMatch = promptText.match(/\"PROGRAME NAMED\"/);
-      const teacherNameMatch = promptText.match(/\"TEATCHER NAME\"/);
-      
-      variables.agentName = agent.agentName || agentName;
-      variables.programName = programNamedMatch ? sessionConfig.title || '' : '';
-      variables.teacherName = teacherNameMatch ? sessionConfig.teacherName || '' : '';
+      if (activeAgentType === 'nuggets') {
+        // Variables spécifiques à Nuggets
+        const agentNameMatch = promptText.match(/\"AGENT NAMED\"/);
+        const programNameMatch = promptText.match(/\"PROGRAME NAME\"/);
+        const programNamedMatch = promptText.match(/\"PROGRAME NAMED\"/);
+        const teacherNameMatch = promptText.match(/\"TEATCHER NAME\"/);
+        
+        variables.agentName = agent.agentName || agentName;
+        variables.programName = programNamedMatch ? sessionConfig.title || '' : '';
+        variables.teacherName = teacherNameMatch ? sessionConfig.teacherName || '' : '';
+      } else if (activeAgentType === 'lightbulbs') {
+        // Variables spécifiques à Lightbulbs
+        const agentNameMatch = promptText.match(/\"AGENT NAME\"/);
+        const programNameMatch = promptText.match(/\"PRGRAMENAME\"/);
+        
+        variables.agentName = agent.agentName || agentName;
+        variables.programName = programNameMatch ? sessionConfig.title || '' : '';
+      }
       
       return variables;
     };
@@ -387,21 +454,28 @@ You are a dedicated support agent named "AGENT NAMED" responsible for engaging p
     
     // Fonction pour mettre à jour le prompt complet
     const updatePromptWithVariables = (variables) => {
-      if (activeAgentType !== 'nuggets') return;
-      
       // Ne pas modifier le prompt de base, juste pour l'affichage
       let updatedPrompt = agent.prompt || '';
       
-      // Remplacer les variables dans le prompt
-      if (variables.agentName) {
-        updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
-      }
-      if (variables.programName) {
-        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
-        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
-      }
-      if (variables.teacherName) {
-        updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
+      // Remplacer les variables dans le prompt selon le type d'agent
+      if (activeAgentType === 'nuggets') {
+        if (variables.agentName) {
+          updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
+        }
+        if (variables.programName) {
+          updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
+          updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
+        }
+        if (variables.teacherName) {
+          updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
+        }
+      } else if (activeAgentType === 'lightbulbs') {
+        if (variables.agentName) {
+          updatedPrompt = updatedPrompt.replace(/\"AGENT NAME\"/g, `"${variables.agentName}"`);
+        }
+        if (variables.programName) {
+          updatedPrompt = updatedPrompt.replace(/\"PRGRAMENAME\"/g, `"${variables.programName}"`);
+        }
       }
       
       return updatedPrompt;
@@ -465,50 +539,50 @@ You are a dedicated support agent named "AGENT NAMED" responsible for engaging p
                 : 'This agent helps develop creative ideas and innovative concepts based on discussions.'}
             </p>
             
-            {activeAgentType === 'nuggets' ? (
-              <div className="space-y-6">
-                {/* Variables de template pour Nuggets */}
-                <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
-                  <h4 className="font-medium text-blue-800 mb-3">Personnalisation du prompt</h4>
-                  <p className="text-sm text-blue-700 mb-4">
-                    Complétez les informations ci-dessous pour personnaliser automatiquement le prompt de l'agent Nuggets.
-                  </p>
+            <div className="space-y-6">
+              {/* Variables de template pour les deux agents */}
+              <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
+                <h4 className="font-medium text-blue-800 mb-3">Personnalisation du prompt</h4>
+                <p className="text-sm text-blue-700 mb-4">
+                  Complétez les informations ci-dessous pour personnaliser automatiquement le prompt de l'agent {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}.
+                </p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'agent dans le prompt</label>
+                    <input
+                      type="text"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                      value={agent.agentName}
+                      onChange={(e) => handleAgentChange('agentName', e.target.value)}
+                      placeholder="Nom de l'agent"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ce nom sera utilisé pour remplacer "{activeAgentType === 'nuggets' ? 'AGENT NAMED' : 'AGENT NAME'}" dans le prompt.
+                    </p>
+                  </div>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'agent dans le prompt</label>
-                      <input
-                        type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                        value={agent.agentName}
-                        onChange={(e) => handleAgentChange('agentName', e.target.value)}
-                        placeholder="Nom de l'agent"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Ce nom sera utilisé pour remplacer "AGENT NAMED" dans le prompt.
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom du programme</label>
-                      <input
-                        type="text"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                        value={sessionConfig.title || ''}
-                        onChange={(e) => {
-                          // Mise à jour du titre dans sessionConfig
-                          updateSessionConfig({
-                            ...sessionConfig,
-                            title: e.target.value
-                          });
-                        }}
-                        placeholder="Nom du programme ou de la session"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Ce nom sera utilisé pour remplacer "PROGRAME NAME" et "PROGRAME NAMED" dans le prompt.
-                      </p>
-                    </div>
-                    
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom du programme</label>
+                    <input
+                      type="text"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                      value={sessionConfig.title || ''}
+                      onChange={(e) => {
+                        // Mise à jour du titre dans sessionConfig
+                        updateSessionConfig({
+                          ...sessionConfig,
+                          title: e.target.value
+                        });
+                      }}
+                      placeholder="Nom du programme ou de la session"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Ce nom sera utilisé pour remplacer "{activeAgentType === 'nuggets' ? 'PROGRAME NAME et PROGRAME NAMED' : 'PRGRAMENAME'}" dans le prompt.
+                    </p>
+                  </div>
+                  
+                  {activeAgentType === 'nuggets' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nom du professeur</label>
                       <input
@@ -528,73 +602,28 @@ You are a dedicated support agent named "AGENT NAMED" responsible for engaging p
                         Ce nom sera utilisé pour remplacer "TEATCHER NAME" dans le prompt.
                       </p>
                     </div>
-                  </div>
-                </div>
-
-                {/* Bouton pour afficher/masquer le prompt complet */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => setShowFullPrompt(!showFullPrompt)}
-                    className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md hover:bg-blue-100 transition-colors"
-                  >
-                    {showFullPrompt ? "Masquer le prompt complet" : "Voir le prompt complet"}
-                  </button>
-                </div>
-                
-                {/* Affichage du prompt complet */}
-                {showFullPrompt && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-                    <h4 className="font-medium text-gray-800 mb-2">Prompt complet avec variables remplacées</h4>
-                    <pre className="text-xs whitespace-pre-wrap bg-white p-3 rounded border border-gray-300 overflow-auto max-h-96">
-                      {displayPrompt}
-                    </pre>
-                  </div>
-                )}
-                
-                {/* Section pour modifier directement le prompt complet */}
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Modifier le prompt complet (avancé)</label>
-                  <textarea
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 min-h-[150px]"
-                    value={agent.prompt}
-                    onChange={(e) => handleAgentChange('prompt', e.target.value)}
-                    placeholder="Prompt complet pour l'agent AI Nuggets"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Modification avancée: les changements effectués ici remplaceront les variables personnalisées ci-dessus.
-                  </p>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Agent Prompt</label>
-                  <textarea
-                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
-                    value={agent.prompt}
-                    onChange={(e) => handleAgentChange('prompt', e.target.value)}
-                    placeholder={`Detailed instructions for the ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Define the instructions that the agent should follow when interacting with participants.
-                  </p>
-                </div>
 
+              {/* Paramètres du modèle AI */}
+              <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
+                <h4 className="font-medium text-gray-800 mb-3">Paramètres du modèle AI</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">AI Model</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Modèle AI</label>
                     <select
                       className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
                       value={agent.model || "gpt-4"}
                       onChange={(e) => handleAgentChange('model', e.target.value)}
                     >
-                      <option value="gpt-4">GPT-4 (Recommended)</option>
+                      <option value="gpt-4">GPT-4 (Recommandé)</option>
                       <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                     </select>
                   </div>
             
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Temperature</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Température</label>
                     <input
                       type="range"
                       min="0"
@@ -605,14 +634,48 @@ You are a dedicated support agent named "AGENT NAMED" responsible for engaging p
                       onChange={(e) => handleAgentChange('temperature', parseFloat(e.target.value))}
                     />
                     <div className="flex justify-between text-xs text-gray-500">
-                      <span>Precise (0)</span>
+                      <span>Précis (0)</span>
                       <span>{agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}</span>
-                      <span>Creative (1)</span>
+                      <span>Créatif (1)</span>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+
+              {/* Bouton pour afficher/masquer le prompt complet */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowFullPrompt(!showFullPrompt)}
+                  className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  {showFullPrompt ? "Masquer le prompt complet" : "Voir le prompt complet"}
+                </button>
+              </div>
+              
+              {/* Affichage du prompt complet */}
+              {showFullPrompt && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+                  <h4 className="font-medium text-gray-800 mb-2">Prompt complet avec variables remplacées</h4>
+                  <pre className="text-xs whitespace-pre-wrap bg-white p-3 rounded border border-gray-300 overflow-auto max-h-96">
+                    {displayPrompt}
+                  </pre>
+                </div>
+              )}
+              
+              {/* Section pour modifier directement le prompt complet */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modifier le prompt complet (avancé)</label>
+                <textarea
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 min-h-[150px]"
+                  value={agent.prompt}
+                  onChange={(e) => handleAgentChange('prompt', e.target.value)}
+                  placeholder={`Prompt complet pour l'agent ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}`}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Modification avancée: les changements effectués ici remplaceront les variables personnalisées ci-dessus.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
