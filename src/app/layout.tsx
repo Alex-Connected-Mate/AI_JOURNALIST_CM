@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 // Default language
-export const DEFAULT_LANGUAGE = 'fr';
+export const DEFAULT_LANGUAGE = 'en';
 
 export default function RootLayout({
   children,

@@ -17,11 +17,11 @@ const LOCALE_COOKIE = 'NEXT_LOCALE';
 export function LocaleProvider({ children }) {
   // Supported locales
   const supportedLocales = ['en', 'fr', 'ja'];
-  const defaultLocale = 'fr';
+  const defaultLocale = 'en';
 
   // Initialize locale from cookie or browser settings
   const [locale, setLocale] = useState(() => {
-    // For SSR, default to French initially
+    // For SSR, default to English initially
     if (typeof window === 'undefined') return defaultLocale;
     
     // Try to get from cookie
@@ -36,7 +36,7 @@ export function LocaleProvider({ children }) {
       console.error('Error detecting browser locale:', e);
     }
     
-    // Default to French
+    // Default to English
     return defaultLocale;
   });
 

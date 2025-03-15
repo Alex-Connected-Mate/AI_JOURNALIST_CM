@@ -1,0 +1,22 @@
+{
+  "session": {
+    "flow": {
+      "timer_config": "Timer Settings",
+      "timer_config_short": "Timer",
+      "timer_config_desc": "Configure the timer settings for the discussion phase.",
+      "analysis_config": "Configure Analysis",
+      "analysis_config_short": "Analysis Config",
+      "analysis_config_desc": "Configure the order and parameters of the final analysis",
+      "lightbulb_desc": "Configure rules for innovative idea detection",
+      "lightbulb_short": "Innovative Ideas",
+      "ai_interaction_desc": "Configure AI interaction",
+      "ai_nuggets_short": "Information Nuggets",
+      "discussion_desc": "Configure discussion parameters",
+      "discussion_short": "Discussion",
+      "connection_desc": "Configure connection parameters",
+      "connection_short": "Connection",
+      "basic_info_desc": "Basic session information",
+      "basic_info_short": "Basic Information"
+    }
+  }
+} 

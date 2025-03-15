@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from './LocaleProvider';
-import FlowMapTimer from './FlowMapTimer';
 import FlowMapAnalysisOrder from './FlowMapAnalysisOrder';
 
 /**
@@ -622,12 +621,16 @@ const SessionFlowMap = ({
       <div className="w-full mb-3">
         <div className="border-2 border-dashed border-red-300 rounded-lg p-3 relative">
           <div className="absolute -top-3 right-2">
-            <FlowMapTimer 
-              enabled={timerSettings.enabled}
-              duration={timerSettings.duration}
-              onEnabledChange={handleTimerEnabledChange}
-              onDurationChange={handleTimerDurationChange}
-            />
+            <button
+              onClick={() => onStepChange('timer-config')}
+              className="flex items-center space-x-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-xs px-2 py-1 rounded-full shadow-sm"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>{timerSettings.enabled ? `${timerSettings.duration} min` : 'Timer off'}</span>
+            </button>
           </div>
           
           <div className="grid grid-cols-2 gap-3">

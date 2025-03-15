@@ -698,7 +698,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
           />
         );
       case 'analysis-config':
-        // Préparer les éléments d'analyse pour le composant de réorganisation
+        // Prepare analysis items for the reordering component
         const analysisItems = sessionConfig.analysisConfiguration?.items || [
           { id: 'nuggets', type: 'nuggets', title: 'Nuggets Analysis', enabled: true },
           { id: 'lightbulbs', type: 'lightbulbs', title: 'Lightbulbs Analysis', enabled: true },
@@ -726,14 +726,14 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
         return (
           <div className="space-y-6">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Configuration de l'Analyse Finale</h3>
+              <h3 className="text-lg font-medium text-blue-800 mb-2">Final Analysis Configuration</h3>
               <p className="text-sm text-blue-700 mb-4">
-                Réorganisez et configurez les étapes d'analyse qui seront présentées dans le rapport final. 
-                Utilisez le glisser-déposer ou les flèches pour changer l'ordre.
+                Reorder and configure the analysis steps that will be presented in the final report.
+                Use drag and drop or the arrows to change the order.
               </p>
               
               <div className="bg-white p-4 rounded-md border border-gray-200">
-                <h4 className="text-md font-medium text-gray-800 mb-4">Ordre des Analyses</h4>
+                <h4 className="text-md font-medium text-gray-800 mb-4">Analysis Order</h4>
                 
                 {analysisItems.map((item, index) => (
                   <div 
@@ -817,9 +817,9 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
             </div>
             
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-              <h3 className="text-lg font-medium text-blue-800 mb-2">Aperçu du Flux d'Analyse</h3>
+              <h3 className="text-lg font-medium text-blue-800 mb-2">Analysis Flow Preview</h3>
               <p className="text-sm text-blue-700 mb-4">
-                L'analyse finale se déroulera dans l'ordre défini ci-dessus, en n'incluant que les étapes activées.
+                The final analysis will proceed in the order defined above, including only the activated steps.
               </p>
               
               <div className="bg-white p-4 rounded-md border border-gray-200">
@@ -849,7 +849,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
                   
                   {analysisItems.filter(item => item.enabled).length === 0 && (
                     <div className="p-4 text-center text-gray-500 italic">
-                      Aucune étape d'analyse activée. Activez au moins une étape pour générer un rapport.
+                      No analysis steps activated. Enable at least one step to generate a report.
                     </div>
                   )}
                 </div>
