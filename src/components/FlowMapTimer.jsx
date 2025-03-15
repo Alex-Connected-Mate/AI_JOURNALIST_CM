@@ -1,12 +1,10 @@
 import React from 'react';
-import { Clock } from 'lucide-react';
-import TimerConfigPopover from './TimerConfigPopover';
 
 /**
  * FlowMapTimer Component
  * 
  * Displays the timer in the flow map and allows users to modify it
- * by clicking on it, which opens a popover with timer configuration.
+ * by clicking on it, which directly triggers the callbacks for timer configuration.
  * 
  * @param {boolean} enabled - Whether the timer is enabled
  * @param {number} duration - The duration of the timer in minutes
@@ -19,34 +17,43 @@ const FlowMapTimer = ({
   onEnabledChange,
   onDurationChange
 }) => {
+  // Simplified version that just toggles the timer on/off when clicked
+  const handleClick = () => {
+    if (enabled) {
+      // When enabled, just toggle it off
+      onEnabledChange(false);
+    } else {
+      // When disabled, toggle it on with default duration
+      onEnabledChange(true);
+    }
+  };
+
   if (!enabled) {
     return (
-      <TimerConfigPopover
-        timerEnabled={enabled}
-        timerDuration={duration}
-        onTimerEnabledChange={onEnabledChange}
-        onTimerDurationChange={onDurationChange}
+      <div 
+        className="inline-flex items-center px-2.5 py-1 rounded-full text-gray-600 bg-gray-100 border border-gray-300 cursor-pointer hover:bg-gray-200 transition-colors"
+        onClick={handleClick}
       >
-        <div className="inline-flex items-center px-2.5 py-1 rounded-full text-gray-600 bg-gray-100 border border-gray-300 cursor-pointer hover:bg-gray-200 transition-colors">
-          <Clock size={14} className="mr-1" />
-          <span className="text-xs font-medium">Timer désactivé</span>
-        </div>
-      </TimerConfigPopover>
+        <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span className="text-xs font-medium">Timer désactivé</span>
+      </div>
     );
   }
 
   return (
-    <TimerConfigPopover
-      timerEnabled={enabled}
-      timerDuration={duration}
-      onTimerEnabledChange={onEnabledChange}
-      onTimerDurationChange={onDurationChange}
+    <div 
+      className="inline-flex items-center px-2.5 py-1 rounded-full text-red-600 bg-red-50 border border-red-200 cursor-pointer hover:bg-red-100 transition-colors"
+      onClick={handleClick}
     >
-      <div className="inline-flex items-center px-2.5 py-1 rounded-full text-red-600 bg-red-50 border border-red-200 cursor-pointer hover:bg-red-100 transition-colors">
-        <Clock size={14} className="mr-1" />
-        <span className="text-xs font-medium">{duration} MIN TIMER</span>
-      </div>
-    </TimerConfigPopover>
+      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      <span className="text-xs font-medium">{duration} MIN TIMER</span>
+    </div>
   );
 };
 

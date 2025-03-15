@@ -19,6 +19,8 @@ import FlowMapAnalysisOrder from './FlowMapAnalysisOrder';
  * 
  * 2. For the analysis reordering to work, the parent component should pass:
  *    - settings.finalAnalysis.items (array of analysis items)
+ *    or
+ *    - analysisConfiguration.items (array of analysis items)
  *
  * 3. The sessionConfig object should also include an onConfigChange function
  *    that handles updates to the configuration, like:
@@ -26,6 +28,9 @@ import FlowMapAnalysisOrder from './FlowMapAnalysisOrder';
  *      ...sessionData,
  *      onConfigChange: (updatedConfig) => updateSessionData(updatedConfig)
  *    }
+ *
+ * Note: This component now uses simplified versions of FlowMapTimer and
+ * FlowMapAnalysisOrder that do not require external UI component libraries.
  */
 const SessionFlowMap = ({ 
   activeStep = 'basic-info',
