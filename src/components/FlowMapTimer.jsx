@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 
 /**
  * FlowMapTimer Component
@@ -21,23 +21,6 @@ const FlowMapTimer = ({
   const [localDuration, setLocalDuration] = useState(duration);
   const popoverRef = useRef(null);
   const buttonRef = useRef(null);
-
-  // Close popover on outside click
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (popoverRef.current && 
-          !popoverRef.current.contains(event.target) && 
-          buttonRef.current && 
-          !buttonRef.current.contains(event.target)) {
-        setShowPopover(false);
-      }
-    }
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   // Toggle timer without popover
   const handleToggleTimer = (e) => {
@@ -71,7 +54,7 @@ const FlowMapTimer = ({
         <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
       <span className="text-xs font-medium">
-        {enabled ? `${duration} MIN TIMER` : "Timer désactivé"}
+        {enabled ? `${duration} MIN TIMER` : "Timer disabled"}
       </span>
     </div>
   );
@@ -87,7 +70,7 @@ const FlowMapTimer = ({
         >
           <div className="px-4 py-3 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">Configuration du Timer</h3>
+              <h3 className="text-sm font-semibold text-gray-700">Timer Configuration</h3>
               <button 
                 onClick={() => setShowPopover(false)}
                 className="text-gray-400 hover:text-gray-500"
@@ -101,7 +84,7 @@ const FlowMapTimer = ({
           
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Activer le timer</span>
+              <span className="text-sm font-medium text-gray-700">Enable timer</span>
               <button 
                 className={`relative inline-flex items-center h-5 rounded-full w-10 ${enabled ? 'bg-purple-600' : 'bg-gray-300'}`}
                 onClick={handleToggleTimer}
@@ -116,7 +99,7 @@ const FlowMapTimer = ({
               <>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Durée (minutes)</span>
+                    <span className="text-sm font-medium text-gray-700">Duration (minutes)</span>
                     <span className="text-sm font-medium text-purple-600">{localDuration} min</span>
                   </div>
                   
@@ -160,7 +143,7 @@ const FlowMapTimer = ({
                 onClick={handleApplyDuration}
                 className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md transition-colors"
               >
-                Appliquer
+                Apply
               </button>
             </div>
           </div>
