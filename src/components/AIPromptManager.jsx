@@ -41,24 +41,43 @@ const AIPromptManager = ({
           .eq('agent_type', activeTab)
           .single();
         
-        if (error) {
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
           console.error('Error loading prompt config:', error);
           return;
         }
         
+        // Create default configuration based on workshop data and agent type
+        const defaultConfig = {
+          agentName: activeTab === 'nuggets' ? 'Elias' : 'Sonia',
+          programName: workshop.name || 'Connected Mate Workshop',
+          teacherName: workshop.instructor || workshop.teacher_name || 'the instructor',
+          organizationName: workshop.organization || '',
+          styleDescription: activeTab === 'nuggets' 
+            ? "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional."
+            : "Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.",
+          rules: [],
+          questions: [],
+          customContext: '',
+          rawPrompt: null
+        };
+        
         if (data) {
-          // Convert from database format to component format
+          // Convert from database format to component format, using workshop data as fallback
           setPromptConfig({
-            agentName: data.agent_name,
-            programName: data.program_name,
-            teacherName: data.teacher_name,
-            styleDescription: data.style_description,
+            agentName: data.agent_name || defaultConfig.agentName,
+            programName: data.program_name || defaultConfig.programName,
+            teacherName: data.teacher_name || defaultConfig.teacherName,
+            organizationName: data.organization_name || defaultConfig.organizationName,
+            styleDescription: data.style_description || defaultConfig.styleDescription,
             rules: data.rules ? JSON.parse(data.rules) : [],
             questions: data.questions ? JSON.parse(data.questions) : [],
             customContext: data.custom_context || '',
             rawPrompt: data.raw_prompt,
             generatedPrompt: data.generated_prompt
           });
+        } else {
+          // No existing configuration, use defaults
+          setPromptConfig(defaultConfig);
         }
       } catch (error) {
         console.error('Error in loadPromptConfig:', error);
@@ -142,6 +161,7 @@ const AIPromptManager = ({
         agent_name: config.agentName,
         program_name: config.programName,
         teacher_name: config.teacherName,
+        organization_name: config.organizationName,
         style_description: config.styleDescription,
         rules: JSON.stringify(config.rules),
         questions: JSON.stringify(config.questions),

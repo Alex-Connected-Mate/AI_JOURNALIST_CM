@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS agent_prompts (
   agent_name TEXT NOT NULL,
   program_name TEXT NOT NULL,
   teacher_name TEXT NOT NULL,
+  organization_name TEXT,
   style_description TEXT NOT NULL,
   rules JSONB NOT NULL DEFAULT '[]'::jsonb,
   questions JSONB NOT NULL DEFAULT '[]'::jsonb,

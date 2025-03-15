@@ -25,7 +25,7 @@ import {
  * Nuggets Agent Default Prompt Template
  */
 const DEFAULT_NUGGETS_PROMPT = `# Objective
-You are a dedicated support agent named "{{agentName}}" responsible for engaging participants in the "{{programName}}" event questionnaire. Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
+You are a dedicated support agent named "{{agentName}}" responsible for engaging participants in the "{{programName}}" event questionnaire organized by "{{organizationName}}". Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
 
 # Style
 "{{styleDescription}}"
@@ -37,7 +37,7 @@ You are a dedicated support agent named "{{agentName}}" responsible for engaging
 
 ### Step 1: Identification
 - Start the conversation: 
-  "Hi! Welcome to "{{programName}}". Participants told ole that your had a great story ! Im your AI Journalist for today. So tell me what's your famous story !  😊"
+  "Hi! Welcome to "{{programName}}" by {{organizationName}}. Participants told me that you had a great story! I'm your AI Journalist for today. So tell me what's your famous story! 😊"
 
 ### Step 2: Required Questions (this question are template)
 {{questions}}
@@ -50,7 +50,7 @@ You are a dedicated support agent named "{{agentName}}" responsible for engaging
  * Lightbulbs Agent Default Prompt Template
  */
 const DEFAULT_LIGHTBULBS_PROMPT = `# Objective
-You are a dedicated support agent named "{{agentName}}" responsible for conducting the "{{programName}}" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
+You are a dedicated support agent named "{{agentName}}" responsible for conducting the "{{programName}}" "Final Light Bulb Questionnaire" for {{organizationName}}. Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
 
 # Style
 {{styleDescription}}
@@ -76,6 +76,7 @@ End with a reference back to "{{teacherName}}" to transition back to the worksho
 const DEFAULT_NUGGETS_AGENT_NAME = "Elias";
 const DEFAULT_NUGGETS_PROGRAM_NAME = "Connected Mate Workshop";
 const DEFAULT_NUGGETS_TEACHER_NAME = "the instructor";
+const DEFAULT_NUGGETS_ORGANIZATION_NAME = "Connected Mate";
 const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional.";
 
 const DEFAULT_NUGGETS_RULES = [
@@ -133,6 +134,7 @@ const DEFAULT_NUGGETS_QUESTIONS = [
 const DEFAULT_LIGHTBULBS_AGENT_NAME = "Sonia";
 const DEFAULT_LIGHTBULBS_PROGRAM_NAME = "Connected Mate Workshop";
 const DEFAULT_LIGHTBULBS_TEACHER_NAME = "the instructor";
+const DEFAULT_LIGHTBULBS_ORGANIZATION_NAME = "Connected Mate";
 const DEFAULT_LIGHTBULBS_STYLE = "Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.";
 
 const DEFAULT_LIGHTBULBS_RULES = [
@@ -217,6 +219,7 @@ const AIPromptEditor = ({
         agentName: DEFAULT_LIGHTBULBS_AGENT_NAME,
         programName: DEFAULT_LIGHTBULBS_PROGRAM_NAME,
         teacherName: DEFAULT_LIGHTBULBS_TEACHER_NAME,
+        organizationName: DEFAULT_LIGHTBULBS_ORGANIZATION_NAME,
         styleDescription: DEFAULT_LIGHTBULBS_STYLE,
         rules: [...DEFAULT_LIGHTBULBS_RULES],
         questions: [...DEFAULT_LIGHTBULBS_QUESTIONS],
@@ -230,6 +233,7 @@ const AIPromptEditor = ({
       agentName: DEFAULT_NUGGETS_AGENT_NAME,
       programName: DEFAULT_NUGGETS_PROGRAM_NAME,
       teacherName: DEFAULT_NUGGETS_TEACHER_NAME,
+      organizationName: DEFAULT_NUGGETS_ORGANIZATION_NAME,
       styleDescription: DEFAULT_NUGGETS_STYLE,
       rules: [...DEFAULT_NUGGETS_RULES],
       questions: [...DEFAULT_NUGGETS_QUESTIONS],
@@ -274,6 +278,7 @@ const AIPromptEditor = ({
     let prompt = promptTemplate.replace(/{{agentName}}/g, config.agentName);
     prompt = prompt.replace(/{{programName}}/g, config.programName);
     prompt = prompt.replace(/{{teacherName}}/g, config.teacherName);
+    prompt = prompt.replace(/{{organizationName}}/g, config.organizationName || 'Connected Mate');
     prompt = prompt.replace(/{{styleDescription}}/g, config.styleDescription);
 
     // Format rules
@@ -542,6 +547,19 @@ const AIPromptEditor = ({
                   />
                   <p className="text-sm text-gray-500">
                     The name of the program or workshop this agent will be used in
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="organizationName">Organization Name</Label>
+                  <Input
+                    id="organizationName"
+                    value={config.organizationName}
+                    onChange={(e) => handleBasicConfigChange('organizationName', e.target.value)}
+                    placeholder="Enter organization name"
+                  />
+                  <p className="text-sm text-gray-500">
+                    The name of the organization running this program or workshop
                   </p>
                 </div>
 
