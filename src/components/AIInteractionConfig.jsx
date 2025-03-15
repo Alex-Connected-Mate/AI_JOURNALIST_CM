@@ -96,6 +96,60 @@ const AIInteractionConfig = ({
   // Selected analysis item for configuration in final analysis step
   const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
 
+  // Default prompt for AI Nuggets
+  const DEFAULT_NUGGETS_PROMPT = `# Objective
+You are a dedicated support agent named "AGENT NAMED" responsible for engaging participants in the "PROGRAME NAME" event questionnaire. Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
+
+# Style
+"Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional."
+
+# Rules
+
+1.  Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data. 
+2. **Sequential Flow**: 
+   - Ask each required question in order and proceed only after receiving a full response.
+3. **Clarification**: 
+   - If a response is incomplete or unclear, ask for additional details politely before moving on.
+4. **No Skipped Questions**: 
+   - All the required questions must be addressed without skipping or rephrasing unless necessary for clarity.
+5. **End of Conversation**: 
+   - Conclude the conversation only after confirming that all responses are complete.
+
+# Interaction Example
+
+### Step 1: Welcome
+- Start the conversation: 
+  "Hi! Welcome to "PROGRAME NAMED". Participants told ole that your had a great story ! Im your AI Journalist for today. So tell me what's your famous story !  😊"
+
+### Step 2: Required Questions (this question are template)
+1. **Problem and Opportunity**:  
+   "What is the main problem or opportunity your business is addressing?"
+   
+2. **Unique Solution**:  
+   "How does your solution stand out from others in the market?"
+   
+3. **Target Audience**:  
+   "Who are your primary customers or users, and what do they value most?"
+   
+4. **Impact and Results**:  
+   "What measurable impact have you achieved so far, or what are you aiming for?"
+   
+5. **Scalability and Vision**:  
+   "How do you plan to scale this solution, and what is your long-term vision?"
+
+### Step 3: Closing the Discussion
+- End on a positive and engaging note:  
+  "Ok, now let's refocus back on "TEATCHER NAME", and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
+
+  // S'assurer que le prompt par défaut est utilisé si nécessaire
+  useEffect(() => {
+    // Si l'agent n'a pas de prompt défini et que l'onglet actif est nuggets
+    if (activeAgentType === 'nuggets' && (!nuggets.prompt || nuggets.prompt.trim() === '')) {
+      // Définir le prompt par défaut pour l'agent Nuggets
+      handleNuggetsChange('prompt', DEFAULT_NUGGETS_PROMPT);
+    }
+  }, [activeAgentType, nuggets, handleNuggetsChange, DEFAULT_NUGGETS_PROMPT]);
+
   // Handler for timer settings changes
   const handleTimerEnabledChange = (enabled) => {
     const updatedConfig = {
@@ -305,6 +359,57 @@ const AIInteractionConfig = ({
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
     
+    // État local pour les variables du template de prompt 
+    const [showFullPrompt, setShowFullPrompt] = useState(false);
+
+    // Extraction des variables du template (pour Nuggets seulement)
+    const extractTemplateVariables = () => {
+      if (activeAgentType !== 'nuggets') return {};
+      
+      const promptText = agent.prompt || '';
+      const variables = {};
+      
+      // Extraction des variables du prompt
+      const agentNameMatch = promptText.match(/\"AGENT NAMED\"/);
+      const programNameMatch = promptText.match(/\"PROGRAME NAME\"/);
+      const programNamedMatch = promptText.match(/\"PROGRAME NAMED\"/);
+      const teacherNameMatch = promptText.match(/\"TEATCHER NAME\"/);
+      
+      variables.agentName = agent.agentName || agentName;
+      variables.programName = programNamedMatch ? sessionConfig.title || '' : '';
+      variables.teacherName = teacherNameMatch ? sessionConfig.teacherName || '' : '';
+      
+      return variables;
+    };
+    
+    // Récupération des variables du template
+    const templateVariables = extractTemplateVariables();
+    
+    // Fonction pour mettre à jour le prompt complet
+    const updatePromptWithVariables = (variables) => {
+      if (activeAgentType !== 'nuggets') return;
+      
+      // Ne pas modifier le prompt de base, juste pour l'affichage
+      let updatedPrompt = agent.prompt || '';
+      
+      // Remplacer les variables dans le prompt
+      if (variables.agentName) {
+        updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
+      }
+      if (variables.programName) {
+        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
+        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
+      }
+      if (variables.teacherName) {
+        updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
+      }
+      
+      return updatedPrompt;
+    };
+    
+    // Prompt mis à jour avec les variables
+    const displayPrompt = updatePromptWithVariables(templateVariables);
+    
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
@@ -352,7 +457,7 @@ const AIInteractionConfig = ({
           {/* Agent configuration */}
           <div className="w-full md:w-2/3">
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent Prompt
+              {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Agent Configuration
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {activeAgentType === 'nuggets'
@@ -360,52 +465,154 @@ const AIInteractionConfig = ({
                 : 'This agent helps develop creative ideas and innovative concepts based on discussions.'}
             </p>
             
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Agent Prompt</label>
-                <textarea
-                  className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
-                  value={agent.prompt}
-                  onChange={(e) => handleAgentChange('prompt', e.target.value)}
-                  placeholder={`Detailed instructions for the ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Define the instructions that the agent should follow when interacting with participants.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">AI Model</label>
-                  <select
-                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                    value={agent.model || "gpt-4"}
-                    onChange={(e) => handleAgentChange('model', e.target.value)}
-                  >
-                    <option value="gpt-4">GPT-4 (Recommended)</option>
-                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  </select>
+            {activeAgentType === 'nuggets' ? (
+              <div className="space-y-6">
+                {/* Variables de template pour Nuggets */}
+                <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-3">Personnalisation du prompt</h4>
+                  <p className="text-sm text-blue-700 mb-4">
+                    Complétez les informations ci-dessous pour personnaliser automatiquement le prompt de l'agent Nuggets.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'agent dans le prompt</label>
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                        value={agent.agentName}
+                        onChange={(e) => handleAgentChange('agentName', e.target.value)}
+                        placeholder="Nom de l'agent"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Ce nom sera utilisé pour remplacer "AGENT NAMED" dans le prompt.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom du programme</label>
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                        value={sessionConfig.title || ''}
+                        onChange={(e) => {
+                          // Mise à jour du titre dans sessionConfig
+                          updateSessionConfig({
+                            ...sessionConfig,
+                            title: e.target.value
+                          });
+                        }}
+                        placeholder="Nom du programme ou de la session"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Ce nom sera utilisé pour remplacer "PROGRAME NAME" et "PROGRAME NAMED" dans le prompt.
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom du professeur</label>
+                      <input
+                        type="text"
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                        value={sessionConfig.teacherName || ''}
+                        onChange={(e) => {
+                          // Mise à jour du nom du professeur dans sessionConfig
+                          updateSessionConfig({
+                            ...sessionConfig,
+                            teacherName: e.target.value
+                          });
+                        }}
+                        placeholder="Nom du professeur ou facilitateur"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Ce nom sera utilisé pour remplacer "TEATCHER NAME" dans le prompt.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-          
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Temperature</label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    className="w-full"
-                    value={agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}
-                    onChange={(e) => handleAgentChange('temperature', parseFloat(e.target.value))}
+
+                {/* Bouton pour afficher/masquer le prompt complet */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowFullPrompt(!showFullPrompt)}
+                    className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md hover:bg-blue-100 transition-colors"
+                  >
+                    {showFullPrompt ? "Masquer le prompt complet" : "Voir le prompt complet"}
+                  </button>
+                </div>
+                
+                {/* Affichage du prompt complet */}
+                {showFullPrompt && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+                    <h4 className="font-medium text-gray-800 mb-2">Prompt complet avec variables remplacées</h4>
+                    <pre className="text-xs whitespace-pre-wrap bg-white p-3 rounded border border-gray-300 overflow-auto max-h-96">
+                      {displayPrompt}
+                    </pre>
+                  </div>
+                )}
+                
+                {/* Section pour modifier directement le prompt complet */}
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Modifier le prompt complet (avancé)</label>
+                  <textarea
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 min-h-[150px]"
+                    value={agent.prompt}
+                    onChange={(e) => handleAgentChange('prompt', e.target.value)}
+                    placeholder="Prompt complet pour l'agent AI Nuggets"
                   />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Precise (0)</span>
-                    <span>{agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}</span>
-                    <span>Creative (1)</span>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Modification avancée: les changements effectués ici remplaceront les variables personnalisées ci-dessus.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Agent Prompt</label>
+                  <textarea
+                    className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 min-h-[150px]`}
+                    value={agent.prompt}
+                    onChange={(e) => handleAgentChange('prompt', e.target.value)}
+                    placeholder={`Detailed instructions for the ${activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} agent`}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Define the instructions that the agent should follow when interacting with participants.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">AI Model</label>
+                    <select
+                      className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                      value={agent.model || "gpt-4"}
+                      onChange={(e) => handleAgentChange('model', e.target.value)}
+                    >
+                      <option value="gpt-4">GPT-4 (Recommended)</option>
+                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                  </div>
+            
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Temperature</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      className="w-full"
+                      value={agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}
+                      onChange={(e) => handleAgentChange('temperature', parseFloat(e.target.value))}
+                    />
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Precise (0)</span>
+                      <span>{agent.temperature || (activeAgentType === 'nuggets' ? 0.7 : 0.8)}</span>
+                      <span>Creative (1)</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
