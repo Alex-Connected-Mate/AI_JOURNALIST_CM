@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AIBookPreview from './AIBookPreview';
 
 interface BookSection {
   title: string;
@@ -258,6 +259,19 @@ ${index + 1}. "${q.question}"`).join('\n')}
     }
   };
 
+  const handleBookVisualStyleChange = (visualStyle: any) => {
+    setConfig(prev => ({
+      ...prev,
+      bookConfig: {
+        ...prev.bookConfig,
+        visualStyle: {
+          ...prev.bookConfig.visualStyle,
+          ...visualStyle
+        }
+      }
+    }));
+  };
+
   return (
     <Card className="border-0 shadow-none">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -458,11 +472,22 @@ ${index + 1}. "${q.question}"`).join('\n')}
         <TabsContent value="book">
           <CardContent className="space-y-8 pt-6">
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-primary">Configuration du Book</h2>
+              <h2 className="text-xl font-semibold text-primary">Book Configuration</h2>
+              
+              {/* Book Preview */}
+              <div className="mb-8">
+                <AIBookPreview 
+                  config={config.bookConfig}
+                  onConfigChange={(newConfig: typeof config.bookConfig) => {
+                    updateConfig('bookConfig', newConfig);
+                  }}
+                  agentType={agentType}
+                />
+              </div>
               
               {/* Visual Styling Section */}
               <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-6">
-                <h3 className="font-medium text-lg mb-4">Style Visuel</h3>
+                <h3 className="font-medium text-lg mb-4">Visual Style</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Color Scheme Selection */}
@@ -471,13 +496,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                     <select 
                       className="w-full p-2 border rounded-md"
                       value={config.bookConfig.visualStyle.colorScheme}
-                      onChange={(e) => updateConfig('bookConfig', {
-                        ...config.bookConfig,
-                        visualStyle: {
-                          ...config.bookConfig.visualStyle,
-                          colorScheme: e.target.value
-                        }
-                      })}
+                      onChange={(e) => handleBookVisualStyleChange({ colorScheme: e.target.value })}
                     >
                       <option value="professional">Professionnel</option>
                       <option value="creative">Créatif</option>
@@ -493,13 +512,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                     <select 
                       className="w-full p-2 border rounded-md"
                       value={config.bookConfig.visualStyle.fontStyle}
-                      onChange={(e) => updateConfig('bookConfig', {
-                        ...config.bookConfig,
-                        visualStyle: {
-                          ...config.bookConfig.visualStyle,
-                          fontStyle: e.target.value
-                        }
-                      })}
+                      onChange={(e) => handleBookVisualStyleChange({ fontStyle: e.target.value })}
                     >
                       <option value="modern">Moderne</option>
                       <option value="classic">Classique</option>
@@ -516,25 +529,13 @@ ${index + 1}. "${q.question}"`).join('\n')}
                       <input 
                         type="color" 
                         value={config.bookConfig.visualStyle.pageBackgroundColor}
-                        onChange={(e) => updateConfig('bookConfig', {
-                          ...config.bookConfig,
-                          visualStyle: {
-                            ...config.bookConfig.visualStyle,
-                            pageBackgroundColor: e.target.value
-                          }
-                        })}
+                        onChange={(e) => handleBookVisualStyleChange({ pageBackgroundColor: e.target.value })}
                         className="w-8 h-8 rounded-md cursor-pointer"
                       />
                       <input 
                         type="text"
                         value={config.bookConfig.visualStyle.pageBackgroundColor}
-                        onChange={(e) => updateConfig('bookConfig', {
-                          ...config.bookConfig,
-                          visualStyle: {
-                            ...config.bookConfig.visualStyle,
-                            pageBackgroundColor: e.target.value
-                          }
-                        })}
+                        onChange={(e) => handleBookVisualStyleChange({ pageBackgroundColor: e.target.value })}
                         className="flex-1 p-2 border rounded-md"
                       />
                     </div>
@@ -546,25 +547,13 @@ ${index + 1}. "${q.question}"`).join('\n')}
                       <input 
                         type="color" 
                         value={config.bookConfig.visualStyle.textColor}
-                        onChange={(e) => updateConfig('bookConfig', {
-                          ...config.bookConfig,
-                          visualStyle: {
-                            ...config.bookConfig.visualStyle,
-                            textColor: e.target.value
-                          }
-                        })}
+                        onChange={(e) => handleBookVisualStyleChange({ textColor: e.target.value })}
                         className="w-8 h-8 rounded-md cursor-pointer"
                       />
                       <input 
                         type="text"
                         value={config.bookConfig.visualStyle.textColor}
-                        onChange={(e) => updateConfig('bookConfig', {
-                          ...config.bookConfig,
-                          visualStyle: {
-                            ...config.bookConfig.visualStyle,
-                            textColor: e.target.value
-                          }
-                        })}
+                        onChange={(e) => handleBookVisualStyleChange({ textColor: e.target.value })}
                         className="flex-1 p-2 border rounded-md"
                       />
                     </div>
@@ -576,25 +565,13 @@ ${index + 1}. "${q.question}"`).join('\n')}
                       <input 
                         type="color" 
                         value={config.bookConfig.visualStyle.accentColor}
-                        onChange={(e) => updateConfig('bookConfig', {
-                          ...config.bookConfig,
-                          visualStyle: {
-                            ...config.bookConfig.visualStyle,
-                            accentColor: e.target.value
-                          }
-                        })}
+                        onChange={(e) => handleBookVisualStyleChange({ accentColor: e.target.value })}
                         className="w-8 h-8 rounded-md cursor-pointer"
                       />
                       <input 
                         type="text"
                         value={config.bookConfig.visualStyle.accentColor}
-                        onChange={(e) => updateConfig('bookConfig', {
-                          ...config.bookConfig,
-                          visualStyle: {
-                            ...config.bookConfig.visualStyle,
-                            accentColor: e.target.value
-                          }
-                        })}
+                        onChange={(e) => handleBookVisualStyleChange({ accentColor: e.target.value })}
                         className="flex-1 p-2 border rounded-md"
                       />
                     </div>
@@ -610,13 +587,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                       type="checkbox" 
                       id="generateImages"
                       checked={config.bookConfig.visualStyle.generateImages}
-                      onChange={(e) => updateConfig('bookConfig', {
-                        ...config.bookConfig,
-                        visualStyle: {
-                          ...config.bookConfig.visualStyle,
-                          generateImages: e.target.checked
-                        }
-                      })}
+                      onChange={(e) => handleBookVisualStyleChange({ generateImages: e.target.checked })}
                       className="h-4 w-4"
                     />
                     <label htmlFor="generateImages" className="text-sm">
@@ -631,13 +602,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                         <select 
                           className="w-full p-2 border rounded-md"
                           value={config.bookConfig.visualStyle.imageStyle}
-                          onChange={(e) => updateConfig('bookConfig', {
-                            ...config.bookConfig,
-                            visualStyle: {
-                              ...config.bookConfig.visualStyle,
-                              imageStyle: e.target.value
-                            }
-                          })}
+                          onChange={(e) => handleBookVisualStyleChange({ imageStyle: e.target.value })}
                         >
                           <option value="realistic">Réaliste</option>
                           <option value="abstract">Abstrait</option>
@@ -651,13 +616,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                         <label className="text-sm font-medium">Prompt pour Image de Couverture</label>
                         <textarea 
                           value={config.bookConfig.visualStyle.coverImagePrompt}
-                          onChange={(e) => updateConfig('bookConfig', {
-                            ...config.bookConfig,
-                            visualStyle: {
-                              ...config.bookConfig.visualStyle,
-                              coverImagePrompt: e.target.value
-                            }
-                          })}
+                          onChange={(e) => handleBookVisualStyleChange({ coverImagePrompt: e.target.value })}
                           placeholder="Décrivez l'image de couverture que vous souhaitez générer..."
                           className="w-full p-2 border rounded-md h-24"
                         />
@@ -672,13 +631,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                     <label className="text-sm font-medium">URL du Logo (optionnel)</label>
                     <Input
                       value={config.bookConfig.visualStyle.logoUrl || ''}
-                      onChange={(e) => updateConfig('bookConfig', {
-                        ...config.bookConfig,
-                        visualStyle: {
-                          ...config.bookConfig.visualStyle,
-                          logoUrl: e.target.value
-                        }
-                      })}
+                      onChange={(e) => handleBookVisualStyleChange({ logoUrl: e.target.value })}
                       placeholder="https://example.com/logo.png"
                     />
                     <p className="text-xs text-gray-500">
@@ -688,7 +641,7 @@ ${index + 1}. "${q.question}"`).join('\n')}
                 </div>
               </div>
               
-              <h3 className="font-medium text-lg">Sections du Book</h3>
+              <h3 className="font-medium text-lg">Book Sections</h3>
               <div className="space-y-4">
                 <div className="grid gap-4">
                   <Input

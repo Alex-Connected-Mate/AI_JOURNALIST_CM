@@ -16,6 +16,7 @@ import {
 } from '@/config/ai-agents';
 import AnalysisOrderList from './AnalysisOrderList';
 import AnalysisConfigPanel from './AnalysisConfigPanel';
+import { useTranslation } from './LocaleProvider';
 
 /**
  * AIInteractionConfig Component
@@ -45,6 +46,9 @@ const AIInteractionConfig = ({
   onTimerConfigChange = null,
   onAnalysisOrderChange = null
 }) => {
+  // Access translations
+  const { t } = useTranslation ? useTranslation() : { t: (key) => key };
+  
   // Active section state only used for agent config sub-sections
   const [activeSection, setActiveSection] = useState(currentSection || 'config');
   
