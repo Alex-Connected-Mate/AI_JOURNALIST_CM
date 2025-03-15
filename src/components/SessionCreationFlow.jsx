@@ -227,9 +227,11 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     const baseSteps = [
       'basic-info', 
       'connection', 
-      'discussion', 
+      'discussion',
+      'timer-config',
       'ai-interaction', 
       'lightbulb',
+      'analysis-config',
       'analysis'
     ];
     
@@ -262,9 +264,11 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     const baseSteps = [
       'basic-info', 
       'connection', 
-      'discussion', 
+      'discussion',
+      'timer-config',
       'ai-interaction', 
       'lightbulb',
+      'analysis-config',
       'analysis'
     ];
     
@@ -462,6 +466,218 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
             updateSessionConfig={updateSessionConfig}
             errors={errors}
           />
+        );
+      case 'timer-config':
+        return (
+          <div className="p-6 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0 bg-red-500 rounded-full w-10 h-10 flex items-center justify-center text-white mr-4">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-red-800">Timer Configuration</h3>
+                <p className="text-gray-700">
+                  Configure the timer for the discussion phase. The timer will be visible to all participants.
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-red-100 transition-all duration-200 hover:shadow-md mb-6">
+              <h4 className="text-lg font-medium text-red-700 mb-4">Timer Settings</h4>
+              
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-1">Enable Timer</label>
+                    <p className="text-sm text-gray-500">Show a countdown timer during the discussion phase</p>
+                  </div>
+                  <div>
+                    <button 
+                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${
+                        sessionConfig.timerEnabled ? 'bg-red-600' : 'bg-gray-300'
+                      }`}
+                      onClick={() => updateSessionConfig({
+                        ...sessionConfig,
+                        timerEnabled: !sessionConfig.timerEnabled,
+                        settings: {
+                          ...sessionConfig.settings,
+                          ai_configuration: {
+                            ...(sessionConfig.settings?.ai_configuration || {}),
+                            timerEnabled: !sessionConfig.timerEnabled
+                          }
+                        }
+                      })}
+                    >
+                      <span 
+                        className={`${
+                          sessionConfig.timerEnabled ? 'translate-x-6' : 'translate-x-1'
+                        } inline-block w-4 h-4 transform bg-white rounded-full transition-transform`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                
+                {sessionConfig.timerEnabled && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-1">Timer Duration (minutes)</label>
+                      <div className="flex items-center justify-between mb-2">
+                        <input
+                          type="range"
+                          min="1"
+                          max="60"
+                          step="1"
+                          value={sessionConfig.timerDuration || 5}
+                          onChange={(e) => updateSessionConfig({
+                            ...sessionConfig,
+                            timerDuration: parseInt(e.target.value),
+                            settings: {
+                              ...sessionConfig.settings,
+                              ai_configuration: {
+                                ...(sessionConfig.settings?.ai_configuration || {}),
+                                timerDuration: parseInt(e.target.value)
+                              }
+                            }
+                          })}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-red-600 mr-4"
+                        />
+                        <span className="text-red-600 font-medium min-w-12 text-center">
+                          {sessionConfig.timerDuration || 5} min
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>1 min</span>
+                        <span>30 min</span>
+                        <span>60 min</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Presets</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[5, 10, 15, 30, 45, 60].map(value => (
+                          <button 
+                            key={value}
+                            onClick={() => updateSessionConfig({
+                              ...sessionConfig,
+                              timerDuration: value,
+                              settings: {
+                                ...sessionConfig.settings,
+                                ai_configuration: {
+                                  ...(sessionConfig.settings?.ai_configuration || {}),
+                                  timerDuration: value
+                                }
+                              }
+                            })}
+                            className={`px-3 py-1.5 text-sm font-medium border rounded-md ${
+                              (sessionConfig.timerDuration || 5) === value 
+                                ? 'bg-red-50 border-red-300 text-red-700' 
+                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {value} min
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-red-100 transition-all duration-200 hover:shadow-md">
+              <h4 className="text-lg font-medium text-red-700 mb-4">Timer Behavior</h4>
+              
+              {sessionConfig.timerEnabled ? (
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <div className="pt-1">
+                      <input 
+                        type="checkbox" 
+                        id="timer-auto-start"
+                        className="form-checkbox h-5 w-5 text-red-600" 
+                        checked={sessionConfig.timerAutoStart !== false}
+                        onChange={(e) => updateSessionConfig({
+                          ...sessionConfig,
+                          timerAutoStart: e.target.checked,
+                          settings: {
+                            ...sessionConfig.settings,
+                            ai_configuration: {
+                              ...(sessionConfig.settings?.ai_configuration || {}),
+                              timerAutoStart: e.target.checked
+                            }
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <label htmlFor="timer-auto-start" className="font-medium text-gray-800">Auto-start timer</label>
+                      <p className="text-sm text-gray-600">Automatically start the timer when the discussion phase begins.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <div className="pt-1">
+                      <input 
+                        type="checkbox" 
+                        id="timer-visible"
+                        className="form-checkbox h-5 w-5 text-red-600" 
+                        checked={sessionConfig.timerVisible !== false}
+                        onChange={(e) => updateSessionConfig({
+                          ...sessionConfig,
+                          timerVisible: e.target.checked,
+                          settings: {
+                            ...sessionConfig.settings,
+                            ai_configuration: {
+                              ...(sessionConfig.settings?.ai_configuration || {}),
+                              timerVisible: e.target.checked
+                            }
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <label htmlFor="timer-visible" className="font-medium text-gray-800">Timer visible to participants</label>
+                      <p className="text-sm text-gray-600">Show the countdown timer to all participants during the session.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start">
+                    <div className="pt-1">
+                      <input 
+                        type="checkbox" 
+                        id="timer-sound"
+                        className="form-checkbox h-5 w-5 text-red-600" 
+                        checked={sessionConfig.timerSound !== false}
+                        onChange={(e) => updateSessionConfig({
+                          ...sessionConfig,
+                          timerSound: e.target.checked,
+                          settings: {
+                            ...sessionConfig.settings,
+                            ai_configuration: {
+                              ...(sessionConfig.settings?.ai_configuration || {}),
+                              timerSound: e.target.checked
+                            }
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="ml-3">
+                      <label htmlFor="timer-sound" className="font-medium text-gray-800">Play sound when timer ends</label>
+                      <p className="text-sm text-gray-600">Play an audio notification when the timer reaches zero.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center p-4 text-gray-500 italic">
+                  Enable the timer to configure additional behavior settings.
+                </div>
+              )}
+            </div>
+          </div>
         );
       case 'ai-interaction':
         return (
@@ -1265,6 +1481,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       { id: 'basic-info', label: 'Session Details' },
       { id: 'connection', label: 'Participants Login' },
       { id: 'discussion', label: 'First Step' },
+      { id: 'timer-config', label: 'Timer Settings' },
       { id: 'ai-interaction', label: 'AI Journalist: Nuggets' },
       { id: 'lightbulb', label: 'AI Journalist: Lightbulbs' },
       { id: 'analysis-config', label: 'Configure Analysis' },

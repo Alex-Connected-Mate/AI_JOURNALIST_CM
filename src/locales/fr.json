@@ -1,6 +1,9 @@
 {
   "session": {
     "flow": {
+      "timer_config": "Configuration du Timer",
+      "timer_config_short": "Timer",
+      "timer_config_desc": "Configurez les paramètres du timer pour la phase de discussion.",
       "analysis_config": "Configuration de l'Analyse",
       "analysis_config_short": "Config Analyse",
       "analysis_config_desc": "Configurer l'ordre et les paramètres de l'analyse finale",
