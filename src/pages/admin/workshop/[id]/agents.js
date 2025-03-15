@@ -1,32 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import { supabase } from '@/lib/supabase';
-import { useSession } from '@/contexts/SessionContext';
+import { useToast } from '@/components/ui/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import AIPromptManager from '@/components/AIPromptManager';
-import AdminLayout from '@/components/layouts/AdminLayout';
-import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import AIAgentService from '@/components/AIAgentService';
 
 /**
- * Workshop Agents Configuration Page
+ * Workshop Agents Page
  * 
- * This page allows admins to configure the AI agents for a specific workshop.
+ * This page allows workshop admins to configure AI agents for a specific workshop.
+ * It includes prompt configuration for both Nuggets and Lightbulbs agents.
  */
-export default function WorkshopAgentsPage() {
+const WorkshopAgentsPage = () => {
   const router = useRouter();
   const { id: workshopId } = router.query;
-  const { session } = useSession();
-  
+  const { toast } = useToast();
   const [workshop, setWorkshop] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
-  
+  const [user, setUser] = useState(null);
+
+  // Get the current user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    
+    getUser();
+  }, []);
+
   // Load workshop data
   useEffect(() => {
-    const fetchWorkshop = async () => {
+    const loadWorkshop = async () => {
       if (!workshopId) return;
       
       try {
@@ -38,108 +46,85 @@ export default function WorkshopAgentsPage() {
           .eq('id', workshopId)
           .single();
         
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
         
         setWorkshop(data);
       } catch (error) {
-        console.error('Error fetching workshop:', error);
-        setError('Failed to load workshop details. Please try again later.');
+        console.error('Error loading workshop:', error);
+        toast({
+          variant: "destructive",
+          title: "Error loading workshop",
+          description: error.message
+        });
       } finally {
         setLoading(false);
       }
     };
     
-    fetchWorkshop();
+    loadWorkshop();
   }, [workshopId]);
-  
-  // Handle prompt save and assistant creation
-  const handlePromptSaveComplete = async (agentType, config) => {
-    try {
-      setSuccessMessage(`${agentType === 'nuggets' ? 'Elias' : 'Sonia'} prompt saved successfully. Creating agent...`);
-      
-      // Create or update the OpenAI assistant
-      await AIAgentService.createOrUpdateAssistant(
-        agentType,
-        config.generatedPrompt,
-        workshopId
-      );
-      
-      setSuccessMessage(`${agentType === 'nuggets' ? 'Elias' : 'Sonia'} agent configured and ready to use!`);
-      
-      // Clear success message after a delay
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 5000);
-    } catch (error) {
-      console.error('Error creating/updating assistant:', error);
-      setError(`Failed to create/update ${agentType === 'nuggets' ? 'Elias' : 'Sonia'} agent. ${error.message}`);
-      
-      // Clear error message after a delay
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
-    }
+
+  // Handle prompt save
+  const handlePromptSave = async (agentType, config) => {
+    toast({
+      title: `${agentType === 'nuggets' ? 'Nuggets' : 'Lightbulbs'} agent configured`,
+      description: "The prompt has been saved successfully."
+    });
   };
-  
-  if (!session) {
+
+  if (loading) {
     return (
-      <AdminLayout>
-        <div className="p-6">
-          <Alert variant="destructive">
-            <AlertTitle>Authentication required</AlertTitle>
-            <AlertDescription>
-              You need to be logged in to access this page.
-            </AlertDescription>
-          </Alert>
-        </div>
-      </AdminLayout>
+      <div className="w-full h-[60vh] flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
     );
   }
-  
-  return (
-    <AdminLayout>
-      <div className="container mx-auto py-8 px-4">
-        <h1 className="text-3xl font-bold mb-2">Configure Workshop AI Agents</h1>
-        
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : error ? (
-          <Alert variant="destructive" className="mt-4">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : workshop ? (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold">{workshop.name}</h2>
-              <p className="text-gray-600">{workshop.description}</p>
-            </div>
-            
-            <Separator />
-            
-            {successMessage && (
-              <Alert className="bg-green-50 border-green-200">
-                <AlertTitle>Success</AlertTitle>
-                <AlertDescription>{successMessage}</AlertDescription>
-              </Alert>
-            )}
-            
-            <AIPromptManager 
-              workshop={workshop}
-              onSaveComplete={handlePromptSaveComplete}
-            />
-          </div>
-        ) : (
-          <Alert variant="destructive" className="mt-4">
-            <AlertTitle>Workshop Not Found</AlertTitle>
-            <AlertDescription>
-              The requested workshop could not be found. Please check the URL and try again.
-            </AlertDescription>
-          </Alert>
-        )}
+
+  if (!workshop) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6">
+            <h1 className="text-2xl font-bold mb-4">Workshop not found</h1>
+            <p className="text-gray-600 mb-6">
+              The workshop you're looking for could not be found or you don't have access to it.
+            </p>
+            <Button onClick={() => router.push('/admin/workshops')}>
+              Back to Workshops
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </AdminLayout>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <Head>
+        <title>AI Agents Configuration | {workshop.name}</title>
+      </Head>
+
+      <div className="mb-6">
+        <Button 
+          variant="outline" 
+          onClick={() => router.push(`/admin/workshop/${workshopId}`)}
+        >
+          Back to Workshop
+        </Button>
+      </div>
+
+      <h1 className="text-3xl font-bold mb-2">{workshop.name}</h1>
+      <p className="text-gray-600 mb-8">Configure AI agents for this workshop</p>
+
+      <AIPromptManager 
+        workshop={workshop} 
+        userId={user?.id}
+        onSaveComplete={handlePromptSave} 
+      />
+    </div>
   );
-} 
+};
+
+export default WorkshopAgentsPage; 

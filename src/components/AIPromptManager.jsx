@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AIPromptEditor from '@/components/AIPromptEditor';
 import { supabase } from '@/lib/supabase';
-import { useSession } from '@/contexts/SessionContext';
 
 /**
  * AI Prompt Manager Component
@@ -16,10 +15,10 @@ import { useSession } from '@/contexts/SessionContext';
 const AIPromptManager = ({ 
   agentType = 'nuggets',
   workshop = null,
+  userId = null,
   onSaveComplete
 }) => {
   const { toast } = useToast();
-  const { session } = useSession();
   const [promptConfig, setPromptConfig] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,7 +50,7 @@ const AIPromptManager = ({
           agentName: activeTab === 'nuggets' ? 'Elias' : 'Sonia',
           programName: workshop.name || 'Connected Mate Workshop',
           teacherName: workshop.instructor || workshop.teacher_name || 'the instructor',
-          organizationName: workshop.organization || '',
+          organizationName: workshop.organization || 'Connected Mate',
           styleDescription: activeTab === 'nuggets' 
             ? "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional."
             : "Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.",
@@ -69,8 +68,8 @@ const AIPromptManager = ({
             teacherName: data.teacher_name || defaultConfig.teacherName,
             organizationName: data.organization_name || defaultConfig.organizationName,
             styleDescription: data.style_description || defaultConfig.styleDescription,
-            rules: data.rules ? JSON.parse(data.rules) : [],
-            questions: data.questions ? JSON.parse(data.questions) : [],
+            rules: data.rules || [],
+            questions: data.questions || [],
             customContext: data.custom_context || '',
             rawPrompt: data.raw_prompt,
             generatedPrompt: data.generated_prompt
@@ -163,12 +162,12 @@ const AIPromptManager = ({
         teacher_name: config.teacherName,
         organization_name: config.organizationName,
         style_description: config.styleDescription,
-        rules: JSON.stringify(config.rules),
-        questions: JSON.stringify(config.questions),
+        rules: config.rules,
+        questions: config.questions,
         custom_context: config.customContext,
         raw_prompt: config.rawPrompt,
         generated_prompt: config.generatedPrompt,
-        updated_by: session?.user?.id || null,
+        updated_by: userId || null,
         updated_at: new Date()
       };
       
