@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from './LocaleProvider';
+import FlowMapTimer from './FlowMapTimer';
+import FlowMapAnalysisOrder from './FlowMapAnalysisOrder';
 
 /**
  * SessionFlowMap Component
@@ -7,6 +9,23 @@ import { useTranslation } from './LocaleProvider';
  * A visual flowchart representation of the session flow,
  * displaying steps as connected boxes with directional arrows.
  * Features modern design elements with clean visualization.
+ * 
+ * INTEGRATION NOTES:
+ * 
+ * 1. For the timer configuration to work, the parent component should pass
+ *    a sessionConfig object that includes:
+ *    - settings.ai_configuration.timerEnabled (boolean)
+ *    - settings.ai_configuration.timerDuration (number)
+ * 
+ * 2. For the analysis reordering to work, the parent component should pass:
+ *    - settings.finalAnalysis.items (array of analysis items)
+ *
+ * 3. The sessionConfig object should also include an onConfigChange function
+ *    that handles updates to the configuration, like:
+ *    sessionConfig = {
+ *      ...sessionData,
+ *      onConfigChange: (updatedConfig) => updateSessionData(updatedConfig)
+ *    }
  */
 const SessionFlowMap = ({ 
   activeStep = 'basic-info',
@@ -48,11 +67,184 @@ const SessionFlowMap = ({
       });
   };
 
+  // Handle timer settings changes
+  const handleTimerEnabledChange = (enabled) => {
+    if (!sessionConfig) return;
+    
+    let updatedConfig;
+    
+    // Determine where the timer settings exist
+    if (sessionConfig.timerEnabled !== undefined) {
+      // Timer settings at top level
+      updatedConfig = {
+        ...sessionConfig,
+        timerEnabled: enabled
+      };
+    } else if (sessionConfig.settings?.ai_configuration) {
+      // Timer settings in ai_configuration
+      updatedConfig = {
+        ...sessionConfig,
+        settings: {
+          ...sessionConfig.settings,
+          ai_configuration: {
+            ...sessionConfig.settings.ai_configuration,
+            timerEnabled: enabled
+          }
+        }
+      };
+    } else {
+      // No existing timer settings, create at top level
+      updatedConfig = {
+        ...sessionConfig,
+        timerEnabled: enabled
+      };
+    }
+    
+    // If there's an onConfigChange handler in the parent, call it
+    if (sessionConfig.onConfigChange) {
+      sessionConfig.onConfigChange(updatedConfig);
+    }
+  };
+  
+  const handleTimerDurationChange = (duration) => {
+    if (!sessionConfig) return;
+    
+    let updatedConfig;
+    
+    // Determine where the timer settings exist
+    if (sessionConfig.timerDuration !== undefined) {
+      // Timer settings at top level
+      updatedConfig = {
+        ...sessionConfig,
+        timerDuration: duration
+      };
+    } else if (sessionConfig.settings?.ai_configuration) {
+      // Timer settings in ai_configuration
+      updatedConfig = {
+        ...sessionConfig,
+        settings: {
+          ...sessionConfig.settings,
+          ai_configuration: {
+            ...sessionConfig.settings.ai_configuration,
+            timerDuration: duration
+          }
+        }
+      };
+    } else {
+      // No existing timer settings, create at top level
+      updatedConfig = {
+        ...sessionConfig,
+        timerDuration: duration
+      };
+    }
+    
+    // If there's an onConfigChange handler in the parent, call it
+    if (sessionConfig.onConfigChange) {
+      sessionConfig.onConfigChange(updatedConfig);
+    }
+  };
+  
+  // Handle analysis items reordering
+  const handleAnalysisReorder = (newItems) => {
+    if (!sessionConfig) return;
+    
+    let updatedConfig;
+    
+    // Determine which format we're using
+    if (sessionConfig.analysisConfiguration) {
+      // New format
+      updatedConfig = {
+        ...sessionConfig,
+        analysisConfiguration: {
+          ...sessionConfig.analysisConfiguration,
+          items: newItems
+        }
+      };
+    } else if (sessionConfig.settings?.finalAnalysis) {
+      // Old format
+      updatedConfig = {
+        ...sessionConfig,
+        settings: {
+          ...sessionConfig.settings,
+          finalAnalysis: {
+            ...sessionConfig.settings.finalAnalysis,
+            items: newItems
+          }
+        }
+      };
+    } else {
+      // Neither format exists, create using new format
+      updatedConfig = {
+        ...sessionConfig,
+        analysisConfiguration: {
+          items: newItems
+        }
+      };
+    }
+    
+    // If there's an onConfigChange handler in the parent, call it
+    if (sessionConfig.onConfigChange) {
+      sessionConfig.onConfigChange(updatedConfig);
+    }
+  };
+  
+  // Handle toggling analysis items
+  const handleToggleAnalysisItem = (itemId) => {
+    // Get the current items
+    const currentItems = getAnalysisItems();
+    if (!currentItems || !currentItems.length) return;
+    
+    // Update the enabled status
+    const updatedItems = currentItems.map(item => 
+      item.id === itemId ? { ...item, enabled: !item.enabled } : item
+    );
+    
+    // Apply the same changes as in handleAnalysisReorder
+    let updatedConfig;
+    
+    // Determine which format we're using
+    if (sessionConfig.analysisConfiguration) {
+      // New format
+      updatedConfig = {
+        ...sessionConfig,
+        analysisConfiguration: {
+          ...sessionConfig.analysisConfiguration,
+          items: updatedItems
+        }
+      };
+    } else if (sessionConfig.settings?.finalAnalysis) {
+      // Old format
+      updatedConfig = {
+        ...sessionConfig,
+        settings: {
+          ...sessionConfig.settings,
+          finalAnalysis: {
+            ...sessionConfig.settings.finalAnalysis,
+            items: updatedItems
+          }
+        }
+      };
+    } else {
+      // Neither format exists, create using new format
+      updatedConfig = {
+        ...sessionConfig,
+        analysisConfiguration: {
+          items: updatedItems
+        }
+      };
+    }
+    
+    // If there's an onConfigChange handler in the parent, call it
+    if (sessionConfig.onConfigChange) {
+      sessionConfig.onConfigChange(updatedConfig);
+    }
+  };
+
   // Update completed steps based on active step
   useEffect(() => {
     const baseSteps = [
       'basic-info', 'connection', 'discussion', 'ai-interaction', 
-      'lightbulb'
+      'lightbulb', 'analysis-config'
     ];
     
     const analysisSteps = getDynamicAnalysisSteps();
@@ -133,6 +325,18 @@ const SessionFlowMap = ({
       ),
       color: 'yellow',
       description: safeT('session.flow.lightbulb_desc', 'Allow non-selected participants to share ideas inspired by the discussions.')
+    },
+    {
+      id: 'analysis-config',
+      title: safeT('session.flow.analysis_config', 'Configure Analysis'),
+      shortTitle: safeT('session.flow.analysis_config_short', 'Configure Analysis'),
+      icon: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      color: 'blue',
+      description: safeT('session.flow.analysis_config_desc', 'Configure and reorder the analysis steps.')
     },
   ];
   
@@ -393,11 +597,19 @@ const SessionFlowMap = ({
     const aiStep = getStepById('ai-interaction');
     const lightbulbStep = getStepById('lightbulb');
     
+    // Extract timer settings
+    const timerSettings = getTimerSettings();
+    
     return (
       <div className="w-full mb-3">
         <div className="border-2 border-dashed border-red-300 rounded-lg p-3 relative">
-          <div className="absolute -top-3 right-2 bg-gradient-to-r from-red-500 to-red-600 text-white px-2 py-0.5 rounded-full text-xs font-medium shadow-sm">
-            15 MIN TIMER
+          <div className="absolute -top-3 right-2">
+            <FlowMapTimer 
+              enabled={timerSettings.enabled}
+              duration={timerSettings.duration}
+              onEnabledChange={handleTimerEnabledChange}
+              onDurationChange={handleTimerDurationChange}
+            />
           </div>
           
           <div className="grid grid-cols-2 gap-3">
@@ -418,6 +630,48 @@ const SessionFlowMap = ({
         </div>
       </div>
     );
+  };
+
+  // Extract timer settings from the session config
+  const getTimerSettings = () => {
+    // Check for top-level timer settings first
+    if (sessionConfig?.timerEnabled !== undefined || sessionConfig?.timerDuration !== undefined) {
+      return {
+        enabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : true,
+        duration: sessionConfig.timerDuration || 15
+      };
+    }
+    
+    // Then check in ai_configuration
+    const ai_settings = sessionConfig?.settings?.ai_configuration || {};
+    if (ai_settings.timerEnabled !== undefined || ai_settings.timerDuration !== undefined) {
+      return {
+        enabled: ai_settings.timerEnabled !== undefined ? ai_settings.timerEnabled : true,
+        duration: ai_settings.timerDuration || 15
+      };
+    }
+    
+    // Default values
+    return {
+      enabled: true,
+      duration: 15
+    };
+  };
+  
+  // Extract analysis items from the session config
+  const getAnalysisItems = () => {
+    // First check the analysisConfiguration (new format)
+    if (sessionConfig?.analysisConfiguration?.items) {
+      return sessionConfig.analysisConfiguration.items;
+    }
+    
+    // Then check the settings.finalAnalysis (old format)
+    if (sessionConfig?.settings?.finalAnalysis?.items) {
+      return sessionConfig.settings.finalAnalysis.items;
+    }
+    
+    // Return empty array as fallback
+    return [];
   };
 
   // Render the flow map with dynamic steps
@@ -470,6 +724,16 @@ const SessionFlowMap = ({
         {/* AI Journalist section */}
         <AISection />
         
+        <Arrow highlighted={activeStep === 'analysis-config' || getAnalysisSteps().some(step => activeStep === step.id)} />
+        
+        {/* Analysis Config Step */}
+        <StepBox 
+          step={getStepById('analysis-config')} 
+          isActive={activeStep === 'analysis-config'}
+          isCompleted={completedSteps.includes('analysis-config')} 
+          onClick={() => onStepChange('analysis-config')}
+        />
+        
         <Arrow highlighted={getAnalysisSteps().some(step => activeStep === step.id)} />
         
         {/* Analysis Section - with grouped border */}
@@ -479,20 +743,31 @@ const SessionFlowMap = ({
               AI ANALYSIS
             </div>
             
-            {/* Dynamic Analysis Steps */}
-            <div className="flex flex-col space-y-3">
-              {getAnalysisSteps().map((step, index) => (
-                <React.Fragment key={step.id}>
-                  {index > 0 && <div className="h-2 w-1 mx-auto bg-gray-200"></div>}
-                  <StepBox 
-                    step={step} 
-                    isActive={activeStep === step.id}
-                    isCompleted={completedSteps.includes(step.id)} 
-                    onClick={() => onStepChange(step.id)}
-                  />
-                </React.Fragment>
-              ))}
-            </div>
+            {/* Check if we're on the analysis configuration section */}
+            {activeStep === 'analysis-config' ? (
+              <div className="mt-2">
+                <FlowMapAnalysisOrder
+                  items={getAnalysisItems()}
+                  onReorder={handleAnalysisReorder}
+                  onToggleItem={handleToggleAnalysisItem}
+                />
+              </div>
+            ) : (
+              /* Dynamic Analysis Steps */
+              <div className="flex flex-col space-y-3">
+                {getAnalysisSteps().map((step, index) => (
+                  <React.Fragment key={step.id}>
+                    {index > 0 && <div className="h-2 w-1 mx-auto bg-gray-200"></div>}
+                    <StepBox 
+                      step={step} 
+                      isActive={activeStep === step.id}
+                      isCompleted={completedSteps.includes(step.id)} 
+                      onClick={() => onStepChange(step.id)}
+                    />
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
