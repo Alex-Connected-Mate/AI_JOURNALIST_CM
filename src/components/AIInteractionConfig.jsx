@@ -27,13 +27,23 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
  * 
  * The component doesn't include navigation between these sections as that's handled by
  * the Session Flow Map in the parent component.
+ * 
+ * @param {Object} sessionConfig - The current session configuration
+ * @param {Function} updateSessionConfig - Function to update the session configuration
+ * @param {string} mode - The mode of the component (standard, compact, etc.)
+ * @param {string} currentStep - The currently selected step in the flow map (nuggets, lightbulbs, final-analysis)
+ * @param {string} currentSection - The currently selected sub-section for agent config (config, analysis, book)
+ * @param {Function} onTimerConfigChange - Optional callback when timer configuration changes, used by parent for flow map updates
+ * @param {Function} onAnalysisOrderChange - Optional callback when analysis order changes, used by parent for flow map updates
  */
 const AIInteractionConfig = ({ 
   sessionConfig = {}, 
   updateSessionConfig, 
   mode = 'standard', 
   currentStep = 'nuggets',
-  currentSection = 'config' // For sub-sections of agent config: 'config', 'analysis', 'book'
+  currentSection = 'config',
+  onTimerConfigChange = null,
+  onAnalysisOrderChange = null
 }) => {
   // Active section state only used for agent config sub-sections
   const [activeSection, setActiveSection] = useState(currentSection || 'config');
@@ -72,7 +82,7 @@ const AIInteractionConfig = ({
 
   // Handler for timer settings changes
   const handleTimerEnabledChange = (enabled) => {
-    updateSessionConfig({
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -81,11 +91,18 @@ const AIInteractionConfig = ({
           timerEnabled: enabled
         }
       }
-    });
+    };
+    
+    updateSessionConfig(updatedConfig);
+    
+    // Notify parent component if callback provided (for flow map updates)
+    if (onTimerConfigChange) {
+      onTimerConfigChange({ enabled, duration: timerDuration });
+    }
   };
   
   const handleTimerDurationChange = (duration) => {
-    updateSessionConfig({
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -94,7 +111,14 @@ const AIInteractionConfig = ({
           timerDuration: duration
         }
       }
-    });
+    };
+    
+    updateSessionConfig(updatedConfig);
+    
+    // Notify parent component if callback provided (for flow map updates)
+    if (onTimerConfigChange) {
+      onTimerConfigChange({ enabled: timerEnabled, duration });
+    }
   };
   
   // Handlers for agent configuration changes
@@ -166,7 +190,8 @@ const AIInteractionConfig = ({
   // Handle analysis items changes
   const handleAnalysisItemsChange = (newItems) => {
     setAnalysisItems(newItems);
-    updateSessionConfig({
+    
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -175,7 +200,14 @@ const AIInteractionConfig = ({
           items: newItems
         }
       }
-    });
+    };
+    
+    updateSessionConfig(updatedConfig);
+    
+    // Notify parent component if callback provided (for flow map updates)
+    if (onAnalysisOrderChange) {
+      onAnalysisOrderChange(newItems);
+    }
   };
 
   // Toggle analysis item enabled state
@@ -566,6 +598,24 @@ const AIInteractionConfig = ({
     );
   };
 
+  // Render timer settings section
+  const renderTimerSettingsSection = () => {
+    return (
+      <Card className="p-4">
+        <h2 className="text-lg font-semibold mb-4">Paramètres du Timer</h2>
+        <TimerSettings
+          timerEnabled={timerEnabled}
+          timerDuration={timerDuration}
+          onTimerEnabledChange={handleTimerEnabledChange}
+          onTimerDurationChange={handleTimerDurationChange}
+        />
+        <p className="mt-3 text-sm text-gray-500 italic">
+          Note: Vous pouvez également modifier ces paramètres en cliquant directement sur le timer dans le flow map.
+        </p>
+      </Card>
+    );
+  };
+
   // Render preview section
   const renderPreviewSection = () => {
     const primaryColor = currentStep === 'nuggets' ? 'blue' : 'amber';
@@ -645,20 +695,25 @@ const AIInteractionConfig = ({
       </Tabs>
       
       {/* Timer Settings Card */}
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-4">Paramètres du Timer</h2>
-        <TimerSettings
-          timerEnabled={timerEnabled}
-          timerDuration={timerDuration}
-          onTimerEnabledChange={handleTimerEnabledChange}
-          onTimerDurationChange={handleTimerDurationChange}
-        />
-      </Card>
+      {renderTimerSettingsSection()}
       
       {/* Preview Section */}
       {previewMode && renderPreviewSection()}
     </div>
   );
+};
+
+// Export helper function to get default timer values - can be used in flow map
+export const getDefaultTimerConfig = () => {
+  return {
+    enabled: DEFAULT_AI_CONFIGURATION.timerEnabled || true,
+    duration: DEFAULT_AI_CONFIGURATION.timerDuration || 15
+  };
+};
+
+// Export helper function to get default analysis items - can be used in flow map
+export const getDefaultAnalysisOrder = () => {
+  return DEFAULT_AI_CONFIGURATION.finalAnalysis.items || [];
 };
 
 export default AIInteractionConfig; 
