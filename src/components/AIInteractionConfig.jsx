@@ -14,6 +14,8 @@ import {
   AnalysisItem,
   FinalAnalysisConfig
 } from '@/config/ai-agents';
+import AnalysisOrderList from './AnalysisOrderList';
+import AnalysisConfigPanel from './AnalysisConfigPanel';
 
 /**
  * AIInteractionConfig Component
@@ -506,100 +508,62 @@ const AIInteractionConfig = ({ sessionConfig = {}, updateSessionConfig, mode = '
 
   // Render final analysis section with drag and drop
   const renderFinalAnalysisSection = () => {
+    // State for selected analysis item
+    const [selectedItemId, setSelectedItemId] = useState(analysisItems[0]?.id || '');
+    
+    // Find the selected item object
+    const selectedItem = analysisItems.find(item => item.id === selectedItemId);
+    
+    // Initialize analysisConfiguration if it doesn't exist
+    const analysisConfiguration = sessionConfig.analysisConfiguration || {
+      includeParticipantNames: true,
+      includeQuotesInAnalysis: true,
+      generateKeyInsights: true,
+      analysisGenerationTime: 60
+    };
+    
     return (
       <div className="space-y-6">
         <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-md mb-4">
           <h3 className="font-semibold text-purple-800 mb-2">Configuration de l'Analyse Finale</h3>
           <p className="text-purple-700 text-sm">
-            Organisez l'ordre de présentation des différentes analyses et activez/désactivez chaque section selon vos besoins.
-            Glissez-déposez les éléments pour modifier leur ordre d'apparition.
+            Organisez l'ordre de présentation des différentes analyses et configurez chaque section selon vos besoins.
+            Utilisez le panneau de gauche pour réorganiser les analyses, et le panneau de droite pour configurer l'analyse sélectionnée.
           </p>
         </div>
         
         <Card className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-6">Ordre des Analyses</h3>
-          
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="analysis-items">
-              {(provided) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="space-y-3"
-                >
-                  {analysisItems.map((item, index) => (
-                    <Draggable key={item.id} draggableId={item.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={`p-4 rounded-lg border ${
-                            snapshot.isDragging
-                              ? 'border-purple-300 bg-purple-50 shadow-lg'
-                              : 'border-gray-200 bg-white'
-                          } transition-all duration-200`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <div
-                                {...provided.dragHandleProps}
-                                className="mr-3 cursor-move p-1 rounded hover:bg-gray-100"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-gray-500">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                                </svg>
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center">
-                                  <div 
-                                    className={`h-3 w-3 rounded-full mr-2 ${
-                                      item.type === 'nuggets' 
-                                        ? 'bg-blue-500' 
-                                        : item.type === 'lightbulbs'
-                                          ? 'bg-amber-500'
-                                          : 'bg-purple-500'
-                                    }`}
-                                  />
-                                  <h4 className="font-medium">{item.title}</h4>
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {item.description}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="ml-4 flex items-center">
-                              <label className="inline-flex items-center cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={item.enabled}
-                                  onChange={() => toggleAnalysisItemEnabled(item.id)}
-                                  className="sr-only peer"
-                                />
-                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                                <span className="ml-2 text-sm font-medium text-gray-700">
-                                  {item.enabled ? 'Activé' : 'Désactivé'}
-                                </span>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-          
-          <div className="mt-6 bg-yellow-50 p-4 rounded-md border border-yellow-200">
-            <h4 className="font-medium text-yellow-800 mb-2">Conseils d'utilisation</h4>
-            <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
-              <li>L'ordre des analyses impacte directement l'expérience d'apprentissage</li>
-              <li>Commencez par l'analyse la plus pertinente pour votre contexte pédagogique</li>
-              <li>L'analyse globale est généralement plus efficace en conclusion</li>
-              <li>Vous pouvez désactiver une analyse si elle n'est pas pertinente pour votre session</li>
-            </ul>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Panel - Analysis Order List */}
+            <div className="border-r pr-6">
+              <AnalysisOrderList 
+                items={analysisItems}
+                onReorder={handleAnalysisItemsChange}
+                onToggleItem={toggleAnalysisItemEnabled}
+                selectedItemId={selectedItemId}
+                onSelectItem={setSelectedItemId}
+              />
+              
+              <div className="mt-6 bg-yellow-50 p-4 rounded-md border border-yellow-200">
+                <h4 className="font-medium text-yellow-800 mb-2">Conseils d'utilisation</h4>
+                <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
+                  <li>L'ordre des analyses impacte directement l'expérience d'apprentissage</li>
+                  <li>Commencez par l'analyse la plus pertinente pour votre contexte pédagogique</li>
+                  <li>L'analyse globale est généralement plus efficace en conclusion</li>
+                </ul>
+              </div>
+            </div>
+            
+            {/* Right Panel - Analysis Configuration */}
+            <div className="pl-0 md:pl-6">
+              <AnalysisConfigPanel
+                selectedItem={selectedItem}
+                items={analysisItems}
+                updateSessionConfig={updateSessionConfig}
+                sessionConfig={sessionConfig}
+                analysisConfiguration={analysisConfiguration}
+              />
+            </div>
           </div>
         </Card>
       </div>
