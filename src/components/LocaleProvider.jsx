@@ -12,53 +12,32 @@ const LOCALE_COOKIE = 'NEXT_LOCALE';
  * LocaleProvider Component
  * 
  * This provider makes translations and locale functions available throughout the app.
- * It automatically detects the user's browser language and provides translations accordingly.
+ * It has been modified to ALWAYS use English, regardless of browser settings or cookies.
  */
 export function LocaleProvider({ children }) {
-  // Supported locales
-  const supportedLocales = ['en', 'fr', 'ja'];
+  // Supported locales - only English is used now
+  const supportedLocales = ['en'];
   const defaultLocale = 'en';
 
-  // Initialize locale from cookie or browser settings
-  const [locale, setLocale] = useState(() => {
-    // For SSR, default to English initially
-    if (typeof window === 'undefined') return defaultLocale;
-    
-    // Try to get from cookie
-    const savedLocale = Cookies.get(LOCALE_COOKIE);
-    if (savedLocale && supportedLocales.includes(savedLocale)) return savedLocale;
-    
-    // Try to get from browser settings
-    try {
-      const browserLocale = navigator.language.split('-')[0];
-      if (supportedLocales.includes(browserLocale)) return browserLocale;
-    } catch (e) {
-      console.error('Error detecting browser locale:', e);
-    }
-    
-    // Default to English
-    return defaultLocale;
-  });
+  // Always use English as the locale
+  const [locale, setLocale] = useState('en');
 
-  // Load messages for the current locale
-  const [messages, setMessages] = useState(getMessages(locale));
+  // Load messages for English locale
+  const [messages, setMessages] = useState(getMessages('en'));
 
-  // Update messages when locale changes
+  // Update HTML lang attribute
   useEffect(() => {
-    setMessages(getMessages(locale));
-    // Update HTML lang attribute
-    document.documentElement.lang = locale;
-  }, [locale]);
+    document.documentElement.lang = 'en';
+  }, []);
 
-  // Function to change the locale
+  // Function to change the locale - kept for API compatibility
+  // but now it only allows changing to English
   const changeLocale = (newLocale) => {
-    if (!supportedLocales.includes(newLocale)) return;
+    // Only allow setting to English
+    if (newLocale !== 'en') return;
     
     // Save preference in cookie
-    Cookies.set(LOCALE_COOKIE, newLocale, { expires: 365 });
-    
-    // Update state
-    setLocale(newLocale);
+    Cookies.set(LOCALE_COOKIE, 'en', { expires: 365 });
   };
 
   // Translator function
@@ -70,10 +49,8 @@ export function LocaleProvider({ children }) {
     let value = messages;
     for (const part of parts) {
       if (!value || !value[part]) {
-        // Use setTimeout to avoid state update during rendering
-        setTimeout(() => {
-        console.warn(`Translation missing for key: ${key}`);
-        }, 0);
+        // If translation is missing, return the default value or key
+        // but don't log a warning as we're transitioning to English-only
         return defaultValue || key;
       }
       value = value[part];
@@ -81,9 +58,6 @@ export function LocaleProvider({ children }) {
     
     // Ensure we return a string, not an object
     if (typeof value === 'object') {
-      setTimeout(() => {
-        console.warn(`Translation key ${key} returns an object, not a string`);
-      }, 0);
       return defaultValue || key;
     }
     
@@ -91,13 +65,13 @@ export function LocaleProvider({ children }) {
   };
   
   // Helper functions for common date/time formatting
-  const formatDateFn = (date, options) => formatDate(date, locale, options);
-  const formatTimeFn = (date, options) => formatTime(date, locale, options);
-  const formatDateTimeFn = (date, options) => formatDateTime(date, locale, options);
+  const formatDateFn = (date, options) => formatDate(date, 'en', options);
+  const formatTimeFn = (date, options) => formatTime(date, 'en', options);
+  const formatDateTimeFn = (date, options) => formatDateTime(date, 'en', options);
   
   // The value provided to consumers
   const value = {
-    locale,
+    locale: 'en',
     locales: supportedLocales,
     defaultLocale,
     messages,
