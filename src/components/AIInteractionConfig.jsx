@@ -57,6 +57,8 @@ const AIInteractionConfig = ({
   const [previewInput, setPreviewInput] = useState('');
   const [previewResponse, setPreviewResponse] = useState('');
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  // État pour afficher le prompt complet
+  const [showFullPrompt, setShowFullPrompt] = useState(false);
 
   // Determine which agent to display based on the mode parameter
   const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
@@ -419,9 +421,6 @@ Rules for the Closing Message:
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
     
-    // État local pour les variables du template de prompt 
-    const [showFullPrompt, setShowFullPrompt] = useState(false);
-
     // Extraction des variables du template
     const extractTemplateVariables = () => {
       const promptText = agent.prompt || '';
