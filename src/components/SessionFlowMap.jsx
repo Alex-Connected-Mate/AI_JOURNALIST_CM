@@ -648,6 +648,10 @@ const SessionFlowMap = ({
               onClick={() => onStepChange('lightbulb')}
             />
           </div>
+          
+          <div className="mt-2 text-xs text-gray-600 italic text-center">
+            Le timer est configuré globalement pour toutes les interactions AI
+          </div>
         </div>
       </div>
     );
