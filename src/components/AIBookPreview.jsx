@@ -16,6 +16,93 @@ const AIBookPreview = ({
   const [showCover, setShowCover] = useState(true);
   const [previewPage, setPreviewPage] = useState(0);
   
+  // Add CSS animations for the enhanced themes
+  const themeAnimations = `
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      100% { opacity: 0.7; }
+    }
+    
+    @keyframes retroScan {
+      0% { transform: translateY(-100%) rotate(30deg); }
+      100% { transform: translateY(100%) rotate(30deg); }
+    }
+    
+    @keyframes dataStream {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 100px; }
+    }
+    
+    @keyframes blinkBorder {
+      0% { border-color: rgba(100, 255, 218, 0.3); }
+      50% { border-color: rgba(100, 255, 218, 0.8); }
+      100% { border-color: rgba(100, 255, 218, 0.3); }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-5px, 5px); }
+      40% { transform: translate(-5px, -5px); }
+      60% { transform: translate(5px, 5px); }
+      80% { transform: translate(5px, -5px); }
+      100% { transform: translate(0); }
+    }
+    
+    @keyframes medievalFloat {
+      0% { transform: translateY(0) rotate(0); }
+      50% { transform: translateY(-5px) rotate(1deg); }
+      100% { transform: translateY(0) rotate(0); }
+    }
+    
+    .theme-retroPlus .book-cover::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60%;
+      background: linear-gradient(to top, rgba(255, 41, 117, 0.3), transparent);
+      z-index: -1;
+    }
+    
+    .theme-aiFuture .book-cover {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .theme-aiFuture .book-cover::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, transparent 30%, rgba(100, 255, 218, 0.1) 90%);
+      animation: pulse 4s infinite alternate;
+      z-index: 0;
+    }
+    
+    .theme-developer .book-cover::after {
+      content: '{ }';
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 24px;
+      opacity: 0.5;
+      color: #61afef;
+      font-family: 'Fira Code', monospace;
+    }
+    
+    .theme-medievalIntense .book-cover {
+      animation: medievalFloat 5s ease-in-out infinite;
+    }
+  `;
+  
   // Default colors based on agent type
   const defaultColors = {
     nuggets: {
@@ -267,6 +354,172 @@ const AIBookPreview = ({
         bulletStyle: "pixel",
         pattern: "radial-gradient(circle, rgba(42, 157, 143, 0.1) 10%, transparent 10%), radial-gradient(circle, rgba(42, 157, 143, 0.1) 10%, transparent 10%)"
       }
+    },
+    // New Themes
+    retroPlus: {
+      name: "Synthwave Retro",
+      description: "Vibrant 80s Synthwave aesthetics with neon and retro-futuristic vibes",
+      coverStyle: {
+        background: "linear-gradient(180deg, #2b1055 0%, #7597de 100%)",
+        textColor: "#ffffff",
+        accentColor: "#ff00ff",
+        borderRadius: "0",
+        boxShadow: "0 0 40px rgba(255, 0, 255, 0.5), 0 25px 0 -10px #ff2975, 0 25px 0 -5px #5a0f78",
+        fontFamily: "'Monoton', cursive",
+        pattern: "repeating-linear-gradient(90deg, rgba(255, 0, 255, 0.3) 0px, rgba(255, 0, 255, 0.3) 1px, transparent 1px, transparent 15px), repeating-linear-gradient(0deg, rgba(255, 0, 255, 0.3) 0px, rgba(255, 0, 255, 0.3) 1px, transparent 1px, transparent 15px)",
+        imageDesign: {
+          withImage: {
+            placeholder: "retro-grid",
+            style: "border: 4px solid #ff2975; background: linear-gradient(0deg, #000, #000), linear-gradient(180deg, transparent 0%, #2b1055 100%); background-size: 100%, 100%; background-position: center, center; background-repeat: no-repeat, no-repeat; box-shadow: inset 0 0 30px rgba(255, 0, 255, 0.5); position: relative; overflow: hidden; z-index: 1; transform-style: preserve-3d; transform: perspective(500px) rotateX(10deg); &:before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(0deg, transparent 0%, transparent 20%, rgba(255, 41, 117, 0.8) 30%, transparent 100%); transform: rotate(30deg); animation: retroScan 4s linear infinite; z-index: -1; }"
+          },
+          withoutImage: {
+            design: "neon-title",
+            style: "font-family: 'Monoton', cursive; padding-top: 30px; text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff; letter-spacing: 0.1em; text-transform: uppercase; display: flex; justify-content: center; align-items: center; &:before { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background: linear-gradient(to top, #ff2975 0%, transparent 100%); opacity: 0.3; }"
+          }
+        }
+      },
+      pageStyle: {
+        background: "#150833",
+        textColor: "#ffffff",
+        accentColor: "#ff2975",
+        borderRadius: "0",
+        boxShadow: "10px 10px 0 0 #000, 15px 15px 0 0 #ff2975",
+        fontFamily: "'Audiowide', cursive",
+        bulletStyle: "circuit",
+        pattern: "radial-gradient(circle at 50% 0%, rgba(255, 41, 117, 0.2) 0%, transparent 75%)"
+      }
+    },
+    medievalIntense: {
+      name: "Royal Antiquity",
+      description: "Intensely detailed medieval design with gilded illuminations and gothic elements",
+      coverStyle: {
+        background: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/aged-parchment-dark.jpg')",
+        textColor: "#2e1f1b",
+        accentColor: "#a63c06",
+        borderRadius: "0",
+        boxShadow: "0 0 0 10px #4a2511, 0 0 0 14px #a63c06, 0 0 40px rgba(0, 0, 0, 0.5)",
+        fontFamily: "'UnifrakturMaguntia', cursive",
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/celtic-pattern.png')",
+        imageDesign: {
+          withImage: {
+            placeholder: "illuminated-manuscript",
+            style: "border: 15px solid #4a2511; position: relative; background: url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/aged-parchment-light.jpg'); box-shadow: inset 0 0 30px rgba(74, 37, 17, 0.8); &:before, &:after { content: ''; position: absolute; width: 30px; height: 30px; background: url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/illuminated-corner.png'); background-size: contain; } &:before { top: -8px; left: -8px; } &:after { top: -8px; right: -8px; transform: rotate(90deg); }"
+          },
+          withoutImage: {
+            design: "royal-crest",
+            style: "font-family: 'UnifrakturMaguntia', cursive; padding-top: 40px; color: #a63c06; text-align: center; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); &:before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; background: url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/royal-crest.png') no-repeat center; background-size: contain; }"
+          }
+        }
+      },
+      pageStyle: {
+        background: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/aged-parchment-light.jpg')",
+        textColor: "#2e1f1b",
+        accentColor: "#a63c06",
+        borderRadius: "0",
+        boxShadow: "0 0 0 1px #4a2511, 0 10px 20px rgba(0, 0, 0, 0.3)",
+        fontFamily: "'Goudy Bookletter 1911', serif",
+        bulletStyle: "fleur-de-lis",
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/celtic-pattern-light.png')"
+      }
+    },
+    aiFuture: {
+      name: "Neural Network",
+      description: "Hyper-futuristic AI visualization with neural patterns and data streams",
+      coverStyle: {
+        background: "linear-gradient(135deg, #050a30 0%, #000000 100%)",
+        textColor: "#ffffff",
+        accentColor: "#64ffda",
+        borderRadius: "5px",
+        boxShadow: "0 0 50px rgba(100, 255, 218, 0.3), inset 0 0 20px rgba(100, 255, 218, 0.1)",
+        fontFamily: "'Exo 2', sans-serif",
+        pattern: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/neural-pattern.png')",
+        imageDesign: {
+          withImage: {
+            placeholder: "data-visualization",
+            style: "border: 1px solid rgba(100, 255, 218, 0.5); position: relative; background: linear-gradient(to right, rgba(100, 255, 218, 0.05) 0%, rgba(100, 255, 218, 0.2) 50%, rgba(100, 255, 218, 0.05) 100%); &:before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(100, 255, 218, 0.2) 4px, rgba(100, 255, 218, 0.2) 5px); animation: dataStream 10s linear infinite; } &:after { content: ''; position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; border: 1px dashed rgba(100, 255, 218, 0.5); opacity: 0.5; }"
+          },
+          withoutImage: {
+            design: "neural-nodes",
+            style: "font-family: 'Exo 2', sans-serif; position: relative; overflow: hidden; &:before { content: ''; position: absolute; width: 100%; height: 100%; background: url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/neural-nodes.png') no-repeat center; background-size: 90%; opacity: 0.3; animation: pulse 2s ease-in-out infinite alternate; }"
+          }
+        }
+      },
+      pageStyle: {
+        background: "#000000",
+        textColor: "#ffffff",
+        accentColor: "#64ffda",
+        borderRadius: "5px",
+        boxShadow: "0 0 20px rgba(100, 255, 218, 0.15)",
+        fontFamily: "'Exo 2', sans-serif",
+        bulletStyle: "node",
+        pattern: "linear-gradient(rgba(100, 255, 218, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(100, 255, 218, 0.05) 1px, transparent 1px)",
+      }
+    },
+    developer: {
+      name: "Code Editor",
+      description: "Developer-friendly design inspired by code editors and technical documents",
+      coverStyle: {
+        background: "#282c34",
+        textColor: "#abb2bf",
+        accentColor: "#61afef",
+        borderRadius: "3px",
+        boxShadow: "0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23)",
+        fontFamily: "'Fira Code', monospace",
+        pattern: null,
+        imageDesign: {
+          withImage: {
+            placeholder: "code-window",
+            style: "border: 1px solid #4b5263; background: #21252b; position: relative; font-family: 'Fira Code', monospace; &:before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 25px; background: #4b5263; border-bottom: 1px solid #4b5263; } &:after { content: ''; position: absolute; top: 7px; left: 10px; width: 12px; height: 12px; border-radius: 50%; background: #e06c75; box-shadow: 20px 0 0 #98c379, 40px 0 0 #e5c07b; }"
+          },
+          withoutImage: {
+            design: "syntax-highlight",
+            style: "font-family: 'Fira Code', monospace; position: relative; background: #282c34; &:before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 25px; background: #4b5263; }"
+          }
+        }
+      },
+      pageStyle: {
+        background: "#282c34",
+        textColor: "#abb2bf",
+        accentColor: "#61afef",
+        borderRadius: "3px",
+        boxShadow: "0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23)",
+        fontFamily: "'Fira Code', monospace",
+        bulletStyle: "terminal",
+        pattern: "linear-gradient(transparent 23px, rgba(97, 175, 239, 0.1) 23px, rgba(97, 175, 239, 0.1) 24px)"
+      }
+    },
+    corporate: {
+      name: "Executive Briefing",
+      description: "Premium corporate style with professional and modern business aesthetics",
+      coverStyle: {
+        background: "linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)",
+        textColor: "#1a365d",
+        accentColor: "#5a67d8",
+        borderRadius: "10px",
+        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(90, 103, 216, 0.1)",
+        fontFamily: "'Montserrat', sans-serif",
+        pattern: "repeating-linear-gradient(135deg, rgba(90, 103, 216, 0.02) 0px, rgba(90, 103, 216, 0.02) 1px, transparent 1px, transparent 50px)",
+        imageDesign: {
+          withImage: {
+            placeholder: "data-chart",
+            style: "border-radius: 8px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05); background: white; position: relative; text-align: center; &:before { content: ''; position: absolute; left: 10%; right: 10%; bottom: 20%; height: 50%; background: repeating-linear-gradient(0deg, rgba(90, 103, 216, 0.1), rgba(90, 103, 216, 0.1) 5px, transparent 5px, transparent 12px); border-radius: 5px; }"
+          },
+          withoutImage: {
+            design: "executive-summary",
+            style: "font-family: 'Montserrat', sans-serif; padding-top: 20px; position: relative; display: flex; align-items: center; justify-content: center; &:before { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 70%; height: 40%; border: 2px solid rgba(90, 103, 216, 0.15); border-radius: 30px; }"
+          }
+        }
+      },
+      pageStyle: {
+        background: "#ffffff",
+        textColor: "#1a365d",
+        accentColor: "#5a67d8",
+        borderRadius: "10px",
+        boxShadow: "0 5px 15px rgba(0, 0, 0, 0.05)",
+        fontFamily: "'Montserrat', sans-serif",
+        bulletStyle: "checkmark",
+        pattern: "repeating-linear-gradient(135deg, rgba(90, 103, 216, 0.02) 0px, rgba(90, 103, 216, 0.02) 1px, transparent 1px, transparent 50px)"
+      }
     }
   };
   
@@ -325,7 +578,7 @@ const AIBookPreview = ({
     
     return (
       <div 
-        className="book-cover relative overflow-hidden rounded-lg shadow-xl"
+        className={`book-cover theme-${currentThemeName} relative overflow-hidden rounded-lg shadow-xl`}
         style={{
           aspectRatio: '1/1.4',
           background: theme.background,
@@ -428,6 +681,76 @@ const AIBookPreview = ({
               VOL. 01
             </div>
           )}
+          
+          {currentThemeName === 'retroPlus' && (
+            <div className="absolute top-3 left-3 right-3 text-center" style={{ 
+              fontFamily: "'Monoton', cursive",
+              color: theme.accentColor,
+              fontSize: '10px',
+              letterSpacing: '0.3em',
+              textShadow: `0 0 10px ${theme.accentColor}`
+            }}>
+              SYNTHWAVE EDITION
+            </div>
+          )}
+          
+          {currentThemeName === 'aiFuture' && (
+            <div className="absolute bottom-4 left-0 right-0 text-center" style={{ 
+              fontFamily: "'Exo 2', sans-serif",
+              color: theme.accentColor,
+              fontSize: '8px',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase'
+            }}>
+              {Array.from({ length: 20 }, (_, i) => 
+                <span key={i} style={{ opacity: Math.random() * 0.5 + 0.5 }}>
+                  {Math.random() > 0.5 ? '1' : '0'}
+                </span>
+              )}
+            </div>
+          )}
+          
+          {currentThemeName === 'medievalIntense' && (
+            <div className="absolute top-3 left-0 right-0 flex justify-center" style={{ 
+              opacity: 0.8
+            }}>
+              <div style={{ 
+                width: '80px', 
+                height: '40px', 
+                backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-ornament.png')",
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat'
+              }}></div>
+            </div>
+          )}
+          
+          {currentThemeName === 'developer' && (
+            <div className="absolute top-2 left-4 right-4 text-xs" style={{ 
+              fontFamily: "'Fira Code', monospace",
+              color: theme.accentColor,
+              opacity: 0.7
+            }}>
+              book.insights.js
+            </div>
+          )}
+          
+          {currentThemeName === 'corporate' && (
+            <div className="absolute top-2 right-2 flex items-center justify-center" style={{ 
+              width: '40px',
+              height: '40px',
+              background: theme.accentColor,
+              borderRadius: '50%',
+              opacity: 0.9
+            }}>
+              <div style={{ 
+                color: 'white', 
+                fontSize: '22px', 
+                fontWeight: 'bold',
+                fontFamily: "'Montserrat', sans-serif"
+              }}>C</div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -466,7 +789,7 @@ const AIBookPreview = ({
     
     return (
       <div 
-        className="book-page relative overflow-hidden rounded-lg shadow-lg"
+        className={`book-page theme-${currentThemeName} relative overflow-hidden rounded-lg shadow-lg`}
         style={{
           aspectRatio: '1/1.4',
           backgroundColor: theme.background,
@@ -484,6 +807,135 @@ const AIBookPreview = ({
             <div className="w-full h-full bg-repeat" style={{
               backgroundImage: theme.pattern
             }}></div>
+          </div>
+        )}
+        
+        {/* Custom theme decorations */}
+        {currentThemeName === 'retroPlus' && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 h-20" 
+                style={{ 
+                  background: 'linear-gradient(to top, rgba(255, 41, 117, 0.2), transparent)',
+                  zIndex: 1 
+                }}>
+            </div>
+            <div className="absolute top-2 left-2 text-xs" 
+                style={{ 
+                  fontFamily: "'VT323', monospace",
+                  color: '#ff2975',
+                  opacity: 0.7,
+                  zIndex: 1
+                }}>
+              // SYNTHWAVE_DATA
+            </div>
+          </div>
+        )}
+
+        {currentThemeName === 'medievalIntense' && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 h-10" 
+                style={{ 
+                  borderBottom: '2px solid rgba(166, 60, 6, 0.3)',
+                  backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-border-top.png')",
+                  backgroundRepeat: 'repeat-x',
+                  backgroundSize: 'auto 10px',
+                  backgroundPosition: 'center bottom',
+                  opacity: 0.5,
+                  zIndex: 1
+                }}>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-10"
+                style={{ 
+                  borderTop: '2px solid rgba(166, 60, 6, 0.3)',
+                  backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/medieval-border-bottom.png')",
+                  backgroundRepeat: 'repeat-x',
+                  backgroundSize: 'auto 10px',
+                  backgroundPosition: 'center top',
+                  opacity: 0.5,
+                  zIndex: 1
+                }}>
+            </div>
+          </div>
+        )}
+
+        {currentThemeName === 'aiFuture' && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-4 right-4 h-6 w-6" 
+                style={{ 
+                  border: '1px solid rgba(100, 255, 218, 0.5)',
+                  borderRadius: '50%',
+                  animation: 'pulse 2s infinite alternate',
+                  zIndex: 1
+                }}>
+            </div>
+            <div className="absolute bottom-4 left-4 text-xs" 
+                style={{ 
+                  fontFamily: "'Exo 2', sans-serif",
+                  color: 'rgba(100, 255, 218, 0.5)',
+                  zIndex: 1
+                }}>
+              AI.SYSTEM.v7.3
+            </div>
+          </div>
+        )}
+
+        {currentThemeName === 'developer' && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 h-6" 
+                style={{ 
+                  background: '#21252b',
+                  borderBottom: '1px solid #4b5263',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 8px',
+                  fontSize: '10px',
+                  fontFamily: "'Fira Code', monospace",
+                  color: '#abb2bf',
+                  zIndex: 1
+                }}>
+              <span style={{ marginRight: '8px', color: '#e06c75' }}>●</span>
+              <span style={{ marginRight: '8px', color: '#98c379' }}>●</span>
+              <span style={{ marginRight: '12px', color: '#e5c07b' }}>●</span>
+              <span>insights.jsx</span>
+            </div>
+            <div className="absolute top-6 left-0 bottom-0 w-6" 
+                style={{ 
+                  borderRight: '1px solid rgba(97, 175, 239, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  fontSize: '10px',
+                  color: '#636d83',
+                  zIndex: 1
+                }}>
+              {Array.from({ length: 10 }, (_, i) => (
+                <div key={i} style={{ marginBottom: '4px' }}>{i + 1}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentThemeName === 'corporate' && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-2 right-2" 
+                style={{ 
+                  width: '30px',
+                  height: '30px',
+                  backgroundImage: "url('https://ukmxqoazpujsvqmkzkpz.supabase.co/storage/v1/object/public/ai-agent/corporate-logo.png')",
+                  backgroundSize: 'contain',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'center',
+                  opacity: 0.1,
+                  zIndex: 1
+                }}>
+            </div>
+            <div className="absolute bottom-2 left-0 right-0 h-1" 
+                style={{ 
+                  background: `linear-gradient(to right, transparent, ${theme.accentColor}30, transparent)`,
+                  zIndex: 1
+                }}>
+            </div>
           </div>
         )}
         
@@ -559,8 +1011,12 @@ const AIBookPreview = ({
       'star': '★',
       'leaf': '☘️',
       'medieval-fleuron': '❧',
+      'fleur-de-lis': '⚜',
       'circuit': '⦿',
       'pixel': '█',
+      'node': '◉',
+      'terminal': '>',
+      'checkmark': '✓'
     };
     
     return bulletStyles[style] || bulletStyles.circle;
@@ -577,6 +1033,9 @@ const AIBookPreview = ({
   
   return (
     <div className="book-preview space-y-8">
+      {/* Add the CSS styles for animations */}
+      <style dangerouslySetInnerHTML={{ __html: themeAnimations }} />
+      
       {/* View toggle */}
       <div className="flex justify-center mb-2">
         <div className="inline-flex rounded-md shadow-sm" role="group">
