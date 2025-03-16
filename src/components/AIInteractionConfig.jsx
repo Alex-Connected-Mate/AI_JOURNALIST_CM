@@ -428,86 +428,101 @@ const AIInteractionConfig = ({
           {/* Agent prompt and configuration */}
           <div className="w-full md:w-2/3">
             <Card className="p-4">
-              <div className="space-y-4">
-                <AIPromptEditor
-                  initialPrompt={agent.prompt || getDefaultPrompt(activeAgentType)}
-                  agentType={activeAgentType}
-                  showFullPrompt={showFullPrompt}
-                  onToggleFullPrompt={() => setShowFullPrompt(!showFullPrompt)}
-                  onPromptChange={(newPrompt) => handleAgentChange('prompt', newPrompt)}
-                />
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Program Name
-                    </label>
-                    <input
-                      type="text"
-                      className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                      value={sessionConfig.title || ''}
-                      onChange={(e) => {
-                        updateSessionConfig({
-                          ...sessionConfig,
-                          title: e.target.value
-                        });
-                      }}
-                      placeholder="Enter program name"
-                    />
+              <div className="flex flex-col space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center mb-0">
+                    <h4 className="text-base font-medium">Agent Prompt</h4>
+                    <button
+                      onClick={() => setShowFullPrompt(!showFullPrompt)}
+                      className={`text-xs text-${primaryColor}-600 hover:text-${primaryColor}-800`}
+                    >
+                      {showFullPrompt ? "Hide Full Prompt" : "Show Full Prompt"}
+                    </button>
                   </div>
-                  
-                  {activeAgentType === 'nuggets' && (
+
+                  <AIPromptEditor
+                    initialPrompt={agent.prompt || getDefaultPrompt(activeAgentType)}
+                    agentType={activeAgentType}
+                    showFullPrompt={showFullPrompt}
+                    onToggleFullPrompt={() => setShowFullPrompt(!showFullPrompt)}
+                    onPromptChange={(newPrompt) => handleAgentChange('prompt', newPrompt)}
+                  />
+                </div>
+                
+                <div className="border-t pt-4 mt-2">
+                  <h4 className="text-base font-medium mb-3">General Settings</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Teacher/Facilitator Name
+                        Program Name
                       </label>
                       <input
                         type="text"
                         className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                        value={sessionConfig.teacherName || ''}
+                        value={sessionConfig.title || ''}
                         onChange={(e) => {
                           updateSessionConfig({
                             ...sessionConfig,
-                            teacherName: e.target.value
+                            title: e.target.value
                           });
                         }}
-                        placeholder="Enter teacher/facilitator name"
+                        placeholder="Enter program name"
                       />
                     </div>
-                  )}
-                </div>
-                
-                {/* Additional customization fields */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Agent Personality
-                    </label>
-                    <select
-                      className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                      value={agent.personality || 'professional'}
-                      onChange={(e) => handleAgentChange('personality', e.target.value)}
-                    >
-                      <option value="professional">Professional & Formal</option>
-                      <option value="friendly">Friendly & Approachable</option>
-                      <option value="enthusiastic">Enthusiastic & Energetic</option>
-                      <option value="concise">Concise & Direct</option>
-                    </select>
+                    
+                    {activeAgentType === 'nuggets' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Teacher/Facilitator Name
+                        </label>
+                        <input
+                          type="text"
+                          className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                          value={sessionConfig.teacherName || ''}
+                          onChange={(e) => {
+                            updateSessionConfig({
+                              ...sessionConfig,
+                              teacherName: e.target.value
+                            });
+                          }}
+                          placeholder="Enter teacher/facilitator name"
+                        />
+                      </div>
+                    )}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Language Complexity
-                    </label>
-                    <select
-                      className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                      value={agent.languageComplexity || 'moderate'}
-                      onChange={(e) => handleAgentChange('languageComplexity', e.target.value)}
-                    >
-                      <option value="simple">Simple & Accessible</option>
-                      <option value="moderate">Moderate Complexity</option>
-                      <option value="advanced">Advanced & Technical</option>
-                    </select>
+                  {/* Additional customization fields */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Agent Personality
+                      </label>
+                      <select
+                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                        value={agent.personality || 'professional'}
+                        onChange={(e) => handleAgentChange('personality', e.target.value)}
+                      >
+                        <option value="professional">Professional & Formal</option>
+                        <option value="friendly">Friendly & Approachable</option>
+                        <option value="enthusiastic">Enthusiastic & Energetic</option>
+                        <option value="concise">Concise & Direct</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Language Complexity
+                      </label>
+                      <select
+                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
+                        value={agent.languageComplexity || 'moderate'}
+                        onChange={(e) => handleAgentChange('languageComplexity', e.target.value)}
+                      >
+                        <option value="simple">Simple & Accessible</option>
+                        <option value="moderate">Moderate Complexity</option>
+                        <option value="advanced">Advanced & Technical</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
