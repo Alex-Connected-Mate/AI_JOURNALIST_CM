@@ -18,7 +18,7 @@ import AnalysisOrderList from './AnalysisOrderList';
 import AnalysisConfigPanel from './AnalysisConfigPanel';
 import { useTranslation } from './LocaleProvider';
 import AIPromptEditor from './AIPromptEditor';
-import { getDefaultPrompt } from '@/lib/promptParser';
+import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
 
 /**
  * AIInteractionConfig Component
@@ -375,6 +375,180 @@ const AIInteractionConfig = ({
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
     
+    // État pour les fonctionnalités d'édition de prompt
+    const [rawPrompt, setRawPrompt] = useState(agent.prompt || getDefaultPrompt(activeAgentType));
+    const [parsedData, setParsedData] = useState({
+      agentName: '',
+      programName: '',
+      teacherName: '',
+      style: '',
+      rules: [],
+      questions: []
+    });
+    const [newRule, setNewRule] = useState('');
+    const [newQuestion, setNewQuestion] = useState('');
+    
+    // Parse le prompt lorsque le composant est monté ou quand le prompt change
+    useEffect(() => {
+      if (agent.prompt) {
+        const extracted = parsePrompt(agent.prompt);
+        setParsedData(extracted);
+        setRawPrompt(agent.prompt);
+      } else {
+        const defaultPrompt = getDefaultPrompt(activeAgentType);
+        setRawPrompt(defaultPrompt);
+        setParsedData(parsePrompt(defaultPrompt));
+      }
+    }, [agent.prompt, activeAgentType]);
+    
+    // Gestion des règles
+    const handleAddRule = () => {
+      if (!newRule.trim()) return;
+      
+      const updatedRules = [...parsedData.rules, newRule.trim()];
+      const updatedData = {
+        ...parsedData,
+        rules: updatedRules
+      };
+      setParsedData(updatedData);
+      
+      // Générer le nouveau prompt et le sauvegarder
+      const newPrompt = generatePrompt(updatedData, activeAgentType);
+      setRawPrompt(newPrompt);
+      handleAgentChange('prompt', newPrompt);
+      setNewRule('');
+    };
+    
+    const handleRemoveRule = (index) => {
+      const updatedRules = parsedData.rules.filter((_, i) => i !== index);
+      const updatedData = {
+        ...parsedData,
+        rules: updatedRules
+      };
+      setParsedData(updatedData);
+      
+      // Générer le nouveau prompt et le sauvegarder
+      const newPrompt = generatePrompt(updatedData, activeAgentType);
+      setRawPrompt(newPrompt);
+      handleAgentChange('prompt', newPrompt);
+    };
+    
+    // Gestion des questions
+    const handleAddQuestion = () => {
+      if (!newQuestion.trim()) return;
+      
+      const updatedQuestions = [...parsedData.questions, newQuestion.trim()];
+      const updatedData = {
+        ...parsedData,
+        questions: updatedQuestions
+      };
+      setParsedData(updatedData);
+      
+      // Générer le nouveau prompt et le sauvegarder
+      const newPrompt = generatePrompt(updatedData, activeAgentType);
+      setRawPrompt(newPrompt);
+      handleAgentChange('prompt', newPrompt);
+      setNewQuestion('');
+    };
+    
+    const handleRemoveQuestion = (index) => {
+      const updatedQuestions = parsedData.questions.filter((_, i) => i !== index);
+      const updatedData = {
+        ...parsedData,
+        questions: updatedQuestions
+      };
+      setParsedData(updatedData);
+      
+      // Générer le nouveau prompt et le sauvegarder
+      const newPrompt = generatePrompt(updatedData, activeAgentType);
+      setRawPrompt(newPrompt);
+      handleAgentChange('prompt', newPrompt);
+    };
+    
+    // Mise à jour du style
+    const handleStyleChange = (e) => {
+      const newStyle = e.target.value;
+      const updatedData = {
+        ...parsedData,
+        style: newStyle
+      };
+      setParsedData(updatedData);
+      
+      // Générer le nouveau prompt et le sauvegarder
+      const newPrompt = generatePrompt(updatedData, activeAgentType);
+      setRawPrompt(newPrompt);
+      handleAgentChange('prompt', newPrompt);
+    };
+    
+    // Mise à jour directe du prompt raw
+    const handleRawPromptChange = (e) => {
+      const newPrompt = e.target.value;
+      setRawPrompt(newPrompt);
+      handleAgentChange('prompt', newPrompt);
+      
+      // Parser le nouveau prompt pour mettre à jour les champs
+      const extracted = parsePrompt(newPrompt);
+      setParsedData(extracted);
+    };
+    
+    // Render preview section
+    const renderPreviewSection = () => {
+      const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
+      
+      return (
+        <div className="mt-6 border-t pt-4">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="font-medium">Agent Preview</h4>
+            <button
+              onClick={() => setPreviewMode(!previewMode)}
+              className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
+            >
+              {previewMode ? "Hide" : "Show"} preview
+            </button>
+          </div>
+            
+          {previewMode && (
+            <div className="bg-gray-50 rounded-md p-3 mt-2">
+              <textarea
+                className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 mb-2`}
+                value={previewInput}
+                onChange={(e) => setPreviewInput(e.target.value)}
+                placeholder="Enter a message to test the agent..."
+                rows={2}
+              />
+              
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setIsGeneratingPreview(true);
+                    
+                    // Simulation d'une réponse de l'IA (à remplacer par un vrai appel API)
+                    setTimeout(() => {
+                      // Ajoutez ici la logique pour générer une réponse en fonction du prompt et de l'entrée
+                      const response = `This is a simulated response based on your prompt:\n\n${rawPrompt.slice(0, 100)}...\n\nInput: ${previewInput}`;
+                      setPreviewResponse(response);
+                      setIsGeneratingPreview(false);
+                    }, 1500);
+                  }}
+                  disabled={isGeneratingPreview || !previewInput.trim()}
+                  className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
+                >
+                  {isGeneratingPreview ? "Generating..." : "Generate a response"}
+                </button>
+              </div>
+              
+              {previewResponse && (
+                <div className="mt-3 p-3 bg-white rounded border border-gray-200">
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Agent response:</h5>
+                  <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+    
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
@@ -432,21 +606,154 @@ const AIInteractionConfig = ({
                 <div className="space-y-3">
                   <div className="flex justify-between items-center mb-0">
                     <h4 className="text-base font-medium">Agent Prompt</h4>
-                    <button
+                    <button 
                       onClick={() => setShowFullPrompt(!showFullPrompt)}
                       className={`text-xs text-${primaryColor}-600 hover:text-${primaryColor}-800`}
                     >
                       {showFullPrompt ? "Hide Full Prompt" : "Show Full Prompt"}
                     </button>
                   </div>
-
-                  <AIPromptEditor
-                    initialPrompt={agent.prompt || getDefaultPrompt(activeAgentType)}
-                    agentType={activeAgentType}
-                    showFullPrompt={showFullPrompt}
-                    onToggleFullPrompt={() => setShowFullPrompt(!showFullPrompt)}
-                    onPromptChange={(newPrompt) => handleAgentChange('prompt', newPrompt)}
-                  />
+                  
+                  {showFullPrompt ? (
+                    <div className="space-y-3">
+                      <textarea
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono p-2 min-h-[300px]"
+                        value={rawPrompt}
+                        onChange={handleRawPromptChange}
+                        placeholder="Enter the raw prompt"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Edit the raw prompt directly. This gives you full control over the prompt structure and content.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <p className="text-sm text-gray-500 mb-4">
+                        Configure the parameters below to customize the agent's behavior.
+                        The prompt template includes variables like agent name, program name, etc.
+                      </p>
+                      
+                      {/* Style Description */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Style Description
+                        </label>
+                        <textarea
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 min-h-[100px]"
+                          value={parsedData.style || ''}
+                          onChange={handleStyleChange}
+                          placeholder="Describe the agent's communication style"
+                        />
+                      </div>
+                      
+                      {/* Rules */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Rules
+                        </label>
+                        <div className="space-y-2">
+                          {parsedData.rules && parsedData.rules.map((rule, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                value={rule}
+                                readOnly
+                              />
+                              <button
+                                onClick={() => handleRemoveRule(index)}
+                                className="p-1 text-red-500 hover:text-red-700"
+                                title="Remove rule"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <input
+                            type="text"
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            placeholder="Add a new rule"
+                            value={newRule}
+                            onChange={(e) => setNewRule(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newRule.trim()) {
+                                handleAddRule();
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={handleAddRule}
+                            className="p-1 text-blue-500 hover:text-blue-700"
+                            title="Add rule"
+                            disabled={!newRule.trim()}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Questions */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Questions
+                        </label>
+                        <div className="space-y-2">
+                          {parsedData.questions && parsedData.questions.map((question, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <textarea
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                                value={question}
+                                readOnly
+                                rows={2}
+                              />
+                              <button
+                                onClick={() => handleRemoveQuestion(index)}
+                                className="p-1 text-red-500 hover:text-red-700"
+                                title="Remove question"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <textarea
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
+                            placeholder="Add a new question"
+                            value={newQuestion}
+                            onChange={(e) => setNewQuestion(e.target.value)}
+                            rows={2}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.ctrlKey && newQuestion.trim()) {
+                                handleAddQuestion();
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={handleAddQuestion}
+                            className="p-1 text-blue-500 hover:text-blue-700"
+                            title="Add question"
+                            disabled={!newQuestion.trim()}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Press Ctrl+Enter to add a new question
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="border-t pt-4 mt-2">
@@ -674,54 +981,6 @@ const AIInteractionConfig = ({
         </div>
         
         <AIPromptConfig {...bookConfigProps} />
-      </div>
-    );
-  };
-
-  // Render preview section
-  const renderPreviewSection = () => {
-    const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
-    
-    return (
-      <div className="mt-6 border-t pt-4">
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="font-medium">Agent Preview</h4>
-          <button
-            onClick={() => setPreviewMode(!previewMode)}
-            className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
-          >
-            {previewMode ? "Hide" : "Show"} preview
-          </button>
-        </div>
-          
-        {previewMode && (
-          <div className="bg-gray-50 rounded-md p-3 mt-2">
-            <textarea
-              className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 mb-2`}
-              value={previewInput}
-              onChange={(e) => setPreviewInput(e.target.value)}
-              placeholder="Enter a message to test the agent..."
-              rows={2}
-            />
-            
-            <div className="flex justify-end">
-              <button
-                onClick={generatePreview}
-                disabled={isGeneratingPreview || !previewInput.trim()}
-                className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
-              >
-                {isGeneratingPreview ? "Generating..." : "Generate a response"}
-              </button>
-            </div>
-            
-            {previewResponse && (
-              <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-                <h5 className="text-sm font-medium text-gray-700 mb-1">Agent response:</h5>
-                <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     );
   };
