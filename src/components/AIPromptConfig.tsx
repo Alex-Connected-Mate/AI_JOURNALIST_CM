@@ -90,10 +90,16 @@ const DEFAULT_BOOK_CONFIG = {
   }
 };
 
-export function AIPromptConfig({ onSave, initialConfig, agentType = 'nuggets' }: { 
+export function AIPromptConfig({ 
+  onSave, 
+  initialConfig, 
+  agentType = 'nuggets',
+  mode = 'full'
+}: { 
   onSave: (config: AIPromptConfig) => void, 
   initialConfig?: AIPromptConfig,
-  agentType?: 'nuggets' | 'lightbulbs' 
+  agentType?: 'nuggets' | 'lightbulbs',
+  mode?: 'full' | 'book-only'
 }) {
   const [config, setConfig] = useState<AIPromptConfig>({
     agentName: initialConfig?.agentName || (agentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'),
@@ -248,6 +254,100 @@ ${index + 1}. "${q.question}"`).join('\n')}
       setNewBookSection({ title: '', description: '', themes: [] });
     }
   };
+
+  if (mode === 'book-only') {
+    return (
+      <Card>
+        <CardContent className="space-y-8 pt-6">
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-primary">Book Configuration</h2>
+            
+            {/* Book Preview */}
+            <div className="mb-8">
+              <AIBookPreview 
+                config={config.bookConfig}
+                onConfigChange={(newConfig: typeof config.bookConfig) => {
+                  updateConfig('bookConfig', newConfig);
+                }}
+                agentType={agentType}
+                participantName={config.teacherName || "Participant"}
+              />
+            </div>
+            
+            <h3 className="font-medium text-lg">Book Sections</h3>
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                <Input
+                  label="Section Title"
+                  value={newBookSection.title}
+                  onChange={(e) => setNewBookSection(prev => ({
+                    ...prev,
+                    title: e.target.value
+                  }))}
+                  placeholder="Ex: Key Insights"
+                />
+                <Input
+                  label="Description"
+                  value={newBookSection.description}
+                  onChange={(e) => setNewBookSection(prev => ({
+                    ...prev,
+                    description: e.target.value
+                  }))}
+                  placeholder="Description of the section"
+                />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Related Themes</label>
+                  <div className="flex flex-wrap gap-2">
+                    {config.analysisConfig.themes.map((theme, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          const isSelected = newBookSection.themes.includes(theme);
+                          setNewBookSection(prev => ({
+                            ...prev,
+                            themes: isSelected
+                              ? prev.themes.filter(t => t !== theme)
+                              : [...prev.themes, theme]
+                          }));
+                        }}
+                        className={`px-3 py-1 rounded-full text-sm border ${
+                          newBookSection.themes.includes(theme)
+                            ? 'bg-primary text-white'
+                            : 'bg-white'
+                        }`}
+                      >
+                        {theme}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={addBookSection} className="w-full">
+                Add Section
+              </Button>
+
+              <div className="space-y-4">
+                {config.bookConfig.sections.map((section, index) => (
+                  <div key={section.id} className="bg-gray-50 p-4 rounded-md border border-gray-100">
+                    <h3 className="font-medium">{section.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{section.description}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {section.themes.map((theme, tidx) => (
+                        <span key={tidx} className="bg-white px-2 py-1 rounded-full text-xs border">
+                          {theme}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-0 shadow-none">
