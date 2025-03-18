@@ -29,8 +29,13 @@
 @layer components {
   /* Header */
   .floating-header {
-    @apply fixed top-4 right-4 bg-white rounded-full px-4 py-2 shadow-lg flex items-center gap-4 z-50;
+    @apply sticky top-0 left-0 right-0 bg-white py-4 shadow-lg flex items-center justify-end px-6 z-50;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Add a header spacer to ensure content doesn't slide under header */
+  .header-spacer {
+    @apply h-16;
   }
 
   .powered-by {

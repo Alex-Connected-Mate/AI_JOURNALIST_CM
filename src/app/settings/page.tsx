@@ -281,22 +281,12 @@ export default function SettingsPage() {
   };
 
   // Handle image upload
-  const handleImageUpload = async (file: File) => {
-    if (!file || isLoading) return;
-    
+  const handleImageUpload = async (file: File): Promise<string | null> => {
+    console.log('🔵 [SETTINGS] Avatar upload initiated');
     setIsLoading(true);
     setMessage({ type: '', text: '' });
     
     try {
-      console.log('🔵 [SETTINGS] Uploading avatar image:', file.name);
-      
-      // Vérifier le type de fichier
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        console.error('🔴 [SETTINGS] Invalid file type:', file.type);
-        throw new Error('Type de fichier non supporté. Utilisez JPG, PNG, GIF ou WEBP.');
-      }
-      
       // Vérifier la taille du fichier (max 5MB)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
@@ -333,12 +323,15 @@ export default function SettingsPage() {
         ...prev,
         avatar_url: url
       }));
+      
+      return url;
     } catch (err) {
       console.error('🔴 [SETTINGS] Error uploading avatar:', err);
       setMessage({
         type: 'error',
         text: err instanceof Error ? err.message : 'Erreur lors du téléchargement de l\'image'
       });
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -716,6 +709,35 @@ export default function SettingsPage() {
                     'Déconnexion'
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bento-style Connected Mate branding card */}
+      <div className="mt-12 mb-8 max-w-4xl mx-auto px-4">
+        <div className="bento-card overflow-hidden border border-gray-200 transform transition-all hover:scale-[1.02] hover:shadow-md">
+          <div className="relative">
+            <div className="absolute top-0 left-0 w-full h-full opacity-5 bg-gradient-to-br from-blue-500 to-purple-500"></div>
+            <div className="flex flex-col md:flex-row justify-between items-center p-8 gap-6">
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Powered by Connected Mate</h3>
+                <p className="text-gray-600">Découvrez comment nous utilisons l'IA pour révolutionner les interactions et l'analyse des données.</p>
+              </div>
+              <div className="flex-shrink-0 flex flex-col items-center gap-3">
+                <a 
+                  href="https://www.linkedin.com/company/connected-mate" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 00.1.4V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"></path>
+                  </svg>
+                  <span>Suivez-nous sur LinkedIn</span>
+                </a>
+                <span className="text-sm text-gray-500">Connected Mate © {new Date().getFullYear()}</span>
               </div>
             </div>
           </div>
