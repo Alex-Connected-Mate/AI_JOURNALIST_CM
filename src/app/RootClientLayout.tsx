@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 import { LocaleProvider } from '@/components/LocaleProvider';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Toaster } from 'react-hot-toast';
+import Image from 'next/image';
 
 interface RootClientLayoutProps {
   children: React.ReactNode;
@@ -100,28 +101,25 @@ export default function RootClientLayout({ children }: RootClientLayoutProps) {
       }
     }
     
-    // Écrire un log dans localStorage au démarrage
-    try {
-      const startTimeISO = new Date().toISOString();
-      localStorage.setItem('app_debug_start', startTimeISO);
-      localStorage.setItem('app_debug_pathname', pathname || 'undefined');
-      localStorage.setItem('app_debug_initialized', String(appInitialized));
-    } catch (e) {
-      // Ignorer les erreurs localStorage
+    // Logs uniquement en mode development
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const startTimeISO = new Date().toISOString();
+        localStorage.setItem('app_debug_start', startTimeISO);
+        localStorage.setItem('app_debug_pathname', pathname || 'undefined');
+        localStorage.setItem('app_debug_initialized', String(appInitialized));
+      } catch (e) {
+        // Ignorer les erreurs localStorage
+      }
     }
     
+    // Force l'initialisation après un délai, mais de manière silencieuse
     const timer = setTimeout(() => {
       if (!appInitialized) {
-        console.warn('Forcing initialization after timeout');
-        try {
-          localStorage.setItem('app_debug_forced', 'true');
-          localStorage.setItem('app_debug_forced_time', new Date().toISOString());
-        } catch (e) {
-          // Ignorer les erreurs localStorage
-        }
+        console.log('Auto-forcing initialization after timeout');
         setForceInitialized(true);
       }
-    }, 5000);
+    }, 8000); // Délai augmenté pour laisser plus de temps à l'initialisation normale
     
     return () => clearTimeout(timer);
   }, [appInitialized, pathname, initApp]);
@@ -207,94 +205,31 @@ export default function RootClientLayout({ children }: RootClientLayoutProps) {
             
             {/* Dev tools - only in development */}
             {process.env.NODE_ENV === 'development' && <LogViewer />}
-            
-            {/* Afficher une notification visible uniquement si l'initialisation a été forcée */}
-            {forceInitialized && !appInitialized && (
-              <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded shadow-lg">
-                <p className="text-sm font-medium">Initialisation forcée</p>
-                <p className="text-xs mt-1">L'application a été débloquée manuellement.</p>
-                <button 
-                  onClick={() => window.location.href = '/debug'}
-                  className="text-xs bg-yellow-200 px-2 py-1 mt-2 rounded hover:bg-yellow-300"
-                >
-                  Diagnostiquer
-                </button>
-              </div>
-            )}
           </>
         ) : (
           <div className="fixed inset-0 flex flex-col items-center justify-center bg-white">
-            <div className="text-center max-w-md mx-auto p-6">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Chargement de l'application...</p>
-              <p className="mt-2 text-xs text-gray-400">Chemin: {pathname || 'N/A'}</p>
-              <p className="mt-1 text-xs text-gray-400">En attente depuis: {debugInfo.timeWaiting}s</p>
-              
-              {debugInfo.timeWaiting > 10 && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-left">
-                  <p className="text-sm text-yellow-800 font-medium">Le chargement prend plus de temps que prévu</p>
-                  <ul className="mt-2 text-xs text-yellow-700 space-y-1">
-                    <li>• Le serveur Supabase est peut-être indisponible</li>
-                    <li>• Les cookies ou le stockage local peuvent être corrompus</li>
-                    <li>• Votre connexion Internet peut être instable</li>
-                  </ul>
+            <div className="flex flex-col items-center justify-center p-8">
+              {/* Animated Logo Loading Effect */}
+              <div className="relative w-24 h-24 mb-6">
+                <div className="absolute inset-0 rounded-full bg-blue-500 opacity-20 animate-ping" style={{ animationDuration: '2s' }}></div>
+                <div className="absolute inset-0 rounded-full bg-blue-600 opacity-30 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Image 
+                    src="/logo.png" 
+                    alt="ConnectedMate Logo" 
+                    width={80} 
+                    height={40} 
+                    priority 
+                    className="object-contain"
+                  />
                 </div>
-              )}
-              
-              <div className="mt-6 space-y-2">
-                <button 
-                  onClick={() => {
-                    setForceInitialized(true);
-                    console.log("Forcing application initialization");
-                    try {
-                      localStorage.setItem('app_debug_manually_forced', 'true');
-                      localStorage.setItem('app_debug_manually_forced_time', new Date().toISOString());
-                    } catch (e) {
-                      // Ignorer les erreurs localStorage
-                    }
-                  }}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-                >
-                  Débloquer l'application
-                </button>
-                
-                <button 
-                  onClick={() => {
-                    try {
-                      localStorage.clear();
-                      sessionStorage.clear();
-                      console.log("Storage cleared");
-                      alert("Stockage effacé. Rechargement de la page.");
-                      window.location.reload();
-                    } catch (e) {
-                      console.error("Failed to clear storage", e);
-                      alert("Erreur lors de l'effacement du stockage. Essayez de recharger manuellement.");
-                    }
-                  }}
-                  className="w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700"
-                >
-                  Effacer le cache et recharger
-                </button>
-                
-                <button 
-                  onClick={() => {
-                    window.location.href = '/debug';
-                  }}
-                  className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300"
-                >
-                  Page de diagnostic
-                </button>
               </div>
               
-              {debugInfo.timeWaiting > 20 && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                  <p className="text-sm text-red-800 font-medium">Problème d'initialisation détecté</p>
-                  <p className="mt-1 text-xs text-red-700">
-                    Si vous voyez ce message, l'application a du mal à se connecter aux services requis. 
-                    Essayez de débloquer l'application ou visiter la page de diagnostic.
-                  </p>
-                </div>
-              )}
+              <h2 className="text-xl font-medium text-gray-800 font-bricolage mb-2">Connected Mate</h2>
+              <p className="text-gray-600 mb-4">Chargement de votre expérience...</p>
+              <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              </div>
             </div>
           </div>
         )}
