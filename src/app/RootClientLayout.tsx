@@ -1,51 +1,128 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Header from '@/components/Header';
 import AuthChecker from '@/components/AuthChecker';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import LogViewer from '@/components/LogViewer';
 import EventTrackerInitializer from '@/components/EventTrackerInitializer';
-import { usePathname, useRouter } from 'next/navigation';
+import { useStore } from '@/lib/store';
+import { usePathname } from 'next/navigation';
 import { LocaleProvider } from '@/components/LocaleProvider';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Toaster } from 'react-hot-toast';
+import Image from 'next/image';
 
 interface RootClientLayoutProps {
   children: React.ReactNode;
 }
 
 function ErrorFallback({ error }: { error: Error }) {
-  const router = useRouter();
-  
-  // Log l'erreur pour debugging
-  console.error('Application error:', error);
-  
   return (
-    <div className="p-6 bg-red-50 border border-red-200 rounded-md max-w-lg mx-auto mt-8">
-      <h2 className="text-xl font-bold text-red-800 mb-2">Une erreur est survenue:</h2>
+    <div className="p-6 bg-red-50 border border-red-200 rounded-md">
+      <h2 className="text-xl font-bold text-red-800 mb-2">Something went wrong:</h2>
       <pre className="text-sm bg-white p-3 rounded border border-red-100 overflow-auto">
         {error.message}
       </pre>
-      <div className="mt-4 flex gap-3">
-        <button 
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          onClick={() => router.push('/dashboard')}
-        >
-          Retour au dashboard
-        </button>
-        <button 
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-          onClick={() => window.location.reload()}
-        >
-          Réessayer
-        </button>
-      </div>
+      <button 
+        className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+        onClick={() => window.location.reload()}
+      >
+        Try again
+      </button>
     </div>
   );
 }
 
 export default function RootClientLayout({ children }: RootClientLayoutProps) {
   const pathname = usePathname();
+  const { appInitialized, user, initApp } = useStore();
+  const [forceInitialized, setForceInitialized] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({
+    initialized: false,
+    forced: false,
+    user: null as any,
+    timeWaiting: 0
+  });
+  const [startTime] = useState(Date.now());
+  
+  // Vérifier si l'initialisation a été forcée via emergency.html
+  useEffect(() => {
+    try {
+      const emergencyOverride = localStorage.getItem('app_emergency_override') === 'true';
+      const forceInitialized = localStorage.getItem('app_force_initialized') === 'true';
+      
+      if (emergencyOverride || forceInitialized) {
+        console.log('🚨 [EMERGENCY] Found emergency override flags in localStorage');
+        setForceInitialized(true);
+      }
+    } catch (e) {
+      // Ignorer les erreurs localStorage
+    }
+  }, []);
+  
+  // Vérifier périodiquement l'état d'initialisation et mettre à jour le temps d'attente
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const timeWaiting = Math.floor((Date.now() - startTime) / 1000);
+      setDebugInfo(prev => ({
+        ...prev,
+        initialized: appInitialized,
+        forced: forceInitialized,
+        user: user,
+        timeWaiting
+      }));
+      
+      // Log détaillé toutes les 5 secondes
+      if (timeWaiting % 5 === 0 && !appInitialized && !forceInitialized) {
+        console.warn(`Waiting for initialization for ${timeWaiting}s`, { appInitialized, user });
+        
+        try {
+          localStorage.setItem('app_debug_waiting_time', String(timeWaiting));
+          localStorage.setItem('app_debug_last_check', new Date().toISOString());
+        } catch (e) {
+          // Ignorer les erreurs localStorage
+        }
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [appInitialized, forceInitialized, user, startTime]);
+  
+  // Ajouter un timeout pour forcer l'initialisation après 5 secondes
+  useEffect(() => {
+    // Essayer de réinitialiser au démarrage
+    if (!appInitialized) {
+      console.log('Attempting to initialize application manually...');
+      try {
+        initApp();
+      } catch (e) {
+        console.error('Failed to initialize app manually', e);
+      }
+    }
+    
+    // Logs uniquement en mode development
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const startTimeISO = new Date().toISOString();
+        localStorage.setItem('app_debug_start', startTimeISO);
+        localStorage.setItem('app_debug_pathname', pathname || 'undefined');
+        localStorage.setItem('app_debug_initialized', String(appInitialized));
+      } catch (e) {
+        // Ignorer les erreurs localStorage
+      }
+    }
+    
+    // Force l'initialisation après un délai, mais de manière silencieuse
+    const timer = setTimeout(() => {
+      if (!appInitialized) {
+        console.log('Auto-forcing initialization after timeout');
+        setForceInitialized(true);
+      }
+    }, 8000); // Délai augmenté pour laisser plus de temps à l'initialisation normale
+    
+    return () => clearTimeout(timer);
+  }, [appInitialized, pathname, initApp]);
 
   // List of protected routes
   const protectedRoutes = [
@@ -60,8 +137,24 @@ export default function RootClientLayout({ children }: RootClientLayoutProps) {
   // Public join route shouldn't use protected route wrapper
   const isJoinRoute = pathname?.startsWith('/join');
 
-  // Renderiser le contenu basé sur le type de route
+  // Rendre le contenu si initialisé naturellement ou forcé
+  const isReady = appInitialized || forceInitialized;
+
+  // Update renderContent to handle non-initialized state
   const renderContent = () => {
+    // If not ready (not initialized), only render non-protected content
+    if (!isReady && isProtectedRoute) {
+      // For protected routes during initialization, we'll return an empty div
+      // AuthChecker component will handle redirects as needed
+      return (
+        <>
+          <AuthChecker />
+          <div></div>
+        </>
+      );
+    }
+    
+    // Normal rendering once initialized
     if (isProtectedRoute) {
       return (
         <ProtectedRoute excludedPaths={['/join']}>
@@ -83,6 +176,7 @@ export default function RootClientLayout({ children }: RootClientLayoutProps) {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <LocaleProvider>
+        {/* Always render content, no more loading screen */}
         <>
           {renderContent()}
           
