@@ -5,26 +5,34 @@ import Link from 'next/link';
 // It avoids using any client-side only hooks like useSearchParams
 function CustomError({ statusCode }) {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md text-center">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
-          {statusCode || 'Error'}
+    <div className="fixed inset-0 flex flex-col items-center justify-center p-8 bg-gray-50">
+      <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-lg text-center">
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">
+          {statusCode || 'Erreur'}
         </h1>
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-          {statusCode === 404 ? 'Page Not Found' : 'Something went wrong'}
+        <h2 className="text-xl font-medium text-gray-700 mb-6">
+          {statusCode === 404 ? 'Page non trouvée' : 'Une erreur est survenue'}
         </h2>
         <p className="text-gray-600 mb-8">
           {statusCode === 404
-            ? "The page you are looking for doesn't exist or has been moved."
-            : "We apologize for the inconvenience. Please try again later."}
+            ? "La page que vous recherchez n'existe pas ou a été déplacée."
+            : "Nous sommes désolés pour ce désagrément. Veuillez réessayer ultérieurement."}
         </p>
         
-        <Link 
-          href="/"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
-        >
-          Return Home
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link 
+            href="/dashboard" 
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Retour au dashboard
+          </Link>
+          <Link 
+            href="/" 
+            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+          >
+            Page d'accueil
+          </Link>
+        </div>
       </div>
     </div>
   );
