@@ -52,7 +52,7 @@ const AIInteractionConfig = ({
   const { t } = useTranslation ? useTranslation() : { t: (key) => key };
   
   // Active section state only used for agent config sub-sections
-  const [activeSection, setActiveSection] = useState(currentSection || 'config');
+  const [activeSection, setActiveSection] = useState(currentSection || 'book');
   
   // State for preview mode
   const [previewMode, setPreviewMode] = useState(false);
@@ -942,11 +942,12 @@ const AIInteractionConfig = ({
   const renderBookConfigSection = () => {
     const bookConfigProps = {
       initialConfig: {
-        agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
+        prompt: '',
         programName: '',
-        teacherName: '',
-        customRules: [],
-        customQuestions: [],
+        agentName: '',
+        style: '',
+        rules: [],
+        questions: [],
         analysisConfig: {
           themes: [],
           keywordsPerTheme: {},
@@ -1007,29 +1008,19 @@ const AIInteractionConfig = ({
   // For AI agents (nuggets/lightbulbs), show the relevant config based on activeSection
   return (
     <div className="space-y-8">
-      {/* Agent-specific tabs for subsections */}
-      <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="config">Agent Configuration</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
-          <TabsTrigger value="book">Book</TabsTrigger>
-        </TabsList>
+      {/* Agent-specific tabs for subsections - Show only Book for simplicity */}
+      <div className="pb-4">
+        <h2 className="text-xl font-semibold mb-2">
+          {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'} Book Configuration
+        </h2>
+        <p className="text-gray-600">
+          Customize how insights will be presented in the book format.
+        </p>
+      </div>
+
+      {renderBookConfigSection()}
       
-        <TabsContent value="config">
-          {renderAgentConfigSection()}
-        </TabsContent>
-        
-        <TabsContent value="analysis">
-          {renderAgentAnalysisSection()}
-        </TabsContent>
-        
-        <TabsContent value="book">
-          {renderBookConfigSection()}
-        </TabsContent>
-      </Tabs>
-      
-      {/* Preview Section */}
-      {activeSection === "config" && previewMode && renderPreviewSection()}
+      {/* Preview Section - Remove since we only show book config now */}
     </div>
   );
 };
