@@ -30,21 +30,20 @@ You are a dedicated support agent named "{agentName}" responsible for engaging p
 {programContext}
 
 # Style
-"{style}"
+{style}
+
+# Questions
+{questions}
 
 # Rules
 {rules}
 
 # Interaction Example
-
 ### Step 1: Welcome
 - Start the conversation with a personalized greeting that references the context: 
   "Hi! Welcome to *{programName}*! I heard you had a great story to share! I'm your AI Journalist for today, and I'm excited to hear about your experience here at {programContext}. 😊"
 
-### Step 2: Required Questions (this question are template)
-{questions}
-
-### Step 3: Closing the Discussion
+### Step 2: Closing the Discussion
 - End on a positive and engaging note that references the context:  
   "Ok, now let's refocus back on *{teacherName}* and we'll take a look at everyone's input together! Thanks so much for your time and your responses. I hope you're enjoying your time here at {programContext}. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
 
@@ -57,11 +56,11 @@ const LIGHTBULBS_PROMPT_TEMPLATE = `You are a dedicated support agent named "{ag
 # Style
 {style}
 
-# Rules
-{rules}
-
 # Steps
 {questions}
+
+# Rules
+{rules}
 
 # Closing the Discussion
 After confirming all responses are complete, the agent should conclude with a personalized and lighthearted closing message.
@@ -71,6 +70,54 @@ Rules for the Closing Message:
 2. Include a reference to the discussion to tie it back to the participant's contributions or insights
 3. Add a touch of humor or warmth that relates to the program's location or setting
 4. Keep the tone friendly, warm, and reflective of the engaging interaction`;
+
+// Styles prédéfinis pour les agents
+const AGENT_STYLES = {
+  nuggets: [
+    {
+      id: 'professional',
+      name: 'Professionnel',
+      style: "Maintain a professional and clear tone while being approachable. Use structured sentences and occasional emojis to keep the conversation engaging but focused. Reference the program context naturally to create a personalized experience. Format responses with bullet points for clarity.",
+    },
+    {
+      id: 'friendly',
+      name: 'Amical et Décontracté',
+      style: "Keep the conversation warm and friendly, using a casual tone that puts participants at ease. Use emojis frequently 😊, share enthusiasm, and create a comfortable atmosphere. Make frequent references to the program context to maintain a personal connection. Structure information in an easy-to-read format.",
+    },
+    {
+      id: 'academic',
+      name: 'Académique',
+      style: "Adopt a more formal, academic tone while remaining accessible. Use precise language and clear structure. Minimize emoji usage but maintain warmth through word choice. Reference the program context thoughtfully to create relevance. Present information in a structured, analytical format.",
+    },
+    {
+      id: 'coach',
+      name: 'Coach Motivant',
+      style: "Take on an encouraging, coach-like tone that motivates participants. Use positive reinforcement and energetic language 💪. Include emojis strategically to boost motivation. Reference the program context to create meaningful connections. Structure responses to highlight progress and potential.",
+    }
+  ],
+  lightbulbs: [
+    {
+      id: 'creative',
+      name: 'Créatif et Inspirant',
+      style: "Foster creativity with an enthusiastic and imaginative tone. Use colorful language and inspiring emojis ✨. Reference the program context to spark innovative thinking. Structure responses to highlight creative possibilities and connections.",
+    },
+    {
+      id: 'analytical',
+      name: 'Analytique et Structuré',
+      style: "Balance creativity with analytical thinking. Use clear, structured language while maintaining an open mind to new ideas. Use emojis sparingly 🎯. Reference the program context to ground ideas in reality. Present information in a logical, step-by-step format.",
+    },
+    {
+      id: 'collaborative',
+      name: 'Collaboratif et Encourageant',
+      style: "Create a collaborative atmosphere that encourages idea sharing. Use inclusive language and supportive emojis 🤝. Reference the program context to build shared understanding. Structure responses to highlight connections and build upon ideas.",
+    },
+    {
+      id: 'visionary',
+      name: 'Visionnaire',
+      style: "Inspire big-picture thinking with a forward-looking tone. Use expansive language and aspirational emojis 🚀. Reference the program context to bridge present reality with future possibilities. Structure responses to emphasize potential impact and transformation.",
+    }
+  ]
+};
 
 // Default values for Nuggets prompt
 const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional. Reference the program context naturally throughout the conversation to maintain a personalized feel.";
@@ -943,25 +990,40 @@ const AIInteractionConfig = ({
                   <Card className="p-4 border-t-4 border-t-green-500">
                     <h4 className="font-medium text-gray-900 mb-3">Style de l'agent</h4>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Ton et style de communication</label>
-                      <div className="mb-2 p-2 bg-green-50 rounded text-xs text-green-800">
-                        <p className="font-medium">Conseil:</p>
-                        <p>Décrivez comment l'agent doit communiquer avec les participants. Par exemple: formel/informel, utilisation d'emojis, structure des messages...</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Choisissez un style prédéfini</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {AGENT_STYLES[activeAgentType].map((styleOption) => (
+                          <div
+                            key={styleOption.id}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              promptData.style === styleOption.style
+                                ? 'border-green-500 bg-green-50'
+                                : 'border-gray-200 hover:border-green-300'
+                            }`}
+                            onClick={() => updatePromptData('style', styleOption.style)}
+                          >
+                            <h5 className="font-medium text-gray-900 mb-1">{styleOption.name}</h5>
+                            <p className="text-sm text-gray-600">{styleOption.style.substring(0, 100)}...</p>
+                          </div>
+                        ))}
                       </div>
-                      <textarea
-                        className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
-                        value={promptData.style}
-                        onChange={(e) => updatePromptData('style', e.target.value)}
-                        rows={3}
-                        placeholder="Décrivez le style de communication de l'agent..."
-                      ></textarea>
-                      <div className="mt-2 flex items-start">
-                        <div className="flex-shrink-0 text-green-500">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
+                      
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Personnaliser le style
+                          <span className="ml-2 text-xs text-gray-500">(optionnel)</span>
+                        </label>
+                        <div className="mb-2 p-2 bg-green-50 rounded text-xs text-green-800">
+                          <p className="font-medium">Conseil:</p>
+                          <p>Vous pouvez personnaliser le style en modifiant directement le texte ci-dessous. N'oubliez pas d'inclure des indications sur l'utilisation des emojis et les références au contexte.</p>
                         </div>
-                        <p className="ml-2 text-xs text-gray-500">Influence le ton général et le style de communication de l'agent avec les participants</p>
+                        <textarea
+                          className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
+                          value={promptData.style}
+                          onChange={(e) => updatePromptData('style', e.target.value)}
+                          rows={4}
+                          placeholder="Personnalisez le style de communication de l'agent..."
+                        ></textarea>
                       </div>
                     </div>
                   </Card>
