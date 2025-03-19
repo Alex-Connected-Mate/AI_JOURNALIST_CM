@@ -19,7 +19,7 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
 import { useTranslation } from './LocaleProvider';
 import AIPromptEditor from './AIPromptEditor';
 import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 
 // Nuggets prompt template
@@ -109,7 +109,12 @@ const AIInteractionConfig = ({
   onAnalysisOrderChange = null
 }) => {
   const router = useRouter();
-  const { toast } = useToast();
+  
+  // Check for client-side rendering
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   // Access translations
   const { t } = useTranslation ? useTranslation() : { t: (key) => key };
@@ -430,6 +435,8 @@ const AIInteractionConfig = ({
 
   // Function to copy the full prompt to clipboard
   const copyPromptToClipboard = () => {
+    if (!isClient) return;
+    
     const prompt = generateFullPrompt();
     
     navigator.clipboard.writeText(prompt)
@@ -658,7 +665,8 @@ const AIInteractionConfig = ({
                   </button>
                   <button
                     onClick={copyPromptToClipboard}
-                    className={`text-sm px-3 py-1 rounded bg-${primaryColor}-500 text-white hover:bg-${primaryColor}-600`}
+                    disabled={!isClient}
+                    className={`text-sm px-3 py-1 rounded bg-${primaryColor}-500 text-white hover:bg-${primaryColor}-600 disabled:opacity-50`}
                   >
                     Copy Prompt
                   </button>
