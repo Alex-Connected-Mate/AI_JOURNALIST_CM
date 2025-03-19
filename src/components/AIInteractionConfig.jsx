@@ -26,28 +26,33 @@ import { useRouter } from 'next/navigation';
 const NUGGETS_PROMPT_TEMPLATE = `# Objective
 You are a dedicated support agent named "{agentName}" responsible for engaging participants in the "{programName}" event questionnaire. Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
 
+# Context
+{programContext}
+
 # Style
 "{style}"
 
 # Rules
-
 {rules}
 
 # Interaction Example
 
 ### Step 1: Welcome
-- Start the conversation: 
-  "Hi! Welcome to *{programName}* Participants told ole that your had a great story ! Im your AI Journalist for today. So tell me what's your famous story !  😊"
+- Start the conversation with a personalized greeting that references the context: 
+  "Hi! Welcome to *{programName}*! I heard you had a great story to share! I'm your AI Journalist for today, and I'm excited to hear about your experience here at {programContext}. 😊"
 
 ### Step 2: Required Questions (this question are template)
 {questions}
 
 ### Step 3: Closing the Discussion
-- End on a positive and engaging note:  
-  "Ok, now let's refocus back on *{teacherName}* and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
+- End on a positive and engaging note that references the context:  
+  "Ok, now let's refocus back on *{teacherName}* and we'll take a look at everyone's input together! Thanks so much for your time and your responses. I hope you're enjoying your time here at {programContext}. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
 
 // Lightbulbs prompt template
-const LIGHTBULBS_PROMPT_TEMPLATE = `You are a dedicated support agent named "{agentName}" responsible for conducting the "{programName}" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete, detailed, and reflect the transition from inspiration to action within the "Nexus" framework. Use cross-referencing to link responses to previously identified nuggets where relevant, and maintain focus on actionable plans and future impact.
+const LIGHTBULBS_PROMPT_TEMPLATE = `You are a dedicated support agent named "{agentName}" responsible for conducting the "{programName}" "Final Light Bulb Questionnaire." Your objective is to guide each participant through every mandatory question, ensuring responses are complete and detailed, while making the conversation engaging and personalized by referencing the program's unique context.
+
+# Context
+{programContext}
 
 # Style
 {style}
@@ -62,13 +67,13 @@ const LIGHTBULBS_PROMPT_TEMPLATE = `You are a dedicated support agent named "{ag
 After confirming all responses are complete, the agent should conclude with a personalized and lighthearted closing message.
 
 Rules for the Closing Message:
-1. Mention *{programName} localisation* and the *specific context*
-2. Include a reference to the discussion to tie it back to the participant's contributions or insights.
-3. Add a touch of humor to make the participant smile (e.g., a joke about the rain, the lake, or the setting).
-4. Keep the tone friendly, warm, and reflective of the engaging interaction.`;
+1. Reference the specific program context ({programContext}) to make the conversation more personal
+2. Include a reference to the discussion to tie it back to the participant's contributions or insights
+3. Add a touch of humor or warmth that relates to the program's location or setting
+4. Keep the tone friendly, warm, and reflective of the engaging interaction`;
 
 // Default values for Nuggets prompt
-const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional.";
+const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional. Reference the program context naturally throughout the conversation to maintain a personalized feel.";
 
 const DEFAULT_NUGGETS_RULES = [
   "Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data.",
@@ -102,7 +107,7 @@ const DEFAULT_NUGGETS_QUESTIONS = [
 ];
 
 // Default values for Lightbulbs prompt
-const DEFAULT_LIGHTBULBS_STYLE = "Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming.";
+const DEFAULT_LIGHTBULBS_STYLE = "Your tone should be professional, supportive, and attentive. Structure the conversation to promote clarity and ease, utilizing bullet points, well-organized steps, and supportive language. Add emojis as needed to make the interaction engaging and welcoming. Incorporate references to the program context to create a more personalized experience.";
 
 const DEFAULT_LIGHTBULBS_RULES = [
   "Sequential Questioning: Follow the designated order for each question, only proceeding after receiving a complete response.",
@@ -233,7 +238,6 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
   
   const handleLightbulbsChange = useCallback((field, value) => {
     updateSessionConfig({
@@ -249,7 +253,6 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
 
   // Helper function to get current agent data based on mode parameter
   const getCurrentAgent = useCallback(() => {
@@ -291,10 +294,12 @@ const AIInteractionConfig = ({
       variables.agentName = agent?.agentName || agentName;
       variables.programName = sessionConfig.title || '';
       variables.teacherName = sessionConfig.teacherName || '';
+      variables.programContext = sessionConfig.programContext || '';
     } else if (activeAgentType === 'lightbulbs') {
       // Variables spécifiques à Lightbulbs
       variables.agentName = agent?.agentName || agentName;
       variables.programName = sessionConfig.title || '';
+      variables.programContext = sessionConfig.programContext || '';
     }
     
     return variables;
@@ -318,12 +323,18 @@ const AIInteractionConfig = ({
       if (variables.teacherName) {
         updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
       }
+      if (variables.programContext) {
+        updatedPrompt = updatedPrompt.replace(/\{programContext}/g, variables.programContext);
+      }
     } else if (activeAgentType === 'lightbulbs') {
       if (variables.agentName) {
         updatedPrompt = updatedPrompt.replace(/\"AGENT NAME\"/g, `"${variables.agentName}"`);
       }
       if (variables.programName) {
         updatedPrompt = updatedPrompt.replace(/\"PRGRAMENAME\"/g, `"${variables.programName}"`);
+      }
+      if (variables.programContext) {
+        updatedPrompt = updatedPrompt.replace(/\{programContext}/g, variables.programContext);
       }
     }
     
@@ -537,9 +548,10 @@ const AIInteractionConfig = ({
       agentName: agent.agentName || agentName,
       programName: sessionConfig.title || '',
       teacherName: sessionConfig.teacherName || '',
-      style: DEFAULT_NUGGETS_STYLE,
-      rules: DEFAULT_NUGGETS_RULES,
-      questions: DEFAULT_NUGGETS_QUESTIONS,
+      programContext: sessionConfig.programContext || '',
+      style: activeAgentType === 'nuggets' ? DEFAULT_NUGGETS_STYLE : DEFAULT_LIGHTBULBS_STYLE,
+      rules: activeAgentType === 'nuggets' ? DEFAULT_NUGGETS_RULES : DEFAULT_LIGHTBULBS_RULES,
+      questions: activeAgentType === 'nuggets' ? DEFAULT_NUGGETS_QUESTIONS : DEFAULT_LIGHTBULBS_QUESTIONS,
       showRawPrompt: false,
       newRule: '',
       newQuestion: ''
@@ -621,6 +633,7 @@ const AIInteractionConfig = ({
           .replace('{agentName}', promptData.agentName)
           .replace('{programName}', promptData.programName)
           .replace('{teacherName}', promptData.teacherName)
+          .replace('{programContext}', promptData.programContext)
           .replace('{style}', promptData.style);
         
         // Format and replace rules
@@ -639,7 +652,8 @@ const AIInteractionConfig = ({
         // Replace variables
         fullPrompt = fullPrompt
           .replace('{agentName}', promptData.agentName)
-          .replace('{programName}', promptData.programName);
+          .replace('{programName}', promptData.programName)
+          .replace('{programContext}', promptData.programContext);
         
         // Replace style
         fullPrompt = fullPrompt.replace('{style}', promptData.style || DEFAULT_LIGHTBULBS_STYLE);
@@ -670,6 +684,7 @@ const AIInteractionConfig = ({
           agentName: agent.agentName || agentName,
           programName: sessionConfig.title || '',
           teacherName: sessionConfig.teacherName || '',
+          programContext: sessionConfig.programContext || '',
           style: DEFAULT_NUGGETS_STYLE,
           rules: DEFAULT_NUGGETS_RULES,
           questions: DEFAULT_NUGGETS_QUESTIONS
@@ -679,12 +694,13 @@ const AIInteractionConfig = ({
           ...prev,
           agentName: agent.agentName || agentName,
           programName: sessionConfig.title || '',
+          programContext: sessionConfig.programContext || '',
           style: DEFAULT_LIGHTBULBS_STYLE,
           rules: DEFAULT_LIGHTBULBS_RULES,
           questions: DEFAULT_LIGHTBULBS_QUESTIONS
         }));
       }
-    }, [agent.prompt, activeAgentType, agent.agentName, agentName, sessionConfig.title, sessionConfig.teacherName]);
+    }, [agent.prompt, activeAgentType, agent.agentName, agentName, sessionConfig.title, sessionConfig.teacherName, sessionConfig.programContext]);
     
     // Render the new UI with tabs for the structured prompt editor
     return (
@@ -852,28 +868,51 @@ const AIInteractionConfig = ({
                   {/* Program and Teacher Names */}
                   <Card className="p-4 border-t-4 border-t-blue-500">
                     <h4 className="font-medium text-gray-900 mb-3">Informations de base</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                           Nom du programme
                           <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
                         </label>
-                      <input
-                        type="text"
+                        <input
+                          type="text"
                           className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
                           value={promptData.programName}
-                        onChange={(e) => {
+                          onChange={(e) => {
                             updatePromptData('programName', e.target.value);
                             // Also update the session config
-                          updateSessionConfig({
-                            ...sessionConfig,
-                            title: e.target.value
-                          });
-                        }}
+                            updateSessionConfig({
+                              ...sessionConfig,
+                              title: e.target.value
+                            });
+                          }}
                           placeholder="Entrez le nom du programme"
-                      />
+                        />
                         <p className="text-xs text-gray-500 mt-1">Affiché dans le message d'accueil</p>
-                    </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                          Contexte du programme
+                          <span className="ml-1 text-xs text-white bg-green-500 px-1.5 py-0.5 rounded-full">Recommandé</span>
+                        </label>
+                        <textarea
+                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                          value={promptData.programContext}
+                          onChange={(e) => {
+                            updatePromptData('programContext', e.target.value);
+                            // Also update the session config
+                            updateSessionConfig({
+                              ...sessionConfig,
+                              programContext: e.target.value
+                            });
+                          }}
+                          placeholder="Ex: Le programme se déroule à Fontainebleau, au cœur de la forêt..."
+                          rows={3}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Ces détails seront utilisés pour personnaliser les interactions</p>
+                      </div>
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
                           Nom du formateur
@@ -895,7 +934,7 @@ const AIInteractionConfig = ({
                         />
                         <p className="text-xs text-gray-500 mt-1">Utilisé dans le message de conclusion</p>
                       </div>
-                  </div>
+                    </div>
                   </Card>
                   
                   {/* Agent Style */}
@@ -1082,6 +1121,7 @@ const AIInteractionConfig = ({
                         agentName: agent.agentName || agentName,
                         programName: sessionConfig.title || '',
                         teacherName: sessionConfig.teacherName || '',
+                        programContext: sessionConfig.programContext || '',
                         style: DEFAULT_NUGGETS_STYLE,
                         rules: DEFAULT_NUGGETS_RULES,
                         questions: DEFAULT_NUGGETS_QUESTIONS,
