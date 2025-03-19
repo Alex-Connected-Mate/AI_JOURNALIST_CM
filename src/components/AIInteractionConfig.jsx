@@ -238,6 +238,7 @@ const AIInteractionConfig = ({
         }
       }
     });
+  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
   
   const handleLightbulbsChange = useCallback((field, value) => {
     updateSessionConfig({
@@ -253,6 +254,7 @@ const AIInteractionConfig = ({
         }
       }
     });
+  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
 
   // Helper function to get current agent data based on mode parameter
   const getCurrentAgent = useCallback(() => {
