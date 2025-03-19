@@ -47,7 +47,47 @@ You are a dedicated support agent named "{agentName}" responsible for engaging p
   "Ok, now let's refocus back on *{teacherName}* and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
 
 // Default values for Nuggets prompt
-const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional.";
+const DEFAULT_NUGGETS_STYLE = "Maintenir un ton professionnel et amical pour mettre les participants à l'aise. Utiliser des phrases claires, des points pour la lisibilité, et quelques émojis légers pour garder la conversation accessible tout en restant professionnelle.";
+
+// Predefined agent styles
+const AGENT_STYLES = [
+  {
+    id: 'professional',
+    name: 'Professionnel',
+    description: 'Ton formel et précis, adapté aux contextes professionnels',
+    style: "Maintenir un ton professionnel et formel. Utiliser un langage précis, éviter les émojis et les formulations trop familières. Structurer clairement les messages avec des paragraphes courts pour une lecture facile."
+  },
+  {
+    id: 'friendly',
+    name: 'Amical',
+    description: 'Ton chaleureux et accessible, idéal pour mettre à l\'aise',
+    style: "Maintenir un ton amical et chaleureux pour mettre les participants à l'aise. Utiliser un langage accessible, quelques émojis 😊 et des formulations encourageantes. Favoriser un dialogue détendu tout en restant respectueux."
+  },
+  {
+    id: 'dynamic',
+    name: 'Dynamique',
+    description: 'Ton énergique et enthousiaste, pour stimuler l\'engagement',
+    style: "Adopter un ton dynamique et enthousiaste pour stimuler l'engagement! Utiliser des phrases énergiques, des émojis variés 🚀💡, et des formulations qui créent de l'élan. Encourager activement la participation avec un style vibrant et positif."
+  },
+  {
+    id: 'concise',
+    name: 'Concis',
+    description: 'Ton direct et efficace, pour aller à l\'essentiel',
+    style: "Communiquer de façon concise et directe. Éviter les formulations superflues. Aller droit au but. Utiliser des phrases courtes. Privilégier la clarté et l'efficacité sans fioritures."
+  },
+  {
+    id: 'creative',
+    name: 'Créatif',
+    description: 'Ton inspirant avec des métaphores, pour stimuler la créativité',
+    style: "Adopter un ton créatif et inspirant qui stimule l'imagination ✨. Utiliser des métaphores, des analogies et un vocabulaire riche. Varier le rythme des phrases pour créer une expérience conversationnelle qui encourage la pensée créative et l'exploration des idées."
+  },
+  {
+    id: 'custom',
+    name: 'Personnalisé',
+    description: 'Définir votre propre style de communication',
+    style: ""
+  }
+];
 
 const DEFAULT_NUGGETS_RULES = [
   "Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data.",
@@ -167,7 +207,6 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
   
   const handleLightbulbsChange = useCallback((field, value) => {
     updateSessionConfig({
@@ -183,7 +222,7 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
+  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
 
   // Helper function to get current agent data based on mode parameter
   const getCurrentAgent = useCallback(() => {
@@ -476,7 +515,8 @@ const AIInteractionConfig = ({
       questions: DEFAULT_NUGGETS_QUESTIONS,
       showRawPrompt: false,
       newRule: '',
-      newQuestion: ''
+      newQuestion: '',
+      selectedStyle: 'friendly'
     });
     
     // Function to update prompt data fields
@@ -759,168 +799,142 @@ const AIInteractionConfig = ({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {/* Program and Teacher Names */}
-                  <Card className="p-4 border-t-4 border-t-blue-500">
-                    <h4 className="font-medium text-gray-900 mb-3">Informations de base</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                          Nom du programme
-                          <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                          value={promptData.programName}
-                          onChange={(e) => {
-                            updatePromptData('programName', e.target.value);
-                            // Also update the session config
-                            updateSessionConfig({
-                              ...sessionConfig,
-                              title: e.target.value
-                            });
-                          }}
-                          placeholder="Entrez le nom du programme"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Affiché dans le message d'accueil</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                          Nom du formateur
-                          <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                          value={promptData.teacherName}
-                          onChange={(e) => {
-                            updatePromptData('teacherName', e.target.value);
-                            // Also update the session config
-                            updateSessionConfig({
-                              ...sessionConfig,
-                              teacherName: e.target.value
-                            });
-                          }}
-                          placeholder="Entrez le nom du formateur"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Utilisé dans le message de conclusion</p>
-                      </div>
-                    </div>
-                  </Card>
-                  
-                  {/* Agent Style */}
-                  <Card className="p-4 border-t-4 border-t-green-500">
-                    <h4 className="font-medium text-gray-900 mb-3">Style de l'agent</h4>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Ton et style de communication</label>
-                      <div className="mb-2 p-2 bg-green-50 rounded text-xs text-green-800">
-                        <p className="font-medium">Conseil:</p>
-                        <p>Décrivez comment l'agent doit communiquer avec les participants. Par exemple: formel/informel, utilisation d'emojis, structure des messages...</p>
-                      </div>
-                      <textarea
-                        className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
-                        value={promptData.style}
-                        onChange={(e) => updatePromptData('style', e.target.value)}
-                        rows={3}
-                        placeholder="Décrivez le style de communication de l'agent..."
-                      ></textarea>
-                      <div className="mt-2 flex items-start">
-                        <div className="flex-shrink-0 text-green-500">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <p className="ml-2 text-xs text-gray-500">Influence le ton général et le style de communication de l'agent avec les participants</p>
-                      </div>
-                    </div>
-                  </Card>
-                  
-                  {/* Rules Section */}
-                  <Card className="p-4 border-t-4 border-t-amber-500">
-                    <h4 className="font-medium text-gray-900 mb-3">Règles de conversation</h4>
-                    <div>
-                      <div className="mb-2 p-2 bg-amber-50 rounded text-xs text-amber-800">
-                        <p className="font-medium">À quoi servent les règles:</p>
-                        <p>Les règles définissent comment l'agent doit mener la conversation (ex: ordre des questions, gestion des réponses incomplètes, conditions de fin...).</p>
-                      </div>
-                      
-                      <div className="flex justify-between items-center mb-3">
-                        <label className="block text-sm font-medium text-gray-700">Liste des règles</label>
-                        <div className="flex space-x-2">
+                <div>
+                  {/* Bento Layout */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    {/* First Row - Basic Info */}
+                    <Card className="p-4 col-span-1 md:col-span-2 border-t-4 border-t-blue-500">
+                      <h4 className="font-medium text-gray-900 mb-3">Informations de base</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            Nom du programme
+                            <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
+                          </label>
                           <input
                             type="text"
-                            className="text-sm p-2 border rounded w-64"
-                            value={promptData.newRule}
-                            onChange={(e) => updatePromptData('newRule', e.target.value)}
-                            placeholder="Nouvelle règle..."
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && promptData.newRule.trim()) {
-                                addRule();
-                              }
+                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                            value={promptData.programName}
+                            onChange={(e) => {
+                              updatePromptData('programName', e.target.value);
+                              // Also update the session config
+                              updateSessionConfig({
+                                ...sessionConfig,
+                                title: e.target.value
+                              });
                             }}
+                            placeholder="Entrez le nom du programme"
                           />
-                          <button 
-                            onClick={addRule}
-                            disabled={!promptData.newRule.trim()}
-                            className="text-sm px-3 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50 flex items-center"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                            </svg>
-                            Ajouter
-                          </button>
+                          <p className="text-xs text-gray-500 mt-1">Affiché dans le message d'accueil</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                            Nom du formateur
+                            <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                            value={promptData.teacherName}
+                            onChange={(e) => {
+                              updatePromptData('teacherName', e.target.value);
+                              // Also update the session config
+                              updateSessionConfig({
+                                ...sessionConfig,
+                                teacherName: e.target.value
+                              });
+                            }}
+                            placeholder="Entrez le nom du formateur"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Utilisé dans le message de conclusion</p>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Agent Style Selection */}
+                    <Card className="p-4 border-t-4 border-t-green-500">
+                      <h4 className="font-medium text-gray-900 mb-3">Style de l'agent</h4>
+                      
+                      {/* Style Selector */}
+                      <div className="mb-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Choisir un style</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {AGENT_STYLES.map((style) => (
+                            <div 
+                              key={style.id}
+                              onClick={() => {
+                                if (style.id === 'custom') {
+                                  // Just select but keep current text
+                                  updatePromptData('selectedStyle', style.id);
+                                } else {
+                                  // Update both style selection and text
+                                  updatePromptData('selectedStyle', style.id);
+                                  updatePromptData('style', style.style);
+                                }
+                              }}
+                              className={`cursor-pointer p-2 rounded-md border ${
+                                promptData.selectedStyle === style.id 
+                                  ? 'border-green-500 bg-green-50' 
+                                  : 'border-gray-200 hover:border-green-300'
+                              }`}
+                            >
+                              <p className="font-medium text-sm">{style.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{style.description}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                       
-                      <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded bg-white">
-                        {promptData.rules.length === 0 ? (
-                          <div className="text-center p-4 text-sm text-gray-500">
-                            Aucune règle définie. Ajoutez des règles pour guider le comportement de l'agent.
-                          </div>
-                        ) : (
-                          promptData.rules.map((rule, index) => (
-                            <div key={index} className="relative p-3 border border-amber-200 rounded-md group hover:border-amber-400 bg-white shadow-sm">
-                              <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => removeRule(index)}
-                                  className="text-red-500 hover:text-red-700 p-1"
-                                  title="Supprimer cette règle"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                  </svg>
-                                </button>
-                              </div>
-                              <span className="inline-block bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full mb-2">Règle {index + 1}</span>
-                              <textarea
-                                className="w-full p-2 border-none focus:ring-1 focus:ring-amber-300 bg-white text-sm rounded-md"
-                                value={rule}
-                                onChange={(e) => updateRule(index, e.target.value)}
-                                rows={2}
-                              ></textarea>
-                            </div>
-                          ))
-                        )}
+                      {/* Style Text Editor (hidden for non-custom or when custom is selected) */}
+                      {(promptData.selectedStyle === 'custom' || !promptData.selectedStyle) && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Style personnalisé</label>
+                          <textarea
+                            className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
+                            value={promptData.style}
+                            onChange={(e) => updatePromptData('style', e.target.value)}
+                            rows={3}
+                            placeholder="Décrivez le style de communication de l'agent..."
+                          ></textarea>
+                        </div>
+                      )}
+                      
+                      {/* Current Style Preview */}
+                      {promptData.selectedStyle !== 'custom' && promptData.selectedStyle && (
+                        <div className="mt-2 p-2 bg-green-50 rounded-md border border-green-100">
+                          <p className="text-xs text-green-800">{promptData.style}</p>
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+
+                  {/* Second Row - Questions and Rules */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Questions Section - Now BEFORE rules as requested */}
+                    <Card className="p-4 border-t-4 border-t-purple-500">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-medium text-gray-900">Questions à poser</h4>
+                        <button 
+                          onClick={() => updatePromptData('showRawPrompt', true)}
+                          className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 flex items-center"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                          Voir prompt
+                        </button>
                       </div>
-                    </div>
-                  </Card>
-                  
-                  {/* Questions Section */}
-                  <Card className="p-4 border-t-4 border-t-purple-500">
-                    <h4 className="font-medium text-gray-900 mb-3">Questions à poser</h4>
-                    <div>
+                      
                       <div className="mb-2 p-2 bg-purple-50 rounded text-xs text-purple-800">
                         <p className="font-medium">Structure des questions:</p>
-                        <p>Chaque question doit comporter un titre court suivi du texte complet. Exemple: "Objectif: Quel est l'objectif principal de votre entreprise ?"</p>
+                        <p>Chaque question doit comporter un titre court suivi du texte complet.</p>
                       </div>
                       
-                      <div className="flex justify-between items-center mb-3">
-                        <label className="block text-sm font-medium text-gray-700">Liste des questions</label>
+                      <div className="space-y-3 max-h-[500px] overflow-y-auto">
                         <div className="flex space-x-2">
                           <input
                             type="text"
-                            className="text-sm p-2 border rounded w-64"
+                            className="text-sm p-2 border rounded flex-1"
                             value={promptData.newQuestion}
                             onChange={(e) => updatePromptData('newQuestion', e.target.value)}
                             placeholder="Nouvelle question..."
@@ -941,52 +955,164 @@ const AIInteractionConfig = ({
                             Ajouter
                           </button>
                         </div>
-                      </div>
-                      
-                      <div className="space-y-3 max-h-80 overflow-y-auto p-2 border rounded bg-white">
-                        {promptData.questions.length === 0 ? (
-                          <div className="text-center p-4 text-sm text-gray-500">
-                            Aucune question définie. Ajoutez des questions pour que l'agent puisse interagir avec les participants.
-                          </div>
-                        ) : (
-                          promptData.questions.map((q) => (
-                            <div key={q.id} className="relative p-3 border border-purple-200 rounded-md group hover:border-purple-400 bg-white shadow-sm">
-                              <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => removeQuestion(q.id)}
-                                  className="text-red-500 hover:text-red-700 p-1"
-                                  title="Supprimer cette question"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                  </svg>
-                                </button>
-                              </div>
-                              <div className="flex items-center mb-2">
-                                <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full mr-2">{q.id}</span>
-                                <span className="text-xs text-gray-500">Question</span>
-                              </div>
-                              <textarea
-                                className="w-full p-2 border-none focus:ring-1 focus:ring-purple-300 bg-white text-sm rounded-md"
-                                value={q.question}
-                                onChange={(e) => updateQuestion(q.id, e.target.value)}
-                                rows={3}
-                              ></textarea>
+                        
+                        <div className="mt-3 p-2 border rounded bg-white">
+                          {promptData.questions.length === 0 ? (
+                            <div className="text-center p-4 text-sm text-gray-500">
+                              Aucune question définie. Ajoutez des questions pour que l'agent puisse interagir avec les participants.
                             </div>
-                          ))
+                          ) : (
+                            <div className="space-y-3">
+                              {promptData.questions.map((q) => (
+                                <div key={q.id} className="relative p-3 border border-purple-200 rounded-md group hover:border-purple-400 bg-white shadow-sm">
+                                  <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => removeQuestion(q.id)}
+                                      className="text-red-500 hover:text-red-700 p-1"
+                                      title="Supprimer cette question"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center mb-2">
+                                    <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full mr-2">{q.id}</span>
+                                    <span className="text-xs text-gray-500">Question</span>
+                                  </div>
+                                  <textarea
+                                    className="w-full p-2 border-none focus:ring-1 focus:ring-purple-300 bg-white text-sm rounded-md"
+                                    value={q.question}
+                                    onChange={(e) => updateQuestion(q.id, e.target.value)}
+                                    rows={3}
+                                  ></textarea>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {promptData.questions.length > 0 && (
+                          <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
+                            <span>{promptData.questions.length} question(s)</span>
+                            <button
+                              onClick={() => {
+                                updatePromptData({
+                                  ...promptData,
+                                  questions: DEFAULT_NUGGETS_QUESTIONS,
+                                });
+                              }}
+                              className="text-xs text-gray-500 hover:text-gray-700 underline"
+                            >
+                              Réinitialiser
+                            </button>
+                          </div>
                         )}
                       </div>
+                    </Card>
+                    
+                    {/* Rules Section - Now AFTER questions as requested */}
+                    <Card className="p-4 border-t-4 border-t-amber-500">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-medium text-gray-900">Règles de conversation</h4>
+                        <button 
+                          onClick={() => updatePromptData('showRawPrompt', true)}
+                          className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 flex items-center"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                          Voir prompt
+                        </button>
+                      </div>
                       
-                      {promptData.questions.length > 0 && (
-                        <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
-                          <span>{promptData.questions.length} question(s) configurée(s)</span>
-                          <span>Faites glisser pour réorganiser (bientôt disponible)</span>
+                      <div className="mb-2 p-2 bg-amber-50 rounded text-xs text-amber-800">
+                        <p className="font-medium">À quoi servent les règles:</p>
+                        <p>Les règles définissent comment l'agent doit mener la conversation.</p>
+                      </div>
+                      
+                      <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            className="text-sm p-2 border rounded flex-1"
+                            value={promptData.newRule}
+                            onChange={(e) => updatePromptData('newRule', e.target.value)}
+                            placeholder="Nouvelle règle..."
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && promptData.newRule.trim()) {
+                                addRule();
+                              }
+                            }}
+                          />
+                          <button 
+                            onClick={addRule}
+                            disabled={!promptData.newRule.trim()}
+                            className="text-sm px-3 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50 flex items-center"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                            Ajouter
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  </Card>
+                        
+                        <div className="mt-3 p-2 border rounded bg-white">
+                          {promptData.rules.length === 0 ? (
+                            <div className="text-center p-4 text-sm text-gray-500">
+                              Aucune règle définie. Ajoutez des règles pour guider le comportement de l'agent.
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {promptData.rules.map((rule, index) => (
+                                <div key={index} className="relative p-3 border border-amber-200 rounded-md group hover:border-amber-400 bg-white shadow-sm">
+                                  <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => removeRule(index)}
+                                      className="text-red-500 hover:text-red-700 p-1"
+                                      title="Supprimer cette règle"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center mb-2">
+                                    <span className="inline-block bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full mr-2">Règle {index + 1}</span>
+                                  </div>
+                                  <textarea
+                                    className="w-full p-2 border-none focus:ring-1 focus:ring-amber-300 bg-white text-sm rounded-md"
+                                    value={rule}
+                                    onChange={(e) => updateRule(index, e.target.value)}
+                                    rows={2}
+                                  ></textarea>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {promptData.rules.length > 0 && (
+                          <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
+                            <span>{promptData.rules.length} règle(s)</span>
+                            <button
+                              onClick={() => {
+                                updatePromptData({
+                                  ...promptData,
+                                  rules: DEFAULT_NUGGETS_RULES,
+                                });
+                              }}
+                              className="text-xs text-gray-500 hover:text-gray-700 underline"
+                            >
+                              Réinitialiser
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  </div>
                   
-                  {/* Controls Section */}
+                  {/* Controls Row */}
                   <div className="flex justify-between items-center pt-4">
                     <button 
                       onClick={() => setPromptData({
@@ -994,6 +1120,7 @@ const AIInteractionConfig = ({
                         programName: sessionConfig.title || '',
                         teacherName: sessionConfig.teacherName || '',
                         style: DEFAULT_NUGGETS_STYLE,
+                        selectedStyle: 'friendly',
                         rules: DEFAULT_NUGGETS_RULES,
                         questions: DEFAULT_NUGGETS_QUESTIONS,
                         showRawPrompt: promptData.showRawPrompt,
@@ -1005,7 +1132,7 @@ const AIInteractionConfig = ({
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                       </svg>
-                      Réinitialiser
+                      Tout réinitialiser
                     </button>
                     
                     <button
