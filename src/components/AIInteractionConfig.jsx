@@ -19,6 +19,66 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
 import { useTranslation } from './LocaleProvider';
 import AIPromptEditor from './AIPromptEditor';
 import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from 'next/navigation';
+
+// Nuggets prompt template
+const NUGGETS_PROMPT_TEMPLATE = `# Objective
+You are a dedicated support agent named "{agentName}" responsible for engaging participants in the "{programName}" event questionnaire. Your main goal is to collect accurate and structured responses to key questions while adhering to identification protocols for secure and personalized interactions.
+
+# Style
+"{style}"
+
+# Rules
+
+{rules}
+
+# Interaction Example
+
+### Step 1: Welcome
+- Start the conversation: 
+  "Hi! Welcome to *{programName}* Participants told ole that your had a great story ! Im your AI Journalist for today. So tell me what's your famous story !  😊"
+
+### Step 2: Required Questions (this question are template)
+{questions}
+
+### Step 3: Closing the Discussion
+- End on a positive and engaging note:  
+  "Ok, now let's refocus back on *{teacherName}* and we'll take a look at everyone's input together! Thanks so much for your time and your responses. If there's anything else you'd like to share, feel free to reach out. Have an amazing day! 🚀"`;
+
+// Default values for Nuggets prompt
+const DEFAULT_NUGGETS_STYLE = "Maintain a professional and friendly tone to make participants feel comfortable and engaged. Use clear sentences, bullet points for clarity, and light emojis to keep the conversation approachable but professional.";
+
+const DEFAULT_NUGGETS_RULES = [
+  "Assure participants that there information will remain confidential and used solely for identification purposes if they ask us to delete their workshop data.",
+  "Sequential Flow:\n   - Ask each required question in order and proceed only after receiving a full response.",
+  "Clarification:\n   - If a response is incomplete or unclear, ask for additional details politely before moving on.",
+  "No Skipped Questions:\n   - All the required questions must be addressed without skipping or rephrasing unless necessary for clarity.",
+  "End of Conversation:\n   - Conclude the conversation only after confirming that all responses are complete."
+];
+
+const DEFAULT_NUGGETS_QUESTIONS = [
+  {
+    id: '1',
+    question: 'Problem and Opportunity:\n"What is the main problem or opportunity your business is addressing?"'
+  },
+  {
+    id: '2',
+    question: 'Unique Solution:\n"How does your solution stand out from others in the market?"'
+  },
+  {
+    id: '3',
+    question: 'Target Audience:\n"Who are your primary customers or users, and what do they value most?"'
+  },
+  {
+    id: '4',
+    question: 'Impact and Results:\n"What measurable impact have you achieved so far, or what are you aiming for?"'
+  },
+  {
+    id: '5',
+    question: 'Scalability and Vision:\n"How do you plan to scale this solution, and what is your long-term vision?"'
+  }
+];
 
 /**
  * AIInteractionConfig Component
@@ -48,6 +108,9 @@ const AIInteractionConfig = ({
   onTimerConfigChange = null,
   onAnalysisOrderChange = null
 }) => {
+  const router = useRouter();
+  const { toast } = useToast();
+  
   // Access translations
   const { t } = useTranslation ? useTranslation() : { t: (key) => key };
   
@@ -365,6 +428,27 @@ const AIInteractionConfig = ({
     }, 1500);
   }, [activeAgentType, previewInput]);
 
+  // Function to copy the full prompt to clipboard
+  const copyPromptToClipboard = () => {
+    const prompt = generateFullPrompt();
+    
+    navigator.clipboard.writeText(prompt)
+      .then(() => {
+        toast({
+          title: "Prompt copied to clipboard!",
+          description: "The full prompt has been copied to your clipboard.",
+          variant: "default",
+        });
+      })
+      .catch(err => {
+        toast({
+          title: "Failed to copy prompt",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+  };
+
   // Render agent configuration section
   const renderAgentConfigSection = () => {
     const agent = getCurrentAgent();
@@ -375,180 +459,138 @@ const AIInteractionConfig = ({
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
     const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
     
-    // État pour les fonctionnalités d'édition de prompt
-    const [rawPrompt, setRawPrompt] = useState(agent.prompt || getDefaultPrompt(activeAgentType));
-    const [parsedData, setParsedData] = useState({
-      agentName: '',
-      programName: '',
-      teacherName: '',
-      style: '',
-      rules: [],
-      questions: []
+    // State for prompt variables
+    const [promptData, setPromptData] = useState({
+      agentName: agent.agentName || agentName,
+      programName: sessionConfig.title || '',
+      teacherName: sessionConfig.teacherName || '',
+      style: DEFAULT_NUGGETS_STYLE,
+      rules: DEFAULT_NUGGETS_RULES,
+      questions: DEFAULT_NUGGETS_QUESTIONS,
+      showRawPrompt: false,
+      newRule: '',
+      newQuestion: ''
     });
-    const [newRule, setNewRule] = useState('');
-    const [newQuestion, setNewQuestion] = useState('');
     
-    // Parse le prompt lorsque le composant est monté ou quand le prompt change
+    // Function to update prompt data fields
+    const updatePromptData = (field, value) => {
+      setPromptData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    };
+    
+    // Function to add a new rule
+    const addRule = () => {
+      if (!promptData.newRule.trim()) return;
+      setPromptData(prev => ({
+        ...prev,
+        rules: [...prev.rules, prev.newRule.trim()],
+        newRule: ''
+      }));
+    };
+    
+    // Function to remove a rule
+    const removeRule = (index) => {
+      setPromptData(prev => ({
+        ...prev,
+        rules: prev.rules.filter((_, i) => i !== index)
+      }));
+    };
+    
+    // Function to update a rule
+    const updateRule = (index, value) => {
+      setPromptData(prev => ({
+        ...prev,
+        rules: prev.rules.map((rule, i) => i === index ? value : rule)
+      }));
+    };
+    
+    // Function to add a new question
+    const addQuestion = () => {
+      if (!promptData.newQuestion.trim()) return;
+      setPromptData(prev => ({
+        ...prev,
+        questions: [
+          ...prev.questions, 
+          { 
+            id: String(prev.questions.length + 1), 
+            question: prev.newQuestion.trim()
+          }
+        ],
+        newQuestion: ''
+      }));
+    };
+    
+    // Function to remove a question
+    const removeQuestion = (id) => {
+      setPromptData(prev => ({
+        ...prev,
+        questions: prev.questions.filter(q => q.id !== id)
+      }));
+    };
+    
+    // Function to update a question
+    const updateQuestion = (id, value) => {
+      setPromptData(prev => ({
+        ...prev,
+        questions: prev.questions.map(q => q.id === id ? { ...q, question: value } : q)
+      }));
+    };
+    
+    // Function to generate the full prompt
+    const generateFullPrompt = () => {
+      if (activeAgentType !== 'nuggets') {
+        return agent.prompt || ''; // Return existing prompt for non-nuggets agents
+      }
+      
+      let fullPrompt = NUGGETS_PROMPT_TEMPLATE;
+      
+      // Replace variables
+      fullPrompt = fullPrompt
+        .replace('{agentName}', promptData.agentName)
+        .replace('{programName}', promptData.programName)
+        .replace('{teacherName}', promptData.teacherName)
+        .replace('{style}', promptData.style);
+      
+      // Format and replace rules
+      const formattedRules = promptData.rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n');
+      fullPrompt = fullPrompt.replace('{rules}', formattedRules);
+      
+      // Format and replace questions
+      const formattedQuestions = promptData.questions.map(q => q.question).join('\n\n');
+      fullPrompt = fullPrompt.replace('{questions}', formattedQuestions);
+      
+      return fullPrompt;
+    };
+    
+    // Effect to update the agent prompt when promptData changes
     useEffect(() => {
-      if (agent.prompt) {
-        const extracted = parsePrompt(agent.prompt);
-        setParsedData(extracted);
-        setRawPrompt(agent.prompt);
-      } else {
-        const defaultPrompt = getDefaultPrompt(activeAgentType);
-        setRawPrompt(defaultPrompt);
-        setParsedData(parsePrompt(defaultPrompt));
+      if (activeAgentType === 'nuggets') {
+        const generatedPrompt = generateFullPrompt();
+        handleAgentChange('prompt', generatedPrompt);
+      }
+    }, [promptData]);
+    
+    // Initialize the prompt data from the agent's prompt if it exists
+    useEffect(() => {
+      if (activeAgentType === 'nuggets' && agent.prompt) {
+        try {
+          // This would be where you'd add code to parse an existing prompt
+          // For now, we'll just use our defaults
+          setPromptData(prev => ({
+            ...prev,
+            agentName: agent.agentName || agentName,
+            programName: sessionConfig.title || '',
+            teacherName: sessionConfig.teacherName || '',
+          }));
+        } catch (error) {
+          console.error("Failed to parse existing prompt:", error);
+        }
       }
     }, [agent.prompt, activeAgentType]);
     
-    // Gestion des règles
-    const handleAddRule = () => {
-      if (!newRule.trim()) return;
-      
-      const updatedRules = [...parsedData.rules, newRule.trim()];
-      const updatedData = {
-        ...parsedData,
-        rules: updatedRules
-      };
-      setParsedData(updatedData);
-      
-      // Générer le nouveau prompt et le sauvegarder
-      const newPrompt = generatePrompt(updatedData, activeAgentType);
-      setRawPrompt(newPrompt);
-      handleAgentChange('prompt', newPrompt);
-      setNewRule('');
-    };
-    
-    const handleRemoveRule = (index) => {
-      const updatedRules = parsedData.rules.filter((_, i) => i !== index);
-      const updatedData = {
-        ...parsedData,
-        rules: updatedRules
-      };
-      setParsedData(updatedData);
-      
-      // Générer le nouveau prompt et le sauvegarder
-      const newPrompt = generatePrompt(updatedData, activeAgentType);
-      setRawPrompt(newPrompt);
-      handleAgentChange('prompt', newPrompt);
-    };
-    
-    // Gestion des questions
-    const handleAddQuestion = () => {
-      if (!newQuestion.trim()) return;
-      
-      const updatedQuestions = [...parsedData.questions, newQuestion.trim()];
-      const updatedData = {
-        ...parsedData,
-        questions: updatedQuestions
-      };
-      setParsedData(updatedData);
-      
-      // Générer le nouveau prompt et le sauvegarder
-      const newPrompt = generatePrompt(updatedData, activeAgentType);
-      setRawPrompt(newPrompt);
-      handleAgentChange('prompt', newPrompt);
-      setNewQuestion('');
-    };
-    
-    const handleRemoveQuestion = (index) => {
-      const updatedQuestions = parsedData.questions.filter((_, i) => i !== index);
-      const updatedData = {
-        ...parsedData,
-        questions: updatedQuestions
-      };
-      setParsedData(updatedData);
-      
-      // Générer le nouveau prompt et le sauvegarder
-      const newPrompt = generatePrompt(updatedData, activeAgentType);
-      setRawPrompt(newPrompt);
-      handleAgentChange('prompt', newPrompt);
-    };
-    
-    // Mise à jour du style
-    const handleStyleChange = (e) => {
-      const newStyle = e.target.value;
-      const updatedData = {
-        ...parsedData,
-        style: newStyle
-      };
-      setParsedData(updatedData);
-      
-      // Générer le nouveau prompt et le sauvegarder
-      const newPrompt = generatePrompt(updatedData, activeAgentType);
-      setRawPrompt(newPrompt);
-      handleAgentChange('prompt', newPrompt);
-    };
-    
-    // Mise à jour directe du prompt raw
-    const handleRawPromptChange = (e) => {
-      const newPrompt = e.target.value;
-      setRawPrompt(newPrompt);
-      handleAgentChange('prompt', newPrompt);
-      
-      // Parser le nouveau prompt pour mettre à jour les champs
-      const extracted = parsePrompt(newPrompt);
-      setParsedData(extracted);
-    };
-    
-    // Render preview section
-    const renderPreviewSection = () => {
-      const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
-      
-      return (
-        <div className="mt-6 border-t pt-4">
-          <div className="flex justify-between items-center mb-2">
-            <h4 className="font-medium">Agent Preview</h4>
-            <button
-              onClick={() => setPreviewMode(!previewMode)}
-              className={`text-sm text-${primaryColor}-600 hover:text-${primaryColor}-800`}
-            >
-              {previewMode ? "Hide" : "Show"} preview
-            </button>
-          </div>
-            
-          {previewMode && (
-            <div className="bg-gray-50 rounded-md p-3 mt-2">
-              <textarea
-                className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm p-2 mb-2`}
-                value={previewInput}
-                onChange={(e) => setPreviewInput(e.target.value)}
-                placeholder="Enter a message to test the agent..."
-                rows={2}
-              />
-              
-              <div className="flex justify-end">
-                <button
-                  onClick={() => {
-                    setIsGeneratingPreview(true);
-                    
-                    // Simulation d'une réponse de l'IA (à remplacer par un vrai appel API)
-                    setTimeout(() => {
-                      // Ajoutez ici la logique pour générer une réponse en fonction du prompt et de l'entrée
-                      const response = `This is a simulated response based on your prompt:\n\n${rawPrompt.slice(0, 100)}...\n\nInput: ${previewInput}`;
-                      setPreviewResponse(response);
-                      setIsGeneratingPreview(false);
-                    }, 1500);
-                  }}
-                  disabled={isGeneratingPreview || !previewInput.trim()}
-                  className={`px-3 py-1 bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white rounded text-sm disabled:bg-${primaryColor}-300`}
-                >
-                  {isGeneratingPreview ? "Generating..." : "Generate a response"}
-                </button>
-              </div>
-              
-              {previewResponse && (
-                <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-                  <h5 className="text-sm font-medium text-gray-700 mb-1">Agent response:</h5>
-                  <div className="text-sm whitespace-pre-wrap">{previewResponse}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    };
-    
+    // Render the new UI with tabs for the structured prompt editor
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
@@ -579,8 +621,11 @@ const AIInteractionConfig = ({
                   <input
                     type="text"
                     className={`text-center font-medium text-lg text-${primaryColor}-600 bg-transparent border-b border-${primaryColor}-300 focus:border-${primaryColor}-500 focus:ring-0 w-40`}
-                    value={agent.agentName || agentName}
-                    onChange={(e) => handleAgentChange('agentName', e.target.value)}
+                    value={promptData.agentName}
+                    onChange={(e) => {
+                      updatePromptData('agentName', e.target.value);
+                      handleAgentChange('agentName', e.target.value);
+                    }}
                     placeholder={agentName}
                   />
                   <span className="text-xs text-gray-500 mt-1">Agent Name</span>
@@ -599,175 +644,48 @@ const AIInteractionConfig = ({
             </Card>
           </div>
           
-          {/* Agent prompt and configuration */}
+          {/* Agent prompt builder */}
           <div className="w-full md:w-2/3">
             <Card className="p-4">
-              <div className="flex flex-col space-y-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center mb-0">
-                    <h4 className="text-base font-medium">Agent Prompt</h4>
-                    <button 
-                      onClick={() => setShowFullPrompt(!showFullPrompt)}
-                      className={`text-xs text-${primaryColor}-600 hover:text-${primaryColor}-800`}
-                    >
-                      {showFullPrompt ? "Hide Full Prompt" : "Show Full Prompt"}
-                    </button>
-                  </div>
-                  
-                  {showFullPrompt ? (
-                    <div className="space-y-3">
-                      <textarea
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono p-2 min-h-[300px]"
-                        value={rawPrompt}
-                        onChange={handleRawPromptChange}
-                        placeholder="Enter the raw prompt"
-                      />
-                      <p className="text-xs text-gray-500">
-                        Edit the raw prompt directly. This gives you full control over the prompt structure and content.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      <p className="text-sm text-gray-500 mb-4">
-                        Configure the parameters below to customize the agent's behavior.
-                        The prompt template includes variables like agent name, program name, etc.
-                      </p>
-                      
-                      {/* Style Description */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Style Description
-                        </label>
-                        <textarea
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 min-h-[100px]"
-                          value={parsedData.style || ''}
-                          onChange={handleStyleChange}
-                          placeholder="Describe the agent's communication style"
-                        />
-                      </div>
-                      
-                      {/* Rules */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Rules
-                        </label>
-                        <div className="space-y-2">
-                          {parsedData.rules && parsedData.rules.map((rule, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                value={rule}
-                                readOnly
-                              />
-                              <button
-                                onClick={() => handleRemoveRule(index)}
-                                className="p-1 text-red-500 hover:text-red-700"
-                                title="Remove rule"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <input
-                            type="text"
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                            placeholder="Add a new rule"
-                            value={newRule}
-                            onChange={(e) => setNewRule(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && newRule.trim()) {
-                                handleAddRule();
-                              }
-                            }}
-                          />
-                          <button
-                            onClick={handleAddRule}
-                            className="p-1 text-blue-500 hover:text-blue-700"
-                            title="Add rule"
-                            disabled={!newRule.trim()}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Questions */}
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Questions
-                        </label>
-                        <div className="space-y-2">
-                          {parsedData.questions && parsedData.questions.map((question, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <textarea
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                                value={question}
-                                readOnly
-                                rows={2}
-                              />
-                              <button
-                                onClick={() => handleRemoveQuestion(index)}
-                                className="p-1 text-red-500 hover:text-red-700"
-                                title="Remove question"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <textarea
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
-                            placeholder="Add a new question"
-                            value={newQuestion}
-                            onChange={(e) => setNewQuestion(e.target.value)}
-                            rows={2}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && e.ctrlKey && newQuestion.trim()) {
-                                handleAddQuestion();
-                              }
-                            }}
-                          />
-                          <button
-                            onClick={handleAddQuestion}
-                            className="p-1 text-blue-500 hover:text-blue-700"
-                            title="Add question"
-                            disabled={!newQuestion.trim()}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Press Ctrl+Enter to add a new question
-                        </p>
-                      </div>
-                    </div>
-                  )}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Prompt Builder</h3>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => updatePromptData('showRawPrompt', !promptData.showRawPrompt)}
+                    className={`text-sm px-3 py-1 rounded border border-${primaryColor}-300 hover:bg-${primaryColor}-50`}
+                  >
+                    {promptData.showRawPrompt ? "Hide Full Prompt" : "Show Full Prompt"}
+                  </button>
+                  <button
+                    onClick={copyPromptToClipboard}
+                    className={`text-sm px-3 py-1 rounded bg-${primaryColor}-500 text-white hover:bg-${primaryColor}-600`}
+                  >
+                    Copy Prompt
+                  </button>
                 </div>
-                
-                <div className="border-t pt-4 mt-2">
-                  <h4 className="text-base font-medium mb-3">General Settings</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              </div>
+              
+              {promptData.showRawPrompt ? (
+                <div className="mb-4">
+                  <textarea
+                    className="w-full h-96 p-3 font-mono text-sm border rounded focus:ring-2 focus:ring-blue-500"
+                    value={generateFullPrompt()}
+                    readOnly
+                  ></textarea>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Program and Teacher Names */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Program Name
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Program Name</label>
                       <input
                         type="text"
-                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                        value={sessionConfig.title || ''}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                        value={promptData.programName}
                         onChange={(e) => {
+                          updatePromptData('programName', e.target.value);
+                          // Also update the session config
                           updateSessionConfig({
                             ...sessionConfig,
                             title: e.target.value
@@ -775,68 +693,159 @@ const AIInteractionConfig = ({
                         }}
                         placeholder="Enter program name"
                       />
+                      <p className="text-xs text-gray-500 mt-1">This will be displayed in the welcome message</p>
                     </div>
-                    
-                    {activeAgentType === 'nuggets' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Teacher/Facilitator Name
-                        </label>
-                        <input
-                          type="text"
-                          className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                          value={sessionConfig.teacherName || ''}
-                          onChange={(e) => {
-                            updateSessionConfig({
-                              ...sessionConfig,
-                              teacherName: e.target.value
-                            });
-                          }}
-                          placeholder="Enter teacher/facilitator name"
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Teacher Name</label>
+                      <input
+                        type="text"
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                        value={promptData.teacherName}
+                        onChange={(e) => {
+                          updatePromptData('teacherName', e.target.value);
+                          // Also update the session config
+                          updateSessionConfig({
+                            ...sessionConfig,
+                            teacherName: e.target.value
+                          });
+                        }}
+                        placeholder="Enter teacher name"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Used in the closing message</p>
+                    </div>
                   </div>
                   
-                  {/* Additional customization fields */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Agent Personality
-                      </label>
-                      <select
-                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                        value={agent.personality || 'professional'}
-                        onChange={(e) => handleAgentChange('personality', e.target.value)}
-                      >
-                        <option value="professional">Professional & Formal</option>
-                        <option value="friendly">Friendly & Approachable</option>
-                        <option value="enthusiastic">Enthusiastic & Energetic</option>
-                        <option value="concise">Concise & Direct</option>
-                      </select>
+                  {/* Agent Style */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Agent Style</label>
+                    <textarea
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                      value={promptData.style}
+                      onChange={(e) => updatePromptData('style', e.target.value)}
+                      rows={3}
+                      placeholder="Describe the agent's style..."
+                    ></textarea>
+                    <p className="text-xs text-gray-500 mt-1">Describes how the agent should communicate</p>
+                  </div>
+                  
+                  {/* Rules Section */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Conversation Rules</label>
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          className="text-sm p-1 border rounded"
+                          value={promptData.newRule}
+                          onChange={(e) => updatePromptData('newRule', e.target.value)}
+                          placeholder="New rule..."
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && promptData.newRule.trim()) {
+                              addRule();
+                            }
+                          }}
+                        />
+                        <button 
+                          onClick={addRule}
+                          disabled={!promptData.newRule.trim()}
+                          className={`text-xs px-2 py-1 rounded bg-${primaryColor}-100 text-${primaryColor}-700 hover:bg-${primaryColor}-200 disabled:opacity-50`}
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Language Complexity
-                      </label>
-                      <select
-                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${primaryColor}-500 focus:ring-${primaryColor}-500 sm:text-sm`}
-                        value={agent.languageComplexity || 'moderate'}
-                        onChange={(e) => handleAgentChange('languageComplexity', e.target.value)}
-                      >
-                        <option value="simple">Simple & Accessible</option>
-                        <option value="moderate">Moderate Complexity</option>
-                        <option value="advanced">Advanced & Technical</option>
-                      </select>
+                    <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded">
+                      {promptData.rules.map((rule, index) => (
+                        <div key={index} className="relative p-2 border rounded group hover:bg-gray-50">
+                          <button
+                            onClick={() => removeRule(index)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          <textarea
+                            className="w-full p-1 border-none focus:ring-0 bg-transparent text-sm"
+                            value={rule}
+                            onChange={(e) => updateRule(index, e.target.value)}
+                            rows={2}
+                          ></textarea>
+                        </div>
+                      ))}
                     </div>
                   </div>
+                  
+                  {/* Questions Section */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Questions to Ask</label>
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          className="text-sm p-1 border rounded"
+                          value={promptData.newQuestion}
+                          onChange={(e) => updatePromptData('newQuestion', e.target.value)}
+                          placeholder="New question..."
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && promptData.newQuestion.trim()) {
+                              addQuestion();
+                            }
+                          }}
+                        />
+                        <button 
+                          onClick={addQuestion}
+                          disabled={!promptData.newQuestion.trim()}
+                          className={`text-xs px-2 py-1 rounded bg-${primaryColor}-100 text-${primaryColor}-700 hover:bg-${primaryColor}-200 disabled:opacity-50`}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-h-80 overflow-y-auto p-2 border rounded">
+                      {promptData.questions.map((q) => (
+                        <div key={q.id} className="relative p-2 border rounded group hover:bg-gray-50">
+                          <button
+                            onClick={() => removeQuestion(q.id)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          <textarea
+                            className="w-full p-1 border-none focus:ring-0 bg-transparent text-sm"
+                            value={q.question}
+                            onChange={(e) => updateQuestion(q.id, e.target.value)}
+                            rows={3}
+                          ></textarea>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Reset Button */}
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={() => setPromptData({
+                        agentName: agent.agentName || agentName,
+                        programName: sessionConfig.title || '',
+                        teacherName: sessionConfig.teacherName || '',
+                        style: DEFAULT_NUGGETS_STYLE,
+                        rules: DEFAULT_NUGGETS_RULES,
+                        questions: DEFAULT_NUGGETS_QUESTIONS,
+                        showRawPrompt: promptData.showRawPrompt,
+                        newRule: '',
+                        newQuestion: ''
+                      })}
+                      className={`text-xs px-3 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200`}
+                    >
+                      Reset to Defaults
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </Card>
-            
-            {/* Preview Section (shown only when previewMode is true) */}
-            {previewMode && renderPreviewSection()}
           </div>
         </div>
       </div>
