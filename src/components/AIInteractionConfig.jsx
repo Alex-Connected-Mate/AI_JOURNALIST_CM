@@ -453,7 +453,7 @@ const AIInteractionConfig = ({
 
   // Handle book configuration changes
   const handleNuggetsBookConfigChange = useCallback((bookConfig) => {
-    updateSessionConfig({
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -461,15 +461,19 @@ const AIInteractionConfig = ({
           ...ai_settings,
           nuggets: {
             ...nuggets,
-            bookConfig: bookConfig
+            bookConfig: {
+              ...bookConfig,
+              id: 'nuggets-book'  // Ajout d'un identifiant unique
+            }
           }
         }
       }
-    });
+    };
+    updateSessionConfig(updatedConfig);
   }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
   
   const handleLightbulbsBookConfigChange = useCallback((bookConfig) => {
-    updateSessionConfig({
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -477,11 +481,15 @@ const AIInteractionConfig = ({
           ...ai_settings,
           lightbulbs: {
             ...lightbulbs,
-            bookConfig: bookConfig
+            bookConfig: {
+              ...bookConfig,
+              id: 'lightbulbs-book'  // Ajout d'un identifiant unique
+            }
           }
         }
       }
-    });
+    };
+    updateSessionConfig(updatedConfig);
   }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
 
   // Handle analysis items changes
@@ -725,7 +733,7 @@ const AIInteractionConfig = ({
     useEffect(() => {
       const generatedPrompt = generateFullPrompt();
       handleAgentChange('prompt', generatedPrompt);
-    }, [promptData]);
+    }, [promptData.style, promptData.rules, promptData.questions, promptData.agentName, promptData.programName, promptData.teacherName, promptData.programContext]);
     
     // Initialize the prompt data from the agent's prompt if it exists
     useEffect(() => {
@@ -1319,11 +1327,12 @@ const AIInteractionConfig = ({
 
   // Render book configuration section
   const renderBookConfigSection = () => {
+    const currentAgent = getCurrentAgent();
     const bookConfigProps = {
       initialConfig: {
         agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
-        programName: '',
-        teacherName: '',
+        programName: sessionConfig.title || '',
+        teacherName: sessionConfig.teacherName || '',
         customRules: [],
         customQuestions: [],
         analysisConfig: {
@@ -1332,9 +1341,12 @@ const AIInteractionConfig = ({
           sentimentAnalysis: true,
           extractKeyInsights: true
         },
-        bookConfig: activeAgentType === 'nuggets' 
-          ? (nuggets.bookConfig || { sections: [], visualStyle: {} }) 
-          : (lightbulbs.bookConfig || { sections: [], visualStyle: {} })
+        bookConfig: {
+          ...(activeAgentType === 'nuggets' 
+            ? (nuggets.bookConfig || { sections: [], visualStyle: {}, id: 'nuggets-book' }) 
+            : (lightbulbs.bookConfig || { sections: [], visualStyle: {}, id: 'lightbulbs-book' })),
+          id: activeAgentType === 'nuggets' ? 'nuggets-book' : 'lightbulbs-book'
+        }
       },
       agentType: activeAgentType,
       mode: 'book-only',
@@ -1364,6 +1376,24 @@ const AIInteractionConfig = ({
       </div>
     );
   };
+
+  // Effect to ensure book configurations remain separate
+  useEffect(() => {
+    if (nuggets.bookConfig?.id === 'lightbulbs-book') {
+      // Fix nuggets book config if it was accidentally set to lightbulbs
+      handleNuggetsBookConfigChange({ 
+        ...nuggets.bookConfig, 
+        id: 'nuggets-book' 
+      });
+    }
+    if (lightbulbs.bookConfig?.id === 'nuggets-book') {
+      // Fix lightbulbs book config if it was accidentally set to nuggets
+      handleLightbulbsBookConfigChange({ 
+        ...lightbulbs.bookConfig, 
+        id: 'lightbulbs-book' 
+      });
+    }
+  }, [nuggets.bookConfig, lightbulbs.bookConfig]);
 
   // Main rendering logic based on current step
   if (currentStep === 'final-analysis') {
