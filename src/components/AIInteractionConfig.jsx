@@ -1450,40 +1450,29 @@ const AIInteractionConfig = ({
 
   // For AI agents (nuggets/lightbulbs), show the relevant config based on activeSection
   return (
-    <div className="space-y-8">
-      {/* Add history button next to the tabs */}
-      <div className="flex items-center justify-between">
-        <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
-          <TabsList className="grid grid-cols-3">
-            <TabsTrigger value="config">Agent Configuration</TabsTrigger>
-            <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
-            <TabsTrigger value="book">Book</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        {renderHistoryButton()}
-      </div>
+    <div className="space-y-6">
+      <Tabs defaultValue={currentSection} className="w-full">
+        <TabsList>
+          <TabsTrigger value="config">Configuration</TabsTrigger>
+          <TabsTrigger value="analysis">Analyse</TabsTrigger>
+          <TabsTrigger value="book">Carnet</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="config">
+          {renderAgentConfigSection()}
+        </TabsContent>
+        
+        <TabsContent value="analysis">
+          {renderAgentAnalysisSection()}
+        </TabsContent>
+        
+        <TabsContent value="book">
+          {renderBookConfigSection()}
+        </TabsContent>
+      </Tabs>
       
-      {/* Rest of the existing UI */}
-      <TabsContent value="config">
-        {renderAgentConfigSection()}
-      </TabsContent>
-      
-      <TabsContent value="analysis">
-        {renderAgentAnalysisSection()}
-      </TabsContent>
-      
-      <TabsContent value="book">
-        {renderBookConfigSection()}
-      </TabsContent>
-      
-      {/* Preview Section */}
-      {activeSection === "config" && previewMode && renderPreviewSection()}
-
-      {/* History Modal */}
+      {renderHistoryButton()}
       {renderHistoryModal()}
-
-      {/* SaveStatusIndicator */}
-      <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
     </div>
   );
 };
