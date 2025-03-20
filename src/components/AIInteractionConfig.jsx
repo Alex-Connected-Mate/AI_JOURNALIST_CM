@@ -232,15 +232,24 @@ const AIInteractionConfig = ({
   const router = useRouter();
   const { toast } = useToast();
   
-  // Utilisation du store pour l'état temporaire
-  const { tempConfig, updateConfig, history, restoreFromHistory } = useSessionConfigStore();
-  
   // Check for client-side rendering
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
   }, []);
   
+  // Utilisation du store pour l'état temporaire
+  const { tempConfig, updateConfig, history, restoreFromHistory } = isClient ? useSessionConfigStore() : {
+    tempConfig: null,
+    updateConfig: () => {},
+    history: [],
+    restoreFromHistory: () => {}
+  };
+  
+  // État pour le feedback de sauvegarde
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+
   // Access translations
   const { t } = useTranslation ? useTranslation() : { t: (key) => key };
   
@@ -276,10 +285,6 @@ const AIInteractionConfig = ({
 
   // Selected analysis item for configuration in final analysis step
   const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
-
-  // État pour le feedback de sauvegarde
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
 
   // Add configuration history support
   const [showHistory, setShowHistory] = useState(false);

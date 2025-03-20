@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const useSessionConfigStore = create(
+export const useSessionConfigStore = create(
   persist(
     (set, get) => ({
       // État temporaire de la configuration
@@ -74,7 +74,30 @@ const useSessionConfigStore = create(
     }),
     {
       name: 'session-config-storage',
-      getStorage: () => localStorage
+      storage: {
+        getItem: (name) => {
+          try {
+            const str = localStorage.getItem(name);
+            return str ? JSON.parse(str) : null;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch {
+            // Gérer les erreurs de stockage silencieusement
+          }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch {
+            // Gérer les erreurs de suppression silencieusement
+          }
+        }
+      }
     }
   )
 ); 
