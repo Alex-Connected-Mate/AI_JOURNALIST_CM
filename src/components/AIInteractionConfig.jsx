@@ -232,6 +232,10 @@ const AIInteractionConfig = ({
   const router = useRouter();
   const { toast } = useToast();
   
+  // Determine which agent to display based on the mode parameter
+  const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
+  const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
+  
   // Check for client-side rendering
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
@@ -264,9 +268,6 @@ const AIInteractionConfig = ({
   // État pour afficher le prompt complet
   const [showFullPrompt, setShowFullPrompt] = useState(false);
 
-  // Determine which agent to display based on the mode parameter
-  const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
-  
   // Extract settings from sessionConfig
   const ai_settings = sessionConfig.settings?.ai_configuration || {};
   
