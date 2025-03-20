@@ -1439,13 +1439,13 @@ const AIInteractionConfig = ({
       {activeSection === "config" && previewMode && renderPreviewSection()}
 
       {/* Add SaveStatusIndicator to the main render */}
-      <SaveStatusIndicator />
+      <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
     </div>
   );
 };
 
-// SaveStatusIndicator component (moved inside)
-const SaveStatusIndicator = () => (
+// SaveStatusIndicator component
+const SaveStatusIndicator = ({ isSaving, lastSaved }) => (
   <div className="fixed bottom-4 right-4 flex items-center space-x-2 bg-white rounded-lg shadow-lg p-3 z-50">
     {isSaving ? (
       <>
