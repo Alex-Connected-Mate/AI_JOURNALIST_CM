@@ -136,7 +136,7 @@ function DashboardContent() {
             {t('dashboard.welcomeMessage', 'Bienvenue sur AI Journalist')}
           </h2>
           <p className="text-gray-600">
-            Créez et gérez vos sessions interactives avec l'assistance IA
+            Créez et gérez vos sessions interactives avec l'assistance IA (test Maxime)
           </p>
         </div>
 
