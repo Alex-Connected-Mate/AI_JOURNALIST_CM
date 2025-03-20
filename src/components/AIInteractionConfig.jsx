@@ -19,7 +19,7 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
 import { useTranslation } from './LocaleProvider';
 import AIPromptEditor from './AIPromptEditor';
 import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { AgentService } from '@/lib/services/agentService';
 import { supabase } from '@/lib/supabase';
@@ -230,6 +230,7 @@ const AIInteractionConfig = ({
   onAnalysisOrderChange = null
 }) => {
   const router = useRouter();
+  const { toast } = useToast();
   
   // Check for client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -1443,7 +1444,7 @@ const AIInteractionConfig = ({
   );
 };
 
-// Add SaveStatusIndicator component
+// SaveStatusIndicator component (moved inside)
 const SaveStatusIndicator = () => (
   <div className="fixed bottom-4 right-4 flex items-center space-x-2 bg-white rounded-lg shadow-lg p-3 z-50">
     {isSaving ? (
