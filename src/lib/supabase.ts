@@ -530,21 +530,20 @@ export async function getSessions(userId: string) {
   return { data, error };
 }
 
-// Mise à jour du type SessionData pour inclure tous les champs nécessaires
-interface SessionData {
+export interface SessionData {
   id?: string;
   title?: string;
-  name?: string; // Ajout pour compatibilité avec l'ancien modèle de données
+  name?: string;
   description?: string;
   status?: 'draft' | 'active' | 'ended';
   user_id?: string;
   started_at?: string;
   ended_at?: string;
   access_code?: string;
-  institution?: string; // Ajout du champ institution
-  professor_name?: string; // Ajout du champ professor_name
-  show_professor_name?: boolean; // Ajout du champ show_professor_name
-  max_participants?: number; // Ajout du champ max_participants
+  institution?: string;
+  professor_name?: string;
+  show_professor_name?: boolean;
+  max_participants?: number;
   settings?: {
     sessionName?: string;
     institution?: string;
@@ -557,11 +556,37 @@ interface SessionData {
     showInstitution?: boolean;
     connection?: {
       anonymityLevel?: 'anonymous' | 'semi-anonymous' | 'non-anonymous' | 'fully-anonymous';
-      // autres propriétés de connection
+      loginMethod?: 'email' | 'code' | 'none';
+      approvalRequired?: boolean;
+      color?: string;
+      emoji?: string;
     };
-    // autres propriétés de settings
+    discussion?: {
+      enabled?: boolean;
+      settings?: Record<string, any>;
+    };
+    aiInteraction?: {
+      enabled: boolean;
+      configuration: {
+        nuggets?: {
+          style?: Record<string, any>;
+          rules?: Array<string>;
+          questions?: Array<string>;
+          basePrompt?: string;
+          analysisSettings?: Record<string, any>;
+          participationRules?: Record<string, any>;
+        };
+        lightbulbs?: {
+          style?: Record<string, any>;
+          rules?: Array<string>;
+          questions?: Array<string>;
+          basePrompt?: string;
+          analysisSettings?: Record<string, any>;
+          participationRules?: Record<string, any>;
+        };
+      };
+    };
   };
-  // autres propriétés de SessionData
 }
 
 // Session validation functions

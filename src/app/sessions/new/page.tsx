@@ -11,6 +11,58 @@ import type { SessionData } from '@/lib/supabase';
 import sessionTracker from '@/lib/sessionTracker';
 import logger from '@/lib/logger';
 import AIConfigurationForm from '@/components/AIConfigurationForm';
+import { AgentService } from '@/lib/services/agentService';
+import { auth } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+
+type AnonymityLevel = 'semi-anonymous' | 'anonymous' | 'non-anonymous' | 'fully-anonymous';
+type LoginMethod = 'email' | 'code' | 'none';
+
+interface ConnectionSettings {
+  anonymityLevel: AnonymityLevel;
+  loginMethod: LoginMethod;
+  approvalRequired: boolean;
+  color: string;
+  emoji: string;
+}
+
+interface AIConfiguration {
+  style: any;
+  rules: any;
+  enabled: boolean;
+}
+
+interface AIInteractionSettings {
+  enabled: boolean;
+  configuration: {
+    nuggets: AIConfiguration;
+    lightbulbs: AIConfiguration;
+  };
+}
+
+interface SessionSettings {
+  institution: string;
+  professorName: string;
+  showProfessorName: boolean;
+  maxParticipants: number;
+  connection: ConnectionSettings;
+  discussion: Record<string, any>;
+  aiInteraction: AIInteractionSettings;
+}
+
+interface NewSessionData {
+  title: string;
+  status: 'draft' | 'active' | 'ended';
+  settings: SessionSettings;
+}
+
+const createAgentConfig = async (agentType: string, config: any): Promise<AIConfiguration> => {
+  return {
+    style: agentType === 'nuggets' ? config.nuggetsStyle : config.lightbulbsStyle,
+    rules: agentType === 'nuggets' ? config.nuggetsRules : config.lightbulbsRules,
+    enabled: true
+  };
+};
 
 export default function NewSessionPage() {
   const router = useRouter();
@@ -53,79 +105,52 @@ export default function NewSessionPage() {
     try {
       logger.session('Processing session configuration');
       
-      // Transform the session config into the expected format
-      const sessionData: Partial<SessionData> = {
+      const sessionData: Partial<NewSessionData> = {
         title: sessionConfig.sessionName || sessionConfig.basicInfo?.title || '',
-        description: sessionConfig.basicInfo?.description || '',
-        status: 'draft' as const,
-        user_id: user.id,
+        status: 'draft',
         settings: {
           institution: sessionConfig.institution || '',
           professorName: sessionConfig.professorName || '',
           showProfessorName: sessionConfig.showProfessorName ?? true,
           maxParticipants: sessionConfig.maxParticipants || 30,
           connection: {
-            anonymityLevel: sessionConfig.connection?.anonymityLevel || 'semi-anonymous',
-            loginMethod: sessionConfig.connection?.loginMethod || 'email',
+            anonymityLevel: (sessionConfig.connection?.anonymityLevel || 'semi-anonymous') as AnonymityLevel,
+            loginMethod: (sessionConfig.connection?.loginMethod || 'email') as LoginMethod,
             approvalRequired: sessionConfig.connection?.approvalRequired || false,
             color: '#3490dc',
             emoji: '🎓'
           },
-          discussion: {},
+          discussion: sessionConfig.discussion || {},
           aiInteraction: {
-            nuggets: {
-              focusOnKeyInsights: sessionConfig.nuggetsRules?.focusOnKeyInsights ?? true,
-              discoverPatterns: sessionConfig.nuggetsRules?.discoverPatterns ?? true,
-              quoteRelevantExamples: sessionConfig.nuggetsRules?.quoteRelevantExamples ?? true,
-              customRules: sessionConfig.nuggetsRules?.customRules || ''
-            },
-            lightbulbs: {
-              captureInnovativeThinking: sessionConfig.lightbulbsRules?.captureInnovativeThinking ?? true,
-              identifyCrossPollination: sessionConfig.lightbulbsRules?.identifyCrossPollination ?? true,
-              evaluatePracticalApplications: sessionConfig.lightbulbsRules?.evaluatePracticalApplications ?? true,
-              customRules: sessionConfig.lightbulbsRules?.customRules || ''
-            },
-            overall: {
-              synthesizeAllInsights: sessionConfig.overallRules?.synthesizeAllInsights ?? true,
-              extractActionableRecommendations: sessionConfig.overallRules?.extractActionableRecommendations ?? true,
-              provideSessionSummary: sessionConfig.overallRules?.provideSessionSummary ?? true,
-              customRules: sessionConfig.overallRules?.customRules || ''
+            enabled: true,
+            configuration: {
+              nuggets: await createAgentConfig('nuggets', sessionConfig),
+              lightbulbs: await createAgentConfig('lightbulbs', sessionConfig)
             }
-          },
-          visualization: {
-            enableWordCloud: sessionConfig.enableWordCloud ?? true,
-            enableThemeNetwork: sessionConfig.enableThemeNetwork ?? true,
-            enableLightbulbCategorization: sessionConfig.enableLightbulbCategorization ?? true,
-            enableIdeaImpactMatrix: sessionConfig.enableIdeaImpactMatrix ?? true,
-            enableEngagementChart: sessionConfig.enableEngagementChart ?? true,
-            showTopThemes: sessionConfig.showTopThemes ?? true
           }
         }
       };
 
-      // Validate the transformed data
-      logger.session('Validating session data');
-      const validation = validateSessionData(sessionData);
-      if (!validation.isValid) {
-        throw new Error(validation.error || 'Invalid session data');
-      }
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions')
+        .insert([sessionData])
+        .select()
+        .single();
       
-      // Create the session
-      logger.session('Creating session in database...');
-      const { data: session, error } = await createSession(sessionData);
-      
-      if (error) {
-        // Gestion simplifiée des erreurs
-        setError('Une erreur est survenue lors de la création de la session. Veuillez réessayer.');
-        console.error('Session creation error:', error);
-        return;
-      }
-      
-      if (session) {
-        logger.session('Session created successfully');
-        setSuccess('Session créée avec succès !');
-        router.push(`/sessions/${session.id}`);
-      }
+      if (sessionError) throw sessionError;
+
+      // Create agents for the session
+      const userId = await auth.uid();
+      if (!userId) throw new Error('User not authenticated');
+
+      await Promise.all([
+        createSessionAgent('nuggets', session.id, sessionConfig, userId),
+        createSessionAgent('lightbulbs', session.id, sessionConfig, userId)
+      ]);
+
+      logger.session('Session created successfully');
+      setSuccess('Session créée avec succès !');
+      router.push(`/sessions/${session.id}/edit`);
     } catch (err: any) {
       const errorMsg = err.message || 'Une erreur est survenue lors de la création de la session';
       logger.error('Session creation failed');
@@ -160,6 +185,98 @@ export default function NewSessionPage() {
       console.error('Error creating session:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createSessionAgent = async (
+    agentType: string,
+    sessionId: string,
+    config: any,
+    userId: string
+  ) => {
+    try {
+      // Créer ou récupérer l'agent
+      const { data: agent, error: agentError } = await supabase
+        .from('agents')
+        .upsert([{
+          name: agentType === 'nuggets' ? 'Elias' : 'Sonia',
+          description: agentType === 'nuggets' ? 
+            'Agent spécialisé dans la création de nuggets de connaissances' : 
+            'Agent spécialisé dans la génération d\'idées innovantes',
+          agent_type: agentType,
+          created_by: userId,
+          is_active: true
+        }], {
+          onConflict: 'name, agent_type',
+          ignoreDuplicates: false
+        })
+        .select()
+        .single();
+
+      if (agentError) throw agentError;
+
+      // Créer la configuration du prompt
+      const { data: prompt, error: promptError } = await supabase
+        .from('agent_prompts')
+        .insert([{
+          agent_id: agent.id,
+          style: config.aiInteraction?.configuration?.[agentType]?.style || {},
+          rules: config.aiInteraction?.configuration?.[agentType]?.rules || [],
+          questions: config.aiInteraction?.configuration?.[agentType]?.questions || [],
+          template_version: '1.0',
+          base_prompt: config.aiInteraction?.configuration?.[agentType]?.basePrompt || '',
+          created_by: userId
+        }])
+        .select()
+        .single();
+
+      if (promptError) throw promptError;
+
+      // Créer la configuration d'analyse
+      const { data: analysis, error: analysisError } = await supabase
+        .from('agent_analysis_config')
+        .insert([{
+          agent_id: agent.id,
+          analysis_type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
+          parameters: {
+            format: 'structured',
+            criteria: agentType === 'nuggets' ? 
+              ['relevance', 'accuracy', 'clarity'] : 
+              ['innovation', 'feasibility', 'impact'],
+            settings: config.aiInteraction?.configuration?.[agentType]?.analysisSettings || {}
+          },
+          enabled: true
+        }])
+        .select()
+        .single();
+
+      if (analysisError) throw analysisError;
+
+      // Lier l'agent à la session
+      const { error: sessionAgentError } = await supabase.rpc('create_session_agent', {
+        p_session_id: sessionId,
+        p_agent_id: agent.id,
+        p_is_primary: agentType === 'nuggets',
+        p_configuration: {
+          temperature: 0.7,
+          max_tokens: 2000,
+          prompt_template: prompt.base_prompt
+        },
+        p_settings: {
+          visibility: true,
+          interaction_mode: 'auto',
+          response_delay: 0,
+          participation_rules: config.aiInteraction?.configuration?.[agentType]?.participationRules || {}
+        }
+      });
+
+      if (sessionAgentError) throw sessionAgentError;
+
+      logger.session(`Agent ${agentType} created and configured successfully`);
+      return agent.id;
+    } catch (error) {
+      logger.error(`Failed to create session agent ${agentType}:`, error);
+      throw error;
     }
   };
 

@@ -21,6 +21,8 @@ import AIPromptEditor from './AIPromptEditor';
 import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
+import { AgentService } from '@/lib/services/agentService';
+import { auth } from '@/lib/firebase';
 
 // Nuggets prompt template
 const NUGGETS_PROMPT_TEMPLATE = `# Objective
@@ -71,49 +73,49 @@ Rules for the Closing Message:
 3. Add a touch of humor or warmth that relates to the program's location or setting
 4. Keep the tone friendly, warm, and reflective of the engaging interaction`;
 
-// Predefined styles for agents
+// Styles prédéfinis pour les agents
 const AGENT_STYLES = {
   nuggets: [
     {
       id: 'professional',
-      name: 'Professional & Clear',
+      name: 'Professionnel',
       style: "Maintain a professional and clear tone while being approachable. Use structured sentences and occasional emojis to keep the conversation engaging but focused. Reference the program context naturally to create a personalized experience. Format responses with bullet points for clarity.",
     },
     {
       id: 'friendly',
-      name: 'Friendly & Casual',
+      name: 'Amical et Décontracté',
       style: "Keep the conversation warm and friendly, using a casual tone that puts participants at ease. Use emojis frequently 😊, share enthusiasm, and create a comfortable atmosphere. Make frequent references to the program context to maintain a personal connection. Structure information in an easy-to-read format.",
     },
     {
       id: 'academic',
-      name: 'Academic & Formal',
+      name: 'Académique',
       style: "Adopt a more formal, academic tone while remaining accessible. Use precise language and clear structure. Minimize emoji usage but maintain warmth through word choice. Reference the program context thoughtfully to create relevance. Present information in a structured, analytical format.",
     },
     {
       id: 'coach',
-      name: 'Motivational Coach',
+      name: 'Coach Motivant',
       style: "Take on an encouraging, coach-like tone that motivates participants. Use positive reinforcement and energetic language 💪. Include emojis strategically to boost motivation. Reference the program context to create meaningful connections. Structure responses to highlight progress and potential.",
     }
   ],
   lightbulbs: [
     {
       id: 'creative',
-      name: 'Creative & Inspiring',
+      name: 'Créatif et Inspirant',
       style: "Foster creativity with an enthusiastic and imaginative tone. Use colorful language and inspiring emojis ✨. Reference the program context to spark innovative thinking. Structure responses to highlight creative possibilities and connections.",
     },
     {
       id: 'analytical',
-      name: 'Analytical & Structured',
+      name: 'Analytique et Structuré',
       style: "Balance creativity with analytical thinking. Use clear, structured language while maintaining an open mind to new ideas. Use emojis sparingly 🎯. Reference the program context to ground ideas in reality. Present information in a logical, step-by-step format.",
     },
     {
       id: 'collaborative',
-      name: 'Collaborative & Supportive',
+      name: 'Collaboratif et Encourageant',
       style: "Create a collaborative atmosphere that encourages idea sharing. Use inclusive language and supportive emojis 🤝. Reference the program context to build shared understanding. Structure responses to highlight connections and build upon ideas.",
     },
     {
       id: 'visionary',
-      name: 'Visionary & Forward-thinking',
+      name: 'Visionnaire',
       style: "Inspire big-picture thinking with a forward-looking tone. Use expansive language and aspirational emojis 🚀. Reference the program context to bridge present reality with future possibilities. Structure responses to emphasize potential impact and transformation.",
     }
   ]
@@ -755,9 +757,11 @@ const AIInteractionConfig = ({
     return (
       <div className="space-y-6">
         <div className={`bg-${primaryColor}-50 border-l-4 border-${primaryColor}-500 p-4 rounded-r-md mb-4`}>
-          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Prompt Builder</h3>
+          <h3 className={`font-semibold text-${primaryColor}-800 mb-2`}>Configuration of {activeAgentType === 'nuggets' ? 'AI Nuggets' : 'AI Lightbulbs'}</h3>
           <p className={`text-${primaryColor}-700 text-sm`}>
-            Configure the behavior and questions for agent {promptData.agentName || agentName}
+            {activeAgentType === 'nuggets' 
+              ? 'Customize the AI Nuggets agent (Elias) that extracts important information from discussions.'
+              : 'Customize the AI Lightbulbs agent (Sonia) that develops creative ideas based on discussions.'}
           </p>
         </div>
 
@@ -803,107 +807,415 @@ const AIInteractionConfig = ({
             </Card>
           </div>
           
-          {/* Basic Information */}
-          <Card className="p-4 border-t-4 border-t-blue-500">
-            <h4 className="font-medium text-gray-900 mb-3">Basic Information</h4>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                  Program Name
-                  <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Required</span>
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                  value={promptData.programName}
-                  onChange={(e) => {
-                    updatePromptData('programName', e.target.value);
-                    updateSessionConfig({
-                      ...sessionConfig,
-                      title: e.target.value
-                    });
-                  }}
-                  placeholder="Enter program name"
-                />
-                <p className="text-xs text-gray-500 mt-1">Displayed in the welcome message</p>
-              </div>
+          {/* Agent prompt builder */}
+          <div className="w-full md:w-2/3">
+            <Card className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-lg font-medium flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                      <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                    </svg>
+                    Éditeur de Prompt
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Configurez le comportement et les questions de l'agent {promptData.agentName || agentName}
+                      </p>
+                    </div>
+                <div className="flex space-x-2">
+                              <button
+                    onClick={() => updatePromptData('showRawPrompt', !promptData.showRawPrompt)}
+                    className={`text-sm px-3 py-2 rounded border flex items-center hover:bg-gray-50`}
+                              >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                </svg>
+                    {promptData.showRawPrompt ? "Retour à l'éditeur" : "Voir le prompt complet"}
+                              </button>
+                          <button
+                    onClick={copyPromptToClipboard}
+                    disabled={!isClient}
+                    className={`text-sm px-3 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 flex items-center`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                      <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5zM15 11h2a1 1 0 110 2h-2v-2z" />
+                            </svg>
+                    Copier le prompt
+                          </button>
+                        </div>
+                      </div>
+                      
+              {promptData.showRawPrompt ? (
+                <div className="mb-4">
+                  <div className="bg-gray-50 p-4 rounded-md mb-4 border-l-4 border-blue-500">
+                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      Prompt complet généré
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Ce prompt est généré automatiquement à partir des informations que vous avez saisies. 
+                      Vous pouvez le copier pour l'utiliser ailleurs ou revenir à l'éditeur structuré pour continuer à le personnaliser.
+                    </p>
+                  </div>
+                  
+                  <div className="relative">
+                              <textarea
+                      className="w-full h-96 p-3 font-mono text-sm border rounded bg-gray-50 focus:ring-2 focus:ring-blue-500"
+                      value={generateFullPrompt()}
+                                readOnly
+                    ></textarea>
+                    
+                    <div className="absolute right-2 top-2 flex space-x-2">
+                              <button
+                        onClick={copyPromptToClipboard}
+                        disabled={!isClient}
+                        className="text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 flex items-center"
+                        title="Copier le prompt"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                          <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                                </svg>
+                        Copier
+                              </button>
+                      
+                          <button
+                        onClick={() => updatePromptData('showRawPrompt', false)}
+                        className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
+                        title="Retourner à l'éditeur"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                            </svg>
+                        Retour à l'éditeur
+                          </button>
+                        </div>
+                  </div>
+                  
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                      <h5 className="font-medium text-blue-800 mb-1 text-sm">Comment utiliser ce prompt?</h5>
+                      <p className="text-xs text-blue-700">
+                        Ce prompt définit le comportement et les questions que l'agent IA posera aux participants. 
+                        Vous pouvez le copier et l'utiliser comme base pour d'autres agents similaires.
+                        </p>
+                      </div>
+                    
+                    <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                      <h5 className="font-medium text-amber-800 mb-1 text-sm">Structure du prompt</h5>
+                      <p className="text-xs text-amber-700">
+                        Le prompt est divisé en sections: Objectif, Style, Règles et Exemple d'interaction. 
+                        Chaque section influence différents aspects du comportement de l'agent.
+                      </p>
+                    </div>
+                </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Program and Teacher Names */}
+                  <Card className="p-4 border-t-4 border-t-blue-500">
+                    <h4 className="font-medium text-gray-900 mb-3">Informations de base</h4>
+                    <div className="grid grid-cols-1 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                          Nom du programme
+                          <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
+                      </label>
+                      <input
+                        type="text"
+                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                          value={promptData.programName}
+                        onChange={(e) => {
+                            updatePromptData('programName', e.target.value);
+                            // Also update the session config
+                          updateSessionConfig({
+                            ...sessionConfig,
+                            title: e.target.value
+                          });
+                        }}
+                          placeholder="Entrez le nom du programme"
+                      />
+                        <p className="text-xs text-gray-500 mt-1">Affiché dans le message d'accueil</p>
+                    </div>
+                    
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                          Contexte du programme
+                          <span className="ml-1 text-xs text-white bg-green-500 px-1.5 py-0.5 rounded-full">Recommandé</span>
+                        </label>
+                        <textarea
+                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                          value={promptData.programContext}
+                          onChange={(e) => {
+                            updatePromptData('programContext', e.target.value);
+                            // Also update the session config
+                            updateSessionConfig({
+                              ...sessionConfig,
+                              programContext: e.target.value
+                            });
+                          }}
+                          placeholder="Ex: Le programme se déroule à Fontainebleau, au cœur de la forêt..."
+                          rows={3}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Ces détails seront utilisés pour personnaliser les interactions</p>
+                      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                  Program Context
-                  <span className="ml-1 text-xs text-white bg-green-500 px-1.5 py-0.5 rounded-full">Recommended</span>
-                </label>
-                <textarea
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                  value={promptData.programContext}
-                  onChange={(e) => {
-                    updatePromptData('programContext', e.target.value);
-                    updateSessionConfig({
-                      ...sessionConfig,
-                      programContext: e.target.value
-                    });
-                  }}
-                  placeholder="Ex: The program takes place in Fontainebleau, in the heart of the forest..."
-                  rows={3}
-                />
-                <p className="text-xs text-gray-500 mt-1">These details will be used to personalize interactions</p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                          Nom du formateur
+                          <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Obligatoire</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                          value={promptData.teacherName}
+                          onChange={(e) => {
+                            updatePromptData('teacherName', e.target.value);
+                            // Also update the session config
+                            updateSessionConfig({
+                              ...sessionConfig,
+                              teacherName: e.target.value
+                            });
+                          }}
+                          placeholder="Entrez le nom du formateur"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Utilisé dans le message de conclusion</p>
+                      </div>
+                  </div>
+                  </Card>
+                  
+                  {/* Agent Style */}
+                  <Card className="p-4 border-t-4 border-t-green-500">
+                    <h4 className="font-medium text-gray-900 mb-3">Style de l'agent</h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Choisissez un style prédéfini</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {AGENT_STYLES[activeAgentType].map((styleOption) => (
+                          <div
+                            key={styleOption.id}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              promptData.style === styleOption.style
+                                ? 'border-green-500 bg-green-50'
+                                : 'border-gray-200 hover:border-green-300'
+                            }`}
+                            onClick={() => updatePromptData('style', styleOption.style)}
+                          >
+                            <h5 className="font-medium text-gray-900 mb-1">{styleOption.name}</h5>
+                            <p className="text-sm text-gray-600">{styleOption.style.substring(0, 100)}...</p>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Personnaliser le style
+                          <span className="ml-2 text-xs text-gray-500">(optionnel)</span>
+                      </label>
+                        <div className="mb-2 p-2 bg-green-50 rounded text-xs text-green-800">
+                          <p className="font-medium">Conseil:</p>
+                          <p>Vous pouvez personnaliser le style en modifiant directement le texte ci-dessous. N'oubliez pas d'inclure des indications sur l'utilisation des emojis et les références au contexte.</p>
+                        </div>
+                        <textarea
+                          className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
+                          value={promptData.style}
+                          onChange={(e) => updatePromptData('style', e.target.value)}
+                          rows={4}
+                          placeholder="Personnalisez le style de communication de l'agent..."
+                        ></textarea>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  {/* Rules Section */}
+                  <Card className="p-4 border-t-4 border-t-amber-500">
+                    <h4 className="font-medium text-gray-900 mb-3">Règles de conversation</h4>
+                    <div>
+                      <div className="mb-2 p-2 bg-amber-50 rounded text-xs text-amber-800">
+                        <p className="font-medium">À quoi servent les règles:</p>
+                        <p>Les règles définissent comment l'agent doit mener la conversation (ex: ordre des questions, gestion des réponses incomplètes, conditions de fin...).</p>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mb-3">
+                        <label className="block text-sm font-medium text-gray-700">Liste des règles</label>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            className="text-sm p-2 border rounded w-64"
+                            value={promptData.newRule}
+                            onChange={(e) => updatePromptData('newRule', e.target.value)}
+                            placeholder="Nouvelle règle..."
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && promptData.newRule.trim()) {
+                                addRule();
+                              }
+                            }}
+                          />
+                          <button 
+                            onClick={addRule}
+                            disabled={!promptData.newRule.trim()}
+                            className="text-sm px-3 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50 flex items-center"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                            Ajouter
+                          </button>
+                        </div>
+                    </div>
+                    
+                      <div className="space-y-2 max-h-60 overflow-y-auto p-2 border rounded bg-white">
+                        {promptData.rules.length === 0 ? (
+                          <div className="text-center p-4 text-sm text-gray-500">
+                            Aucune règle définie. Ajoutez des règles pour guider le comportement de l'agent.
+                          </div>
+                        ) : (
+                          promptData.rules.map((rule, index) => (
+                            <div key={index} className="relative p-3 border border-amber-200 rounded-md group hover:border-amber-400 bg-white shadow-sm">
+                              <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => removeRule(index)}
+                                  className="text-red-500 hover:text-red-700 p-1"
+                                  title="Supprimer cette règle"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+                              <span className="inline-block bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full mb-2">Règle {index + 1}</span>
+                              <textarea
+                                className="w-full p-2 border-none focus:ring-1 focus:ring-amber-300 bg-white text-sm rounded-md"
+                                value={rule}
+                                onChange={(e) => updateRule(index, e.target.value)}
+                                rows={2}
+                              ></textarea>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  {/* Questions Section */}
+                  <Card className="p-4 border-t-4 border-t-purple-500">
+                    <h4 className="font-medium text-gray-900 mb-3">Questions à poser</h4>
+                    <div>
+                      <div className="mb-2 p-2 bg-purple-50 rounded text-xs text-purple-800">
+                        <p className="font-medium">Structure des questions:</p>
+                        <p>Chaque question doit comporter un titre court suivi du texte complet. Exemple: "Objectif: Quel est l'objectif principal de votre entreprise ?"</p>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mb-3">
+                        <label className="block text-sm font-medium text-gray-700">Liste des questions</label>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            className="text-sm p-2 border rounded w-64"
+                            value={promptData.newQuestion}
+                            onChange={(e) => updatePromptData('newQuestion', e.target.value)}
+                            placeholder="Nouvelle question..."
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && promptData.newQuestion.trim()) {
+                                addQuestion();
+                              }
+                            }}
+                          />
+                          <button 
+                            onClick={addQuestion}
+                            disabled={!promptData.newQuestion.trim()}
+                            className="text-sm px-3 py-1 rounded bg-purple-100 text-purple-700 hover:bg-purple-200 disabled:opacity-50 flex items-center"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                            Ajouter
+                          </button>
+                    </div>
+                  </div>
+                      
+                      <div className="space-y-3 max-h-80 overflow-y-auto p-2 border rounded bg-white">
+                        {promptData.questions.length === 0 ? (
+                          <div className="text-center p-4 text-sm text-gray-500">
+                            Aucune question définie. Ajoutez des questions pour que l'agent puisse interagir avec les participants.
+                </div>
+                        ) : (
+                          promptData.questions.map((q) => (
+                            <div key={q.id} className="relative p-3 border border-purple-200 rounded-md group hover:border-purple-400 bg-white shadow-sm">
+                              <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => removeQuestion(q.id)}
+                                  className="text-red-500 hover:text-red-700 p-1"
+                                  title="Supprimer cette question"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+                              <div className="flex items-center mb-2">
+                                <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full mr-2">{q.id}</span>
+                                <span className="text-xs text-gray-500">Question</span>
+                              </div>
+                              <textarea
+                                className="w-full p-2 border-none focus:ring-1 focus:ring-purple-300 bg-white text-sm rounded-md"
+                                value={q.question}
+                                onChange={(e) => updateQuestion(q.id, e.target.value)}
+                                rows={3}
+                              ></textarea>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      
+                      {promptData.questions.length > 0 && (
+                        <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
+                          <span>{promptData.questions.length} question(s) configurée(s)</span>
+                          <span>Faites glisser pour réorganiser (bientôt disponible)</span>
+                        </div>
+                      )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                  Teacher Name
-                  <span className="ml-1 text-xs text-white bg-blue-500 px-1.5 py-0.5 rounded-full">Required</span>
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                  value={promptData.teacherName}
-                  onChange={(e) => {
-                    updatePromptData('teacherName', e.target.value);
-                    updateSessionConfig({
-                      ...sessionConfig,
-                      teacherName: e.target.value
-                    });
-                  }}
-                  placeholder="Enter teacher name"
-                />
-                <p className="text-xs text-gray-500 mt-1">Used in the closing message</p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Controls Section */}
-          <div className="flex justify-between items-center pt-4">
-            <button 
-              onClick={() => setPromptData({
-                agentName: agent.agentName || agentName,
-                programName: sessionConfig.title || '',
-                teacherName: sessionConfig.teacherName || '',
-                programContext: sessionConfig.programContext || '',
-                style: DEFAULT_NUGGETS_STYLE,
-                rules: DEFAULT_NUGGETS_RULES,
-                questions: DEFAULT_NUGGETS_QUESTIONS,
-                showRawPrompt: promptData.showRawPrompt,
-                newRule: '',
-                newQuestion: ''
-              })}
-              className="text-sm px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              Reset
-            </button>
+            </Card>
             
-            <button
-              onClick={() => updatePromptData('showRawPrompt', true)}
-              className="text-sm px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-              View Complete Prompt
-            </button>
+                  {/* Controls Section */}
+                  <div className="flex justify-between items-center pt-4">
+                    <button 
+                      onClick={() => setPromptData({
+                        agentName: agent.agentName || agentName,
+                        programName: sessionConfig.title || '',
+                        teacherName: sessionConfig.teacherName || '',
+                        programContext: sessionConfig.programContext || '',
+                        style: DEFAULT_NUGGETS_STYLE,
+                        rules: DEFAULT_NUGGETS_RULES,
+                        questions: DEFAULT_NUGGETS_QUESTIONS,
+                        showRawPrompt: promptData.showRawPrompt,
+                        newRule: '',
+                        newQuestion: ''
+                      })}
+                      className="text-sm px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                      </svg>
+                      Réinitialiser
+                    </button>
+                    
+                    <button
+                      onClick={() => updatePromptData('showRawPrompt', true)}
+                      className="text-sm px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                      Voir le prompt complet
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </div>
