@@ -22,7 +22,7 @@ import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParse
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { AgentService } from '@/lib/services/agentService';
-import { supabase } from '@/lib/supabase';
+import { useSessionConfigStore } from '@/lib/store/sessionConfigStore';
 import { debounce } from 'lodash';
 
 // Nuggets prompt template
@@ -232,6 +232,9 @@ const AIInteractionConfig = ({
   const router = useRouter();
   const { toast } = useToast();
   
+  // Utilisation du store pour l'état temporaire
+  const { tempConfig, updateConfig, history, restoreFromHistory } = useSessionConfigStore();
+  
   // Check for client-side rendering
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
@@ -274,50 +277,84 @@ const AIInteractionConfig = ({
   // Selected analysis item for configuration in final analysis step
   const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
 
-  // Add state for save feedback
+  // État pour le feedback de sauvegarde
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
 
-  // Debounced save function
-  const debouncedSave = useCallback(
-    debounce(async (config) => {
-      try {
-        setIsSaving(true);
-        // Save to Supabase
-        const { data, error } = await supabase
-          .from('session_configurations')
-          .upsert({
-            id: sessionConfig.id,
-            configuration: config
-          });
+  // Add configuration history support
+  const [showHistory, setShowHistory] = useState(false);
+  const [configHistory, setConfigHistory] = useState([]);
 
-        if (error) throw error;
+  // Optimized save function with local storage
+  const saveSessionConfig = useCallback(async (config) => {
+    setIsSaving(true);
+    try {
+      // Mettre à jour le store local
+      updateConfig(config);
+      
+      setLastSaved(new Date());
+      setIsSaving(false);
+      
+      toast({
+        title: "Configuration sauvegardée",
+        description: "Vos modifications ont été enregistrées localement.",
+        variant: "default",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      toast({
+        title: "Erreur de sauvegarde",
+        description: "Impossible de sauvegarder la configuration. Veuillez réessayer.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+      return false;
+    }
+  }, [updateConfig, toast]);
 
-        setLastSaved(new Date());
-        toast({
-          title: "Configuration sauvegardée",
-          description: "Vos modifications ont été enregistrées avec succès.",
-          variant: "default",
-        });
-      } catch (error) {
-        console.error('Error saving configuration:', error);
-        toast({
-          title: "Erreur de sauvegarde",
-          description: "Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSaving(false);
-      }
-    }, 1000),
-    [sessionConfig.id]
-  );
+  // Load from local storage
+  const loadSavedConfig = useCallback(() => {
+    if (tempConfig) {
+      updateSessionConfig(tempConfig);
+      setLastSaved(new Date());
+      
+      toast({
+        title: "Configuration chargée",
+        description: "Les paramètres sauvegardés ont été restaurés.",
+        variant: "default",
+      });
+    }
+  }, [tempConfig, updateSessionConfig, toast]);
 
-  // Wrap updateSessionConfig to include automatic saving
-  const saveSessionConfig = useCallback((newConfig) => {
-    updateSessionConfig(newConfig);
-    debouncedSave(newConfig);
-  }, [updateSessionConfig, debouncedSave]);
+  // Load configuration history
+  const loadConfigHistory = useCallback(() => {
+    setConfigHistory(history);
+  }, [history]);
+
+  // Restore configuration from history
+  const restoreConfiguration = useCallback((index) => {
+    try {
+      restoreFromHistory(index);
+      loadSavedConfig();
+      
+      toast({
+        title: "Configuration restaurée",
+        description: "La configuration a été restaurée avec succès.",
+        variant: "default",
+      });
+      
+      setShowHistory(false);
+    } catch (error) {
+      console.error('Error restoring configuration:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de restaurer la configuration.",
+        variant: "destructive",
+      });
+    }
+  }, [restoreFromHistory, loadSavedConfig, toast]);
 
   // Update all handlers to use saveSessionConfig instead of updateSessionConfig
   const handleNuggetsChange = useCallback((field, value) => {
@@ -1295,52 +1332,32 @@ const AIInteractionConfig = ({
 
   // Load saved configuration on mount and when switching agents
   useEffect(() => {
-    const loadSavedConfig = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('session_configurations')
-          .select('configuration')
-          .eq('id', sessionConfig.id)
-          .single();
-
-        if (error) throw error;
-
-        if (data?.configuration) {
-          // Restore the saved configuration
-          updateSessionConfig(data.configuration);
-          setLastSaved(new Date());
-          
-          toast({
-            title: "Configuration chargée",
-            description: "Les paramètres sauvegardés ont été restaurés.",
-            variant: "default",
-          });
-        }
-      } catch (error) {
-        console.error('Error loading configuration:', error);
-        toast({
-          title: "Erreur de chargement",
-          description: "Impossible de charger la configuration sauvegardée.",
-          variant: "destructive",
-        });
-      }
-    };
-
     loadSavedConfig();
-  }, [sessionConfig.id, currentStep]);
+  }, [loadSavedConfig, currentStep]);
 
-  // Save configuration before unloading
+  // Add validation before navigation
+  const handleNavigation = useCallback(async () => {
+    if (isSaving) return; // Prevent multiple saves
+    
+    const saved = await saveSessionConfig(sessionConfig);
+    if (!saved) {
+      // Show confirmation dialog if save failed
+      const shouldProceed = window.confirm(
+        "La sauvegarde de la configuration a échoué. Voulez-vous quand même quitter la page ?"
+      );
+      if (!shouldProceed) {
+        // Prevent navigation
+        window.history.pushState(null, '', window.location.href);
+      }
+    }
+  }, [isSaving, saveSessionConfig, sessionConfig]);
+
+  // Add navigation confirmation
   useEffect(() => {
-    const handleBeforeUnload = async () => {
-      try {
-        await supabase
-          .from('session_configurations')
-          .upsert({
-            id: sessionConfig.id,
-            configuration: sessionConfig
-          });
-      } catch (error) {
-        console.error('Error saving configuration before unload:', error);
+    const handleBeforeUnload = (e) => {
+      if (isSaving) {
+        e.preventDefault();
+        e.returnValue = '';
       }
     };
 
@@ -1348,49 +1365,63 @@ const AIInteractionConfig = ({
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [sessionConfig]);
+  }, [isSaving]);
 
-  // Add validation before navigation
-  const handleNavigation = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('session_configurations')
-        .upsert({
-          id: sessionConfig.id,
-          configuration: sessionConfig
-        });
+  // Add history button to the UI
+  const renderHistoryButton = () => (
+    <button
+      onClick={() => {
+        setShowHistory(true);
+        loadConfigHistory();
+      }}
+      className={`ml-4 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${primaryColor}-500`}
+    >
+      Historique
+    </button>
+  );
 
-      if (error) throw error;
-
-      toast({
-        title: "Configuration sauvegardée",
-        description: "Vos modifications ont été enregistrées avant la navigation.",
-        variant: "default",
-      });
-    } catch (error) {
-      console.error('Error saving configuration:', error);
-      toast({
-        title: "Erreur de sauvegarde",
-        description: "Une erreur est survenue lors de la sauvegarde. Vos modifications pourraient être perdues.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [sessionConfig]);
-
-  // Add navigation confirmation
-  useEffect(() => {
-    const handleRouteChange = () => {
-      handleNavigation();
-    };
-
-    window.addEventListener('beforeunload', handleRouteChange);
-    return () => {
-      window.removeEventListener('beforeunload', handleRouteChange);
-    };
-  }, [handleNavigation]);
+  // Add history modal
+  const renderHistoryModal = () => (
+    showHistory && (
+      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Historique des configurations</h3>
+          
+          <div className="max-h-96 overflow-y-auto">
+            {configHistory.map((item, index) => (
+              <div key={index} className="border-b border-gray-200 py-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-gray-500">
+                      Modifié le : {new Date(item.updated_at).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Créé le : {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => restoreConfiguration(item.updated_at)}
+                    className={`px-4 py-2 text-sm font-medium text-white bg-${primaryColor}-600 rounded-md hover:bg-${primaryColor}-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${primaryColor}-500`}
+                  >
+                    Restaurer
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setShowHistory(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  );
 
   // Main rendering logic based on current step
   if (currentStep === 'final-analysis') {
@@ -1414,31 +1445,38 @@ const AIInteractionConfig = ({
   // For AI agents (nuggets/lightbulbs), show the relevant config based on activeSection
   return (
     <div className="space-y-8">
-      {/* Agent-specific tabs for subsections */}
-      <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="grid grid-cols-3 mb-4">
-          <TabsTrigger value="config">Agent Configuration</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
-          <TabsTrigger value="book">Book</TabsTrigger>
-        </TabsList>
+      {/* Add history button next to the tabs */}
+      <div className="flex items-center justify-between">
+        <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
+          <TabsList className="grid grid-cols-3">
+            <TabsTrigger value="config">Agent Configuration</TabsTrigger>
+            <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
+            <TabsTrigger value="book">Book</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {renderHistoryButton()}
+      </div>
       
-        <TabsContent value="config">
-          {renderAgentConfigSection()}
-        </TabsContent>
-        
-        <TabsContent value="analysis">
-          {renderAgentAnalysisSection()}
-        </TabsContent>
-        
-        <TabsContent value="book">
-          {renderBookConfigSection()}
-        </TabsContent>
-      </Tabs>
+      {/* Rest of the existing UI */}
+      <TabsContent value="config">
+        {renderAgentConfigSection()}
+      </TabsContent>
+      
+      <TabsContent value="analysis">
+        {renderAgentAnalysisSection()}
+      </TabsContent>
+      
+      <TabsContent value="book">
+        {renderBookConfigSection()}
+      </TabsContent>
       
       {/* Preview Section */}
       {activeSection === "config" && previewMode && renderPreviewSection()}
 
-      {/* Add SaveStatusIndicator to the main render */}
+      {/* History Modal */}
+      {renderHistoryModal()}
+
+      {/* SaveStatusIndicator */}
       <SaveStatusIndicator isSaving={isSaving} lastSaved={lastSaved} />
     </div>
   );
