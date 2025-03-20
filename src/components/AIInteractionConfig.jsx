@@ -19,11 +19,10 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
 import { useTranslation } from './LocaleProvider';
 import AIPromptEditor from './AIPromptEditor';
 import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { AgentService } from '@/lib/services/agentService';
-import { useSessionConfigStore } from '@/lib/store/sessionConfigStore';
-import { debounce } from 'lodash';
+import { supabase } from '@/lib/supabase';
 
 // Nuggets prompt template
 const NUGGETS_PROMPT_TEMPLATE = `# Objective
@@ -230,11 +229,6 @@ const AIInteractionConfig = ({
   onAnalysisOrderChange = null
 }) => {
   const router = useRouter();
-  const { toast } = useToast();
-  
-  // Determine which agent to display based on the mode parameter
-  const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
-  const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
   
   // Check for client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -242,18 +236,6 @@ const AIInteractionConfig = ({
     setIsClient(true);
   }, []);
   
-  // Utilisation du store pour l'état temporaire
-  const { tempConfig, updateConfig, history, restoreFromHistory } = isClient ? useSessionConfigStore() : {
-    tempConfig: null,
-    updateConfig: () => {},
-    history: [],
-    restoreFromHistory: () => {}
-  };
-  
-  // État pour le feedback de sauvegarde
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
-
   // Access translations
   const { t } = useTranslation ? useTranslation() : { t: (key) => key };
   
@@ -268,6 +250,9 @@ const AIInteractionConfig = ({
   // État pour afficher le prompt complet
   const [showFullPrompt, setShowFullPrompt] = useState(false);
 
+  // Determine which agent to display based on the mode parameter
+  const activeAgentType = mode === 'lightbulb' ? 'lightbulbs' : 'nuggets';
+  
   // Extract settings from sessionConfig
   const ai_settings = sessionConfig.settings?.ai_configuration || {};
   
@@ -287,84 +272,9 @@ const AIInteractionConfig = ({
   // Selected analysis item for configuration in final analysis step
   const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
 
-  // Add configuration history support
-  const [showHistory, setShowHistory] = useState(false);
-  const [configHistory, setConfigHistory] = useState([]);
-
-  // Optimized save function with local storage
-  const saveSessionConfig = useCallback(async (config) => {
-    setIsSaving(true);
-    try {
-      // Mettre à jour le store local
-      updateConfig(config);
-      
-      setLastSaved(new Date());
-      setIsSaving(false);
-      
-      toast({
-        title: "Configuration sauvegardée",
-        description: "Vos modifications ont été enregistrées localement.",
-        variant: "default",
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving configuration:', error);
-      toast({
-        title: "Erreur de sauvegarde",
-        description: "Impossible de sauvegarder la configuration. Veuillez réessayer.",
-        variant: "destructive",
-      });
-      setIsSaving(false);
-      return false;
-    }
-  }, [updateConfig, toast]);
-
-  // Load from local storage
-  const loadSavedConfig = useCallback(() => {
-    if (tempConfig) {
-      updateSessionConfig(tempConfig);
-      setLastSaved(new Date());
-      
-      toast({
-        title: "Configuration chargée",
-        description: "Les paramètres sauvegardés ont été restaurés.",
-        variant: "default",
-      });
-    }
-  }, [tempConfig, updateSessionConfig, toast]);
-
-  // Load configuration history
-  const loadConfigHistory = useCallback(() => {
-    setConfigHistory(history);
-  }, [history]);
-
-  // Restore configuration from history
-  const restoreConfiguration = useCallback((index) => {
-    try {
-      restoreFromHistory(index);
-      loadSavedConfig();
-      
-      toast({
-        title: "Configuration restaurée",
-        description: "La configuration a été restaurée avec succès.",
-        variant: "default",
-      });
-      
-      setShowHistory(false);
-    } catch (error) {
-      console.error('Error restoring configuration:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de restaurer la configuration.",
-        variant: "destructive",
-      });
-    }
-  }, [restoreFromHistory, loadSavedConfig, toast]);
-
-  // Update all handlers to use saveSessionConfig instead of updateSessionConfig
+  // Handlers for agent configuration changes - MOVED UP before they are used
   const handleNuggetsChange = useCallback((field, value) => {
-    saveSessionConfig({
+    updateSessionConfig({
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -377,10 +287,10 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, saveSessionConfig, ai_settings, nuggets]);
-
+  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
+  
   const handleLightbulbsChange = useCallback((field, value) => {
-    saveSessionConfig({
+    updateSessionConfig({
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -393,10 +303,157 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, saveSessionConfig, ai_settings, lightbulbs]);
+  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
 
+  // Helper function to get current agent data based on mode parameter
+  const getCurrentAgent = useCallback(() => {
+    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
+  }, [activeAgentType, nuggets, lightbulbs]);
+
+  // Helper function to get current agent handler based on mode parameter
+  const getCurrentAgentHandler = useCallback(() => {
+    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+  }, [activeAgentType, handleNuggetsChange, handleLightbulbsChange]);
+
+  // Update active section when currentSection changes
+  useEffect(() => {
+    if (currentSection && (currentStep === 'nuggets' || currentStep === 'lightbulbs')) {
+      setActiveSection(currentSection);
+    }
+  }, [currentSection, currentStep]);
+  
+  // When mode or currentStep changes, we should update the UI completely
+  useEffect(() => {
+    // Reset preview state when switching agents
+    setPreviewMode(false);
+    setPreviewInput('');
+    setPreviewResponse('');
+    // Réinitialiser également l'état d'affichage du prompt complet
+    setShowFullPrompt(false);
+    console.log(`Mode changed to: ${mode}, activeAgentType set to: ${activeAgentType}`);
+  }, [mode, currentStep, activeAgentType]);
+
+  // Extraire les variables du template une seule fois au niveau principal
+  const extractTemplateVariables = useCallback(() => {
+    const agent = getCurrentAgent();
+    const promptText = agent?.prompt || '';
+    const variables = {};
+    const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
+    
+    if (activeAgentType === 'nuggets') {
+      // Variables spécifiques à Nuggets
+      variables.agentName = agent?.agentName || agentName;
+      variables.programName = sessionConfig.title || '';
+      variables.teacherName = sessionConfig.teacherName || '';
+      variables.programContext = sessionConfig.programContext || '';
+    } else if (activeAgentType === 'lightbulbs') {
+      // Variables spécifiques à Lightbulbs
+      variables.agentName = agent?.agentName || agentName;
+      variables.programName = sessionConfig.title || '';
+      variables.programContext = sessionConfig.programContext || '';
+    }
+    
+    return variables;
+  }, [activeAgentType, getCurrentAgent, sessionConfig]);
+  
+  // Fonction pour mettre à jour le prompt complet
+  const updatePromptWithVariables = useCallback((variables) => {
+    const agent = getCurrentAgent();
+    // Ne pas modifier le prompt de base, juste pour l'affichage
+    let updatedPrompt = agent?.prompt || '';
+    
+    // Remplacer les variables dans le prompt selon le type d'agent
+    if (activeAgentType === 'nuggets') {
+      if (variables.agentName) {
+        updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
+      }
+      if (variables.programName) {
+        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
+        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
+      }
+      if (variables.teacherName) {
+        updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
+      }
+      if (variables.programContext) {
+        updatedPrompt = updatedPrompt.replace(/\{programContext}/g, variables.programContext);
+      }
+    } else if (activeAgentType === 'lightbulbs') {
+      if (variables.agentName) {
+        updatedPrompt = updatedPrompt.replace(/\"AGENT NAME\"/g, `"${variables.agentName}"`);
+      }
+      if (variables.programName) {
+        updatedPrompt = updatedPrompt.replace(/\"PRGRAMENAME\"/g, `"${variables.programName}"`);
+      }
+      if (variables.programContext) {
+        updatedPrompt = updatedPrompt.replace(/\{programContext}/g, variables.programContext);
+      }
+    }
+    
+    return updatedPrompt;
+  }, [activeAgentType, getCurrentAgent]);
+  
+  // Obtenir les variables du template une fois
+  const templateVariables = extractTemplateVariables();
+  
+  // Prompt mis à jour avec les variables
+  const displayPrompt = updatePromptWithVariables(templateVariables);
+
+  // S'assurer que les prompts par défaut sont utilisés si nécessaire
+  useEffect(() => {
+    // Pour l'agent Nuggets
+    if (activeAgentType === 'nuggets' && (!nuggets.prompt || nuggets.prompt.trim() === '')) {
+      handleNuggetsChange('prompt', DEFAULT_NUGGETS_PROMPT);
+    }
+    // Pour l'agent Lightbulbs
+    else if (activeAgentType === 'lightbulbs' && (!lightbulbs.prompt || lightbulbs.prompt.trim() === '')) {
+      handleLightbulbsChange('prompt', DEFAULT_LIGHTBULBS_PROMPT);
+    }
+  }, [activeAgentType, nuggets, lightbulbs, handleNuggetsChange, handleLightbulbsChange]);
+
+  // Handler for timer settings changes
+  const handleTimerEnabledChange = useCallback((enabled) => {
+    const updatedConfig = {
+      ...sessionConfig,
+      settings: {
+        ...sessionConfig.settings,
+        ai_configuration: {
+          ...ai_settings,
+          timerEnabled: enabled
+        }
+      }
+    };
+    
+    updateSessionConfig(updatedConfig);
+    
+    // Notify parent component if callback provided (for flow map updates)
+    if (onTimerConfigChange) {
+      onTimerConfigChange({ enabled, duration: timerDuration });
+    }
+  }, [sessionConfig, updateSessionConfig, ai_settings, timerDuration, onTimerConfigChange]);
+  
+  const handleTimerDurationChange = useCallback((duration) => {
+    const updatedConfig = {
+      ...sessionConfig,
+      settings: {
+        ...sessionConfig.settings,
+        ai_configuration: {
+          ...ai_settings,
+          timerDuration: duration
+        }
+      }
+    };
+    
+    updateSessionConfig(updatedConfig);
+    
+    // Notify parent component if callback provided (for flow map updates)
+    if (onTimerConfigChange) {
+      onTimerConfigChange({ enabled: timerEnabled, duration });
+    }
+  }, [sessionConfig, updateSessionConfig, ai_settings, timerEnabled, onTimerConfigChange]);
+
+  // Handle book configuration changes
   const handleNuggetsBookConfigChange = useCallback((bookConfig) => {
-    saveSessionConfig({
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -406,16 +463,17 @@ const AIInteractionConfig = ({
             ...nuggets,
             bookConfig: {
               ...bookConfig,
-              id: 'nuggets-book'
-            }
+              id: 'nuggets-book'  // Ajout d'un identifiant unique
           }
         }
       }
-    });
-  }, [sessionConfig, saveSessionConfig, ai_settings, nuggets]);
-
+      }
+    };
+    updateSessionConfig(updatedConfig);
+  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
+  
   const handleLightbulbsBookConfigChange = useCallback((bookConfig) => {
-    saveSessionConfig({
+    const updatedConfig = {
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -425,13 +483,14 @@ const AIInteractionConfig = ({
             ...lightbulbs,
             bookConfig: {
               ...bookConfig,
-              id: 'lightbulbs-book'
-            }
+              id: 'lightbulbs-book'  // Ajout d'un identifiant unique
           }
         }
       }
-    });
-  }, [sessionConfig, saveSessionConfig, ai_settings, lightbulbs]);
+      }
+    };
+    updateSessionConfig(updatedConfig);
+  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
 
   // Handle analysis items changes
   const handleAnalysisItemsChange = useCallback((newItems) => {
@@ -448,13 +507,13 @@ const AIInteractionConfig = ({
       }
     };
     
-    saveSessionConfig(updatedConfig);
+    updateSessionConfig(updatedConfig);
     
     // Notify parent component if callback provided (for flow map updates)
     if (onAnalysisOrderChange) {
       onAnalysisOrderChange(newItems);
     }
-  }, [sessionConfig, saveSessionConfig, onAnalysisOrderChange]);
+  }, [sessionConfig, updateSessionConfig, onAnalysisOrderChange]);
 
   // Toggle analysis item enabled state
   const toggleAnalysisItemEnabled = useCallback((id) => {
@@ -535,8 +594,8 @@ const AIInteractionConfig = ({
 
   // Render agent configuration section
   const renderAgentConfigSection = () => {
-    const agent = activeAgentType === 'nuggets' ? nuggets : lightbulbs;
-    const handleAgentChange = activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+    const agent = getCurrentAgent();
+    const handleAgentChange = getCurrentAgentHandler();
     const handleImageUploaded = activeAgentType === 'nuggets' ? handleNuggetsImageUploaded : handleLightbulbsImageUploaded;
     const resetImage = activeAgentType === 'nuggets' ? resetNuggetsImage : resetLightbulbsImage;
     const defaultImage = activeAgentType === 'nuggets' ? DEFAULT_AGENT_IMAGES.nuggets : DEFAULT_AGENT_IMAGES.lightbulbs;
@@ -881,7 +940,7 @@ const AIInteractionConfig = ({
                         onChange={(e) => {
                             updatePromptData('programName', e.target.value);
                             // Also update the session config
-                          saveSessionConfig({
+                          updateSessionConfig({
                             ...sessionConfig,
                             title: e.target.value
                           });
@@ -902,7 +961,7 @@ const AIInteractionConfig = ({
                           onChange={(e) => {
                             updatePromptData('programContext', e.target.value);
                             // Also update the session config
-                            saveSessionConfig({
+                            updateSessionConfig({
                               ...sessionConfig,
                               programContext: e.target.value
                             });
@@ -925,7 +984,7 @@ const AIInteractionConfig = ({
                           onChange={(e) => {
                             updatePromptData('teacherName', e.target.value);
                             // Also update the session config
-                            saveSessionConfig({
+                            updateSessionConfig({
                               ...sessionConfig,
                               teacherName: e.target.value
                             });
@@ -1173,8 +1232,8 @@ const AIInteractionConfig = ({
 
   // Render agent analysis section
   const renderAgentAnalysisSection = () => {
-    const agent = activeAgentType === 'nuggets' ? nuggets : lightbulbs;
-    const handleAgentChange = activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
+    const agent = getCurrentAgent();
+    const handleAgentChange = getCurrentAgentHandler();
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
 
     return (
@@ -1268,10 +1327,10 @@ const AIInteractionConfig = ({
 
   // Render book configuration section
   const renderBookConfigSection = () => {
-    const currentAgent = activeAgentType === 'nuggets' ? nuggets : lightbulbs;
+    const currentAgent = getCurrentAgent();
     const bookConfigProps = {
       initialConfig: {
-        agentName: currentAgent.agentName,
+        agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
         programName: sessionConfig.title || '',
         teacherName: sessionConfig.teacherName || '',
         customRules: [],
@@ -1336,99 +1395,6 @@ const AIInteractionConfig = ({
     }
   }, [nuggets.bookConfig, lightbulbs.bookConfig]);
 
-  // Load saved configuration on mount and when switching agents
-  useEffect(() => {
-    loadSavedConfig();
-  }, [loadSavedConfig, currentStep]);
-
-  // Add validation before navigation
-  const handleNavigation = useCallback(async () => {
-    if (isSaving) return; // Prevent multiple saves
-    
-    const saved = await saveSessionConfig(sessionConfig);
-    if (!saved) {
-      // Show confirmation dialog if save failed
-      const shouldProceed = window.confirm(
-        "La sauvegarde de la configuration a échoué. Voulez-vous quand même quitter la page ?"
-      );
-      if (!shouldProceed) {
-        // Prevent navigation
-        window.history.pushState(null, '', window.location.href);
-      }
-    }
-  }, [isSaving, saveSessionConfig, sessionConfig]);
-
-  // Add navigation confirmation
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (isSaving) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [isSaving]);
-
-  // Add history button to the UI
-  const renderHistoryButton = () => (
-    <button
-      onClick={() => {
-        setShowHistory(true);
-        loadConfigHistory();
-      }}
-      className={`ml-4 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${primaryColor}-500`}
-    >
-      Historique
-    </button>
-  );
-
-  // Add history modal
-  const renderHistoryModal = () => (
-    showHistory && (
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Historique des configurations</h3>
-          
-          <div className="max-h-96 overflow-y-auto">
-            {configHistory.map((item, index) => (
-              <div key={index} className="border-b border-gray-200 py-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-gray-500">
-                      Modifié le : {new Date(item.updated_at).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Créé le : {new Date(item.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => restoreConfiguration(item.updated_at)}
-                    className={`px-4 py-2 text-sm font-medium text-white bg-${primaryColor}-600 rounded-md hover:bg-${primaryColor}-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-${primaryColor}-500`}
-                  >
-                    Restaurer
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={() => setShowHistory(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  );
-
   // Main rendering logic based on current step
   if (currentStep === 'final-analysis') {
     // Render final analysis section
@@ -1450,14 +1416,15 @@ const AIInteractionConfig = ({
 
   // For AI agents (nuggets/lightbulbs), show the relevant config based on activeSection
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue={currentSection} className="w-full">
-        <TabsList>
-          <TabsTrigger value="config">Configuration</TabsTrigger>
-          <TabsTrigger value="analysis">Analyse</TabsTrigger>
-          <TabsTrigger value="book">Carnet</TabsTrigger>
+    <div className="space-y-8">
+      {/* Agent-specific tabs for subsections */}
+      <Tabs defaultValue={activeSection} value={activeSection} onValueChange={setActiveSection}>
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="config">Agent Configuration</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis Configuration</TabsTrigger>
+          <TabsTrigger value="book">Book</TabsTrigger>
         </TabsList>
-        
+      
         <TabsContent value="config">
           {renderAgentConfigSection()}
         </TabsContent>
@@ -1471,34 +1438,10 @@ const AIInteractionConfig = ({
         </TabsContent>
       </Tabs>
       
-      {renderHistoryButton()}
-      {renderHistoryModal()}
+      {/* Preview Section */}
+      {activeSection === "config" && previewMode && renderPreviewSection()}
     </div>
   );
 };
-
-// SaveStatusIndicator component
-const SaveStatusIndicator = ({ isSaving, lastSaved }) => (
-  <div className="fixed bottom-4 right-4 flex items-center space-x-2 bg-white rounded-lg shadow-lg p-3 z-50">
-    {isSaving ? (
-      <>
-        <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <span className="text-sm text-gray-600">Sauvegarde en cours...</span>
-      </>
-    ) : lastSaved ? (
-      <>
-        <svg className="h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-        </svg>
-        <span className="text-sm text-gray-600">
-          Dernière sauvegarde : {new Date(lastSaved).toLocaleTimeString()}
-        </span>
-      </>
-    ) : null}
-  </div>
-);
 
 export default AIInteractionConfig;
