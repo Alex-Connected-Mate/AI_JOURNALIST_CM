@@ -23,6 +23,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { AgentService } from '@/lib/services/agentService';
 import { supabase } from '@/lib/supabase';
+import { debounce } from 'lodash';
 
 // Nuggets prompt template
 const NUGGETS_PROMPT_TEMPLATE = `# Objective
@@ -272,9 +273,54 @@ const AIInteractionConfig = ({
   // Selected analysis item for configuration in final analysis step
   const [selectedAnalysisItemId, setSelectedAnalysisItemId] = useState('');
 
-  // Handlers for agent configuration changes - MOVED UP before they are used
+  // Add state for save feedback
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+
+  // Debounced save function
+  const debouncedSave = useCallback(
+    debounce(async (config) => {
+      try {
+        setIsSaving(true);
+        // Save to Supabase
+        const { data, error } = await supabase
+          .from('session_configurations')
+          .upsert({
+            id: sessionConfig.id,
+            configuration: config
+          });
+
+        if (error) throw error;
+
+        setLastSaved(new Date());
+        toast({
+          title: "Configuration sauvegardée",
+          description: "Vos modifications ont été enregistrées avec succès.",
+          variant: "default",
+        });
+      } catch (error) {
+        console.error('Error saving configuration:', error);
+        toast({
+          title: "Erreur de sauvegarde",
+          description: "Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000),
+    [sessionConfig.id]
+  );
+
+  // Wrap updateSessionConfig to include automatic saving
+  const saveSessionConfig = useCallback((newConfig) => {
+    updateSessionConfig(newConfig);
+    debouncedSave(newConfig);
+  }, [updateSessionConfig, debouncedSave]);
+
+  // Update all handlers to use saveSessionConfig instead of updateSessionConfig
   const handleNuggetsChange = useCallback((field, value) => {
-    updateSessionConfig({
+    saveSessionConfig({
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -287,10 +333,10 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
-  
+  }, [sessionConfig, saveSessionConfig, ai_settings, nuggets]);
+
   const handleLightbulbsChange = useCallback((field, value) => {
-    updateSessionConfig({
+    saveSessionConfig({
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -303,157 +349,10 @@ const AIInteractionConfig = ({
         }
       }
     });
-  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
+  }, [sessionConfig, saveSessionConfig, ai_settings, lightbulbs]);
 
-  // Helper function to get current agent data based on mode parameter
-  const getCurrentAgent = useCallback(() => {
-    return activeAgentType === 'nuggets' ? nuggets : lightbulbs;
-  }, [activeAgentType, nuggets, lightbulbs]);
-
-  // Helper function to get current agent handler based on mode parameter
-  const getCurrentAgentHandler = useCallback(() => {
-    return activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
-  }, [activeAgentType, handleNuggetsChange, handleLightbulbsChange]);
-
-  // Update active section when currentSection changes
-  useEffect(() => {
-    if (currentSection && (currentStep === 'nuggets' || currentStep === 'lightbulbs')) {
-      setActiveSection(currentSection);
-    }
-  }, [currentSection, currentStep]);
-  
-  // When mode or currentStep changes, we should update the UI completely
-  useEffect(() => {
-    // Reset preview state when switching agents
-    setPreviewMode(false);
-    setPreviewInput('');
-    setPreviewResponse('');
-    // Réinitialiser également l'état d'affichage du prompt complet
-    setShowFullPrompt(false);
-    console.log(`Mode changed to: ${mode}, activeAgentType set to: ${activeAgentType}`);
-  }, [mode, currentStep, activeAgentType]);
-
-  // Extraire les variables du template une seule fois au niveau principal
-  const extractTemplateVariables = useCallback(() => {
-    const agent = getCurrentAgent();
-    const promptText = agent?.prompt || '';
-    const variables = {};
-    const agentName = activeAgentType === 'nuggets' ? 'Elias' : 'Sonia';
-    
-    if (activeAgentType === 'nuggets') {
-      // Variables spécifiques à Nuggets
-      variables.agentName = agent?.agentName || agentName;
-      variables.programName = sessionConfig.title || '';
-      variables.teacherName = sessionConfig.teacherName || '';
-      variables.programContext = sessionConfig.programContext || '';
-    } else if (activeAgentType === 'lightbulbs') {
-      // Variables spécifiques à Lightbulbs
-      variables.agentName = agent?.agentName || agentName;
-      variables.programName = sessionConfig.title || '';
-      variables.programContext = sessionConfig.programContext || '';
-    }
-    
-    return variables;
-  }, [activeAgentType, getCurrentAgent, sessionConfig]);
-  
-  // Fonction pour mettre à jour le prompt complet
-  const updatePromptWithVariables = useCallback((variables) => {
-    const agent = getCurrentAgent();
-    // Ne pas modifier le prompt de base, juste pour l'affichage
-    let updatedPrompt = agent?.prompt || '';
-    
-    // Remplacer les variables dans le prompt selon le type d'agent
-    if (activeAgentType === 'nuggets') {
-      if (variables.agentName) {
-        updatedPrompt = updatedPrompt.replace(/\"AGENT NAMED\"/g, `"${variables.agentName}"`);
-      }
-      if (variables.programName) {
-        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAME\"/g, `"${variables.programName}"`);
-        updatedPrompt = updatedPrompt.replace(/\"PROGRAME NAMED\"/g, `"${variables.programName}"`);
-      }
-      if (variables.teacherName) {
-        updatedPrompt = updatedPrompt.replace(/\"TEATCHER NAME\"/g, `"${variables.teacherName}"`);
-      }
-      if (variables.programContext) {
-        updatedPrompt = updatedPrompt.replace(/\{programContext}/g, variables.programContext);
-      }
-    } else if (activeAgentType === 'lightbulbs') {
-      if (variables.agentName) {
-        updatedPrompt = updatedPrompt.replace(/\"AGENT NAME\"/g, `"${variables.agentName}"`);
-      }
-      if (variables.programName) {
-        updatedPrompt = updatedPrompt.replace(/\"PRGRAMENAME\"/g, `"${variables.programName}"`);
-      }
-      if (variables.programContext) {
-        updatedPrompt = updatedPrompt.replace(/\{programContext}/g, variables.programContext);
-      }
-    }
-    
-    return updatedPrompt;
-  }, [activeAgentType, getCurrentAgent]);
-  
-  // Obtenir les variables du template une fois
-  const templateVariables = extractTemplateVariables();
-  
-  // Prompt mis à jour avec les variables
-  const displayPrompt = updatePromptWithVariables(templateVariables);
-
-  // S'assurer que les prompts par défaut sont utilisés si nécessaire
-  useEffect(() => {
-    // Pour l'agent Nuggets
-    if (activeAgentType === 'nuggets' && (!nuggets.prompt || nuggets.prompt.trim() === '')) {
-      handleNuggetsChange('prompt', DEFAULT_NUGGETS_PROMPT);
-    }
-    // Pour l'agent Lightbulbs
-    else if (activeAgentType === 'lightbulbs' && (!lightbulbs.prompt || lightbulbs.prompt.trim() === '')) {
-      handleLightbulbsChange('prompt', DEFAULT_LIGHTBULBS_PROMPT);
-    }
-  }, [activeAgentType, nuggets, lightbulbs, handleNuggetsChange, handleLightbulbsChange]);
-
-  // Handler for timer settings changes
-  const handleTimerEnabledChange = useCallback((enabled) => {
-    const updatedConfig = {
-      ...sessionConfig,
-      settings: {
-        ...sessionConfig.settings,
-        ai_configuration: {
-          ...ai_settings,
-          timerEnabled: enabled
-        }
-      }
-    };
-    
-    updateSessionConfig(updatedConfig);
-    
-    // Notify parent component if callback provided (for flow map updates)
-    if (onTimerConfigChange) {
-      onTimerConfigChange({ enabled, duration: timerDuration });
-    }
-  }, [sessionConfig, updateSessionConfig, ai_settings, timerDuration, onTimerConfigChange]);
-  
-  const handleTimerDurationChange = useCallback((duration) => {
-    const updatedConfig = {
-      ...sessionConfig,
-      settings: {
-        ...sessionConfig.settings,
-        ai_configuration: {
-          ...ai_settings,
-          timerDuration: duration
-        }
-      }
-    };
-    
-    updateSessionConfig(updatedConfig);
-    
-    // Notify parent component if callback provided (for flow map updates)
-    if (onTimerConfigChange) {
-      onTimerConfigChange({ enabled: timerEnabled, duration });
-    }
-  }, [sessionConfig, updateSessionConfig, ai_settings, timerEnabled, onTimerConfigChange]);
-
-  // Handle book configuration changes
   const handleNuggetsBookConfigChange = useCallback((bookConfig) => {
-    const updatedConfig = {
+    saveSessionConfig({
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -463,17 +362,16 @@ const AIInteractionConfig = ({
             ...nuggets,
             bookConfig: {
               ...bookConfig,
-              id: 'nuggets-book'  // Ajout d'un identifiant unique
+              id: 'nuggets-book'
             }
           }
         }
       }
-    };
-    updateSessionConfig(updatedConfig);
-  }, [sessionConfig, updateSessionConfig, ai_settings, nuggets]);
-  
+    });
+  }, [sessionConfig, saveSessionConfig, ai_settings, nuggets]);
+
   const handleLightbulbsBookConfigChange = useCallback((bookConfig) => {
-    const updatedConfig = {
+    saveSessionConfig({
       ...sessionConfig,
       settings: {
         ...sessionConfig.settings,
@@ -483,14 +381,13 @@ const AIInteractionConfig = ({
             ...lightbulbs,
             bookConfig: {
               ...bookConfig,
-              id: 'lightbulbs-book'  // Ajout d'un identifiant unique
+              id: 'lightbulbs-book'
             }
           }
         }
       }
-    };
-    updateSessionConfig(updatedConfig);
-  }, [sessionConfig, updateSessionConfig, ai_settings, lightbulbs]);
+    });
+  }, [sessionConfig, saveSessionConfig, ai_settings, lightbulbs]);
 
   // Handle analysis items changes
   const handleAnalysisItemsChange = useCallback((newItems) => {
@@ -507,13 +404,13 @@ const AIInteractionConfig = ({
       }
     };
     
-    updateSessionConfig(updatedConfig);
+    saveSessionConfig(updatedConfig);
     
     // Notify parent component if callback provided (for flow map updates)
     if (onAnalysisOrderChange) {
       onAnalysisOrderChange(newItems);
     }
-  }, [sessionConfig, updateSessionConfig, onAnalysisOrderChange]);
+  }, [sessionConfig, saveSessionConfig, onAnalysisOrderChange]);
 
   // Toggle analysis item enabled state
   const toggleAnalysisItemEnabled = useCallback((id) => {
@@ -594,8 +491,8 @@ const AIInteractionConfig = ({
 
   // Render agent configuration section
   const renderAgentConfigSection = () => {
-    const agent = getCurrentAgent();
-    const handleAgentChange = getCurrentAgentHandler();
+    const agent = activeAgentType === 'nuggets' ? nuggets : lightbulbs;
+    const handleAgentChange = activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
     const handleImageUploaded = activeAgentType === 'nuggets' ? handleNuggetsImageUploaded : handleLightbulbsImageUploaded;
     const resetImage = activeAgentType === 'nuggets' ? resetNuggetsImage : resetLightbulbsImage;
     const defaultImage = activeAgentType === 'nuggets' ? DEFAULT_AGENT_IMAGES.nuggets : DEFAULT_AGENT_IMAGES.lightbulbs;
@@ -940,7 +837,7 @@ const AIInteractionConfig = ({
                         onChange={(e) => {
                             updatePromptData('programName', e.target.value);
                             // Also update the session config
-                          updateSessionConfig({
+                          saveSessionConfig({
                             ...sessionConfig,
                             title: e.target.value
                           });
@@ -961,7 +858,7 @@ const AIInteractionConfig = ({
                           onChange={(e) => {
                             updatePromptData('programContext', e.target.value);
                             // Also update the session config
-                            updateSessionConfig({
+                            saveSessionConfig({
                               ...sessionConfig,
                               programContext: e.target.value
                             });
@@ -984,7 +881,7 @@ const AIInteractionConfig = ({
                           onChange={(e) => {
                             updatePromptData('teacherName', e.target.value);
                             // Also update the session config
-                            updateSessionConfig({
+                            saveSessionConfig({
                               ...sessionConfig,
                               teacherName: e.target.value
                             });
@@ -1232,8 +1129,8 @@ const AIInteractionConfig = ({
 
   // Render agent analysis section
   const renderAgentAnalysisSection = () => {
-    const agent = getCurrentAgent();
-    const handleAgentChange = getCurrentAgentHandler();
+    const agent = activeAgentType === 'nuggets' ? nuggets : lightbulbs;
+    const handleAgentChange = activeAgentType === 'nuggets' ? handleNuggetsChange : handleLightbulbsChange;
     const primaryColor = activeAgentType === 'nuggets' ? 'blue' : 'amber';
 
     return (
@@ -1327,10 +1224,10 @@ const AIInteractionConfig = ({
 
   // Render book configuration section
   const renderBookConfigSection = () => {
-    const currentAgent = getCurrentAgent();
+    const currentAgent = activeAgentType === 'nuggets' ? nuggets : lightbulbs;
     const bookConfigProps = {
       initialConfig: {
-        agentName: activeAgentType === 'nuggets' ? nuggets.agentName : lightbulbs.agentName,
+        agentName: currentAgent.agentName,
         programName: sessionConfig.title || '',
         teacherName: sessionConfig.teacherName || '',
         customRules: [],
@@ -1395,6 +1292,105 @@ const AIInteractionConfig = ({
     }
   }, [nuggets.bookConfig, lightbulbs.bookConfig]);
 
+  // Load saved configuration on mount and when switching agents
+  useEffect(() => {
+    const loadSavedConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('session_configurations')
+          .select('configuration')
+          .eq('id', sessionConfig.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data?.configuration) {
+          // Restore the saved configuration
+          updateSessionConfig(data.configuration);
+          setLastSaved(new Date());
+          
+          toast({
+            title: "Configuration chargée",
+            description: "Les paramètres sauvegardés ont été restaurés.",
+            variant: "default",
+          });
+        }
+      } catch (error) {
+        console.error('Error loading configuration:', error);
+        toast({
+          title: "Erreur de chargement",
+          description: "Impossible de charger la configuration sauvegardée.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadSavedConfig();
+  }, [sessionConfig.id, currentStep]);
+
+  // Save configuration before unloading
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      try {
+        await supabase
+          .from('session_configurations')
+          .upsert({
+            id: sessionConfig.id,
+            configuration: sessionConfig
+          });
+      } catch (error) {
+        console.error('Error saving configuration before unload:', error);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [sessionConfig]);
+
+  // Add validation before navigation
+  const handleNavigation = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('session_configurations')
+        .upsert({
+          id: sessionConfig.id,
+          configuration: sessionConfig
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Configuration sauvegardée",
+        description: "Vos modifications ont été enregistrées avant la navigation.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      toast({
+        title: "Erreur de sauvegarde",
+        description: "Une erreur est survenue lors de la sauvegarde. Vos modifications pourraient être perdues.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [sessionConfig]);
+
+  // Add navigation confirmation
+  useEffect(() => {
+    const handleRouteChange = () => {
+      handleNavigation();
+    };
+
+    window.addEventListener('beforeunload', handleRouteChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleRouteChange);
+    };
+  }, [handleNavigation]);
+
   // Main rendering logic based on current step
   if (currentStep === 'final-analysis') {
     // Render final analysis section
@@ -1440,8 +1436,35 @@ const AIInteractionConfig = ({
       
       {/* Preview Section */}
       {activeSection === "config" && previewMode && renderPreviewSection()}
+
+      {/* Add SaveStatusIndicator to the main render */}
+      <SaveStatusIndicator />
     </div>
   );
 };
+
+// Add SaveStatusIndicator component
+const SaveStatusIndicator = () => (
+  <div className="fixed bottom-4 right-4 flex items-center space-x-2 bg-white rounded-lg shadow-lg p-3 z-50">
+    {isSaving ? (
+      <>
+        <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span className="text-sm text-gray-600">Sauvegarde en cours...</span>
+      </>
+    ) : lastSaved ? (
+      <>
+        <svg className="h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+        </svg>
+        <span className="text-sm text-gray-600">
+          Dernière sauvegarde : {new Date(lastSaved).toLocaleTimeString()}
+        </span>
+      </>
+    ) : null}
+  </div>
+);
 
 export default AIInteractionConfig;
