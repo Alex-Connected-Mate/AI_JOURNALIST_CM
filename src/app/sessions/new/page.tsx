@@ -98,12 +98,9 @@ export default function NewSessionPage() {
     setError(null);
     setSuccess(null);
     
-    // Track creation start
-    sessionTracker.trackSessionCreation.start(sessionConfig);
-    logger.session('Starting session creation process');
-    
     try {
-      logger.session('Processing session configuration');
+      // Track creation start
+      sessionTracker.trackSessionCreation.start(sessionConfig);
       
       const sessionData = {
         title: sessionConfig.sessionName || sessionConfig.basicInfo?.title || '',
@@ -138,7 +135,10 @@ export default function NewSessionPage() {
         p_max_participants: sessionData.settings.maxParticipants
       });
       
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        sessionTracker.trackSessionCreation.error(sessionConfig, sessionError);
+        throw sessionError;
+      }
 
       // Create agents for the session
       await Promise.all([
@@ -146,14 +146,13 @@ export default function NewSessionPage() {
         createSessionAgent('lightbulbs', session.id, sessionConfig, user.id)
       ]);
 
-      logger.session('Session created successfully');
+      sessionTracker.trackSessionCreation.success(sessionConfig, session);
       setSuccess('Session créée avec succès !');
       router.push(`/sessions/${session.id}/edit`);
     } catch (err: any) {
       const errorMsg = err.message || 'Une erreur est survenue lors de la création de la session';
-      logger.error('Session creation failed');
-      setError(errorMsg);
       sessionTracker.trackSessionCreation.error(sessionConfig, err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
