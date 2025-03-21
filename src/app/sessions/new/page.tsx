@@ -205,52 +205,43 @@ export default function NewSessionPage() {
 
       if (agentError) throw agentError;
 
-      // Créer la configuration du prompt
-      const { data: prompt, error: promptError } = await supabase
-        .from('agent_prompts')
-        .insert([{
-          agent_id: agent,  // La fonction retourne directement l'UUID
-          style: config.aiInteraction?.configuration?.[agentType]?.style || {},
-          rules: config.aiInteraction?.configuration?.[agentType]?.rules || [],
-          questions: config.aiInteraction?.configuration?.[agentType]?.questions || [],
-          template_version: '1.0',
-          base_prompt: config.aiInteraction?.configuration?.[agentType]?.basePrompt || '',
-          created_by: userId
-        }])
-        .select()
-        .single();
+      // Créer la configuration du prompt en utilisant la fonction sécurisée
+      const { data: prompt, error: promptError } = await supabase.rpc('create_agent_prompt_secure', {
+        p_agent_id: agent,
+        p_style: config.aiInteraction?.configuration?.[agentType]?.style || {},
+        p_rules: config.aiInteraction?.configuration?.[agentType]?.rules || [],
+        p_questions: config.aiInteraction?.configuration?.[agentType]?.questions || [],
+        p_template_version: '1.0',
+        p_base_prompt: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
+      });
 
       if (promptError) throw promptError;
 
-      // Créer la configuration d'analyse
-      const { data: analysis, error: analysisError } = await supabase
-        .from('agent_analysis_config')
-        .insert([{
-          agent_id: agent,  // La fonction retourne directement l'UUID
-          analysis_type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
-          parameters: {
-            format: 'structured',
-            criteria: agentType === 'nuggets' ? 
-              ['relevance', 'accuracy', 'clarity'] : 
-              ['innovation', 'feasibility', 'impact'],
-            settings: config.aiInteraction?.configuration?.[agentType]?.analysisSettings || {}
-          },
-          enabled: true
-        }])
-        .select()
-        .single();
+      // Créer la configuration d'analyse en utilisant la fonction sécurisée
+      const { data: analysis, error: analysisError } = await supabase.rpc('create_agent_analysis_config_secure', {
+        p_agent_id: agent,
+        p_analysis_type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
+        p_parameters: {
+          format: 'structured',
+          criteria: agentType === 'nuggets' ? 
+            ['relevance', 'accuracy', 'clarity'] : 
+            ['innovation', 'feasibility', 'impact'],
+          settings: config.aiInteraction?.configuration?.[agentType]?.analysisSettings || {}
+        },
+        p_enabled: true
+      });
 
       if (analysisError) throw analysisError;
 
       // Lier l'agent à la session
       const { error: sessionAgentError } = await supabase.rpc('create_session_agent', {
         p_session_id: sessionId,
-        p_agent_id: agent,  // La fonction retourne directement l'UUID
+        p_agent_id: agent,
         p_is_primary: agentType === 'nuggets',
         p_configuration: {
           temperature: 0.7,
           max_tokens: 2000,
-          prompt_template: prompt.base_prompt
+          prompt_template: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
         },
         p_settings: {
           visibility: true,
@@ -263,7 +254,7 @@ export default function NewSessionPage() {
       if (sessionAgentError) throw sessionAgentError;
 
       logger.session(`Agent ${agentType} created and configured successfully`);
-      return agent;  // Retourne directement l'UUID
+      return agent;
     } catch (error) {
       logger.error(`Failed to create session agent ${agentType}:`, error);
       throw error;
