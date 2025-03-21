@@ -235,14 +235,14 @@ export default function NewSessionPage() {
 
       // Lier l'agent à la session
       const { error: sessionAgentError } = await supabase.rpc('create_session_agent', {
-        p_session_id: sessionId,
         p_agent_id: agent,
-        p_is_primary: agentType === 'nuggets',
         p_configuration: {
           temperature: 0.7,
           max_tokens: 2000,
           prompt_template: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
         },
+        p_is_primary: agentType === 'nuggets',
+        p_session_id: sessionId,
         p_settings: {
           visibility: true,
           interaction_mode: 'auto',
