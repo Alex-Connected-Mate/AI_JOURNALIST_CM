@@ -4,8 +4,7 @@ ALTER TABLE public.agent_prompts DROP CONSTRAINT IF EXISTS unique_active_prompt_
 -- Add new unique constraint that includes is_active
 ALTER TABLE public.agent_prompts
 ADD CONSTRAINT unique_active_prompt_per_agent 
-UNIQUE (agent_id, is_active) 
-WHERE (is_active = true);
+UNIQUE (agent_id) WHERE is_active = true;
 
 -- Drop existing function
 DROP FUNCTION IF EXISTS public.create_agent_prompt_secure;
