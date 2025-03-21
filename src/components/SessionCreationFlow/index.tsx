@@ -1,7 +1,7 @@
 import { FC, useState, useEffect } from 'react';
 import { SessionConfigType } from '@/types/session';
 
-interface SessionCreationFlowProps {
+export interface SessionCreationFlowProps {
   initialConfig: SessionConfigType;
   onSubmit: (config: Partial<SessionConfigType>) => Promise<void>;
   isSubmitting: boolean;
