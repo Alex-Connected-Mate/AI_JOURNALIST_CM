@@ -1,7 +1,7 @@
 -- Drop existing function if it exists
 DROP FUNCTION IF EXISTS public.create_session_agent;
 
--- Recreate the function with both parameter formats
+-- Recreate the function with updated parameters
 CREATE OR REPLACE FUNCTION public.create_session_agent(
     p_agent_id uuid,
     p_configuration jsonb DEFAULT NULL,
@@ -12,6 +12,7 @@ CREATE OR REPLACE FUNCTION public.create_session_agent(
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     v_user_id uuid;
@@ -28,6 +29,11 @@ BEGIN
     -- Verify user is authenticated
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Verify session_id is provided
+    IF p_session_id IS NULL THEN
+        RAISE EXCEPTION 'Session ID is required';
     END IF;
 
     -- Extract parameters from configuration if provided
@@ -55,20 +61,18 @@ BEGIN
         RAISE EXCEPTION 'Not authorized to use this agent';
     END IF;
 
-    -- If session_id is provided, verify ownership
-    IF p_session_id IS NOT NULL THEN
-        SELECT user_id INTO v_session_owner_id
-        FROM public.sessions
-        WHERE id = p_session_id;
+    -- Verify session ownership
+    SELECT user_id INTO v_session_owner_id
+    FROM public.sessions
+    WHERE id = p_session_id;
 
-        -- Verify session exists and user owns it
-        IF v_session_owner_id IS NULL THEN
-            RAISE EXCEPTION 'Session not found';
-        END IF;
+    -- Verify session exists and user owns it
+    IF v_session_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Session not found';
+    END IF;
 
-        IF v_session_owner_id != v_user_id THEN
-            RAISE EXCEPTION 'Not authorized to modify this session';
-        END IF;
+    IF v_session_owner_id != v_user_id THEN
+        RAISE EXCEPTION 'Not authorized to modify this session';
     END IF;
 
     -- Insert the session agent
