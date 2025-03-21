@@ -5,6 +5,9 @@ BEGIN
     DROP CONSTRAINT IF EXISTS user_id_title_key;
 END $$;
 
+-- Drop existing functions
+DROP FUNCTION IF EXISTS public.create_session_secure(text, text, jsonb, integer);
+
 -- Add a new function to generate a unique title
 CREATE OR REPLACE FUNCTION public.generate_unique_session_title(
     p_base_title text,
@@ -39,8 +42,8 @@ BEGIN
 END;
 $$;
 
--- Update the create_session_secure function to use the new title generator
-CREATE OR REPLACE FUNCTION public.create_session_secure(
+-- Create the new session secure function
+CREATE FUNCTION public.create_session_secure(
     p_title text,
     p_description text DEFAULT '',
     p_settings jsonb DEFAULT '{}'::jsonb,
