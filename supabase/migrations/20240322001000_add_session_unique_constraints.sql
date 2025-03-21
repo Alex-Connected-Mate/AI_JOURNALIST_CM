@@ -1,3 +1,20 @@
+-- Drop existing constraints if they exist
+DO $$ 
+BEGIN
+    -- Try to drop the constraints if they exist
+    BEGIN
+        ALTER TABLE public.sessions DROP CONSTRAINT IF EXISTS sessions_session_code_key;
+    EXCEPTION WHEN OTHERS THEN
+        -- Ignore any errors
+    END;
+    
+    BEGIN
+        ALTER TABLE public.sessions DROP CONSTRAINT IF EXISTS sessions_access_code_key;
+    EXCEPTION WHEN OTHERS THEN
+        -- Ignore any errors
+    END;
+END $$;
+
 -- Add unique constraints to sessions table
 ALTER TABLE public.sessions
 ADD CONSTRAINT sessions_session_code_key UNIQUE (session_code),
