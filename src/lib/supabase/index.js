@@ -31,20 +31,13 @@ export const getSessionById = async (sessionId) => {
  * @returns {Promise<Object>} Résultat de l'opération
  */
 export const createSession = async (sessionData) => {
-  // Génère un code de session unique
-  const sessionCode = generateSessionCode();
-  
   const { data, error } = await supabase
-    .from('sessions')
-    .insert([
-      {
-        ...sessionData,
-        session_code: sessionCode,
-        created_at: new Date(),
-      }
-    ])
-    .select()
-    .single();
+    .rpc('create_session_secure', {
+      p_title: sessionData.title,
+      p_description: sessionData.description || '',
+      p_settings: sessionData.settings || {},
+      p_max_participants: sessionData.max_participants || 30
+    });
   
   return { data, error };
 };

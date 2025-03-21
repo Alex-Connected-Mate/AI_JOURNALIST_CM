@@ -105,9 +105,9 @@ export default function NewSessionPage() {
     try {
       logger.session('Processing session configuration');
       
-      const sessionData: Partial<NewSessionData> = {
+      const sessionData = {
         title: sessionConfig.sessionName || sessionConfig.basicInfo?.title || '',
-        status: 'draft',
+        description: sessionConfig.description || '',
         settings: {
           institution: sessionConfig.institution || '',
           professorName: sessionConfig.professorName || '',
@@ -131,21 +131,19 @@ export default function NewSessionPage() {
         }
       };
 
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .insert([sessionData])
-        .select()
-        .single();
+      const { data: session, error: sessionError } = await supabase.rpc('create_session_secure', {
+        p_title: sessionData.title,
+        p_description: sessionData.description,
+        p_settings: sessionData.settings,
+        p_max_participants: sessionData.settings.maxParticipants
+      });
       
       if (sessionError) throw sessionError;
 
       // Create agents for the session
-      const userId = await auth.uid();
-      if (!userId) throw new Error('User not authenticated');
-
       await Promise.all([
-        createSessionAgent('nuggets', session.id, sessionConfig, userId),
-        createSessionAgent('lightbulbs', session.id, sessionConfig, userId)
+        createSessionAgent('nuggets', session.id, sessionConfig, user.id),
+        createSessionAgent('lightbulbs', session.id, sessionConfig, user.id)
       ]);
 
       logger.session('Session created successfully');

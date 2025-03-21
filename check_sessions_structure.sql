@@ -1,0 +1,1 @@
+SELECT column_name, data_type, column_default, is_nullable FROM information_schema.columns WHERE table_name = 'sessions' ORDER BY ordinal_position; SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check FROM pg_policies WHERE tablename = 'sessions';

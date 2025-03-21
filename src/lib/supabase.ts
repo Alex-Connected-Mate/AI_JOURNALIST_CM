@@ -635,108 +635,31 @@ export async function createSession(sessionData: Partial<SessionData>) {
     console.log('[SESSION] Creating session with data:', JSON.stringify(sessionData, null, 2));
     
     // Validate required fields
-    if (!sessionData.user_id || !sessionData.title) {
-      console.error('[SESSION] Missing required fields: user_id and title are required');
-      throw new Error('Missing required fields: user_id and title are required');
+    if (!sessionData.title) {
+      console.error('[SESSION] Missing required field: title is required');
+      throw new Error('Missing required field: title is required');
     }
 
-    // Generate unique codes for the session
-    const generateUniqueCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-    
-    // Generate three different codes to ensure uniqueness
-    const accessCode = generateUniqueCode();
-    const code = generateUniqueCode();
-    const sessionCode = generateUniqueCode();
-    
-    console.log('[SESSION] Generated codes:', { accessCode, code, sessionCode });
-    
-    // Generate a unique ID for the session
-    const sessionId = crypto.randomUUID ? crypto.randomUUID() : 
-                     'manual-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15);
-    
-    // Determine max_participants from settings or use a default value
-    const max_participants = (sessionData as any).max_participants || 
-                            (sessionData.settings as any)?.maxParticipants || 
-                            (sessionData.settings as any)?.connection?.maxParticipants || 
-                            30;
-    
-    console.log('[SESSION] Using max_participants:', max_participants);
-    
-    // Prepare session data with all required fields explicitly set
-    const session = {
-      id: sessionId,
-      user_id: sessionData.user_id,
-      name: sessionData.title, // Explicitly set name to be the same as title
-      title: sessionData.title,
-      description: sessionData.description || '',
-      status: sessionData.status || 'draft',
-      access_code: accessCode,
-      code: code, // Add code field
-      session_code: sessionCode, // Add session_code field
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      max_participants: max_participants, // Add max_participants field
-      settings: sessionData.settings || {}
-    };
-
-    // Log the session data for debugging, specifically highlight max_participants
-    console.log('[SESSION] Prepared session data for database insertion:', {
-      id: session.id,
-      title: session.title,
-      max_participants: session.max_participants,
-      settingsMaxParticipants: session.settings?.maxParticipants
-    });
-
     try {
-      console.log('[SESSION] Inserting new session with explicit ID');
-      
-      // Utiliser une simple insertion avec un ID explicite
+      // Call the secure function to create the session
       const { data, error } = await supabase
-        .from('sessions')
-        .insert(session)
-        .select()
-        .single();
-      
+        .rpc('create_session_secure', {
+          p_title: sessionData.title,
+          p_description: sessionData.description || '',
+          p_settings: sessionData.settings || {},
+          p_max_participants: sessionData.max_participants || 30
+        });
+
       if (error) {
-        console.error('[SESSION] Session insertion error:', error);
+        console.error('[SESSION] Session creation error:', error);
         throw error;
       }
-      
+
       console.log('[SESSION] Session created successfully:', data);
       return { data, error: null };
     } catch (error) {
-      console.error('[SESSION] Session creation failed with critical error:', error);
-      
-      // Essayer via une fonction RPC personnalisée si celle-ci existe
-      try {
-        console.log('[SESSION] Attempting to use RPC function insert_session_safely');
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('insert_session_safely', { 
-            session_data: {
-              user_id: session.user_id,
-              title: session.title,
-              description: session.description,
-              status: session.status,
-              access_code: session.access_code,
-              code: session.code, // Include code in RPC call
-              session_code: session.session_code, // Include session_code in RPC call
-              settings: session.settings,
-              created_at: session.created_at,
-              updated_at: session.updated_at
-            }
-          });
-
-        if (rpcError) {
-          console.error('[SESSION] RPC fallback also failed:', rpcError);
-          throw rpcError;
-        }
-        
-        console.log('[SESSION] Session created successfully via RPC:', rpcData);
-        return { data: rpcData, error: null };
-      } catch (rpcError) {
-        console.error('[SESSION] All session creation methods failed:', rpcError);
-        throw rpcError;
-      }
+      console.error('[SESSION] Session creation failed:', error);
+      throw error;
     }
   });
 }
