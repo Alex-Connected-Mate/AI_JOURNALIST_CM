@@ -193,23 +193,15 @@ export default function NewSessionPage() {
     userId: string
   ) => {
     try {
-      // Créer ou récupérer l'agent
-      const { data: agent, error: agentError } = await supabase
-        .from('agents')
-        .upsert([{
-          name: agentType === 'nuggets' ? 'Elias' : 'Sonia',
-          description: agentType === 'nuggets' ? 
-            'Agent spécialisé dans la création de nuggets de connaissances' : 
-            'Agent spécialisé dans la génération d\'idées innovantes',
-          agent_type: agentType,
-          created_by: userId,
-          is_active: true
-        }], {
-          onConflict: 'name, agent_type',
-          ignoreDuplicates: false
-        })
-        .select()
-        .single();
+      // Créer ou récupérer l'agent en utilisant la fonction sécurisée
+      const { data: agent, error: agentError } = await supabase.rpc('create_agent_secure', {
+        p_name: agentType === 'nuggets' ? 'Elias' : 'Sonia',
+        p_description: agentType === 'nuggets' ? 
+          'Agent spécialisé dans la création de nuggets de connaissances' : 
+          'Agent spécialisé dans la génération d\'idées innovantes',
+        p_agent_type: agentType,
+        p_is_active: true
+      });
 
       if (agentError) throw agentError;
 
@@ -217,7 +209,7 @@ export default function NewSessionPage() {
       const { data: prompt, error: promptError } = await supabase
         .from('agent_prompts')
         .insert([{
-          agent_id: agent.id,
+          agent_id: agent,  // La fonction retourne directement l'UUID
           style: config.aiInteraction?.configuration?.[agentType]?.style || {},
           rules: config.aiInteraction?.configuration?.[agentType]?.rules || [],
           questions: config.aiInteraction?.configuration?.[agentType]?.questions || [],
@@ -234,7 +226,7 @@ export default function NewSessionPage() {
       const { data: analysis, error: analysisError } = await supabase
         .from('agent_analysis_config')
         .insert([{
-          agent_id: agent.id,
+          agent_id: agent,  // La fonction retourne directement l'UUID
           analysis_type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
           parameters: {
             format: 'structured',
@@ -253,7 +245,7 @@ export default function NewSessionPage() {
       // Lier l'agent à la session
       const { error: sessionAgentError } = await supabase.rpc('create_session_agent', {
         p_session_id: sessionId,
-        p_agent_id: agent.id,
+        p_agent_id: agent,  // La fonction retourne directement l'UUID
         p_is_primary: agentType === 'nuggets',
         p_configuration: {
           temperature: 0.7,
@@ -271,7 +263,7 @@ export default function NewSessionPage() {
       if (sessionAgentError) throw sessionAgentError;
 
       logger.session(`Agent ${agentType} created and configured successfully`);
-      return agent.id;
+      return agent;  // Retourne directement l'UUID
     } catch (error) {
       logger.error(`Failed to create session agent ${agentType}:`, error);
       throw error;
