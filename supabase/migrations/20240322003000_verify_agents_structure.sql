@@ -71,51 +71,50 @@ BEGIN
             USING (auth.uid() = created_by)
             WITH CHECK (auth.uid() = created_by);
     END IF;
+END $$;
 
-    -- Create or replace the function to safely create an agent
-    CREATE OR REPLACE FUNCTION public.create_agent_secure(
-        p_name text,
-        p_description text,
-        p_agent_type text,
-        p_is_active boolean DEFAULT true
-    ) RETURNS uuid
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-    AS $$
-    DECLARE
-        v_agent_id uuid;
-    BEGIN
-        -- Verify that the user is authenticated
-        IF auth.uid() IS NULL THEN
-            RAISE EXCEPTION 'Not authenticated';
-        END IF;
+-- Create or replace the function to safely create an agent
+CREATE OR REPLACE FUNCTION public.create_agent_secure(
+    p_name text,
+    p_description text,
+    p_agent_type text,
+    p_is_active boolean DEFAULT true
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_agent_id uuid;
+BEGIN
+    -- Verify that the user is authenticated
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
 
-        -- Insert the agent with a unique constraint
-        INSERT INTO public.agents (
-            name,
-            description,
-            agent_type,
-            created_by,
-            is_active
-        ) VALUES (
-            p_name,
-            p_description,
-            p_agent_type,
-            auth.uid(),
-            p_is_active
-        )
-        ON CONFLICT (name, agent_type) 
-        DO UPDATE SET
-            description = EXCLUDED.description,
-            is_active = EXCLUDED.is_active,
-            updated_at = now()
-        RETURNING id INTO v_agent_id;
+    -- Insert the agent with a unique constraint
+    INSERT INTO public.agents (
+        name,
+        description,
+        agent_type,
+        created_by,
+        is_active
+    ) VALUES (
+        p_name,
+        p_description,
+        p_agent_type,
+        auth.uid(),
+        p_is_active
+    )
+    ON CONFLICT (name, agent_type) 
+    DO UPDATE SET
+        description = EXCLUDED.description,
+        is_active = EXCLUDED.is_active,
+        updated_at = now()
+    RETURNING id INTO v_agent_id;
 
-        RETURN v_agent_id;
-    END;
-    $$;
+    RETURN v_agent_id;
+END;
+$$;
 
-    -- Grant execute permission to authenticated users
-    GRANT EXECUTE ON FUNCTION public.create_agent_secure TO authenticated;
-
-END $$; 
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.create_agent_secure TO authenticated; 
