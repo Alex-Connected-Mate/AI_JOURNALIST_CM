@@ -1,10 +1,11 @@
--- Drop existing unique constraint
+-- Drop existing constraint and index
 ALTER TABLE public.agent_prompts DROP CONSTRAINT IF EXISTS unique_active_prompt_per_agent;
+DROP INDEX IF EXISTS idx_unique_active_prompt_per_agent;
 
--- Add new unique constraint that includes is_active
-ALTER TABLE public.agent_prompts
-ADD CONSTRAINT unique_active_prompt_per_agent 
-UNIQUE (agent_id) WHERE is_active = true;
+-- Create unique index for active prompts
+CREATE UNIQUE INDEX idx_unique_active_prompt_per_agent
+ON public.agent_prompts (agent_id)
+WHERE is_active = true;
 
 -- Drop existing function
 DROP FUNCTION IF EXISTS public.create_agent_prompt_secure;
