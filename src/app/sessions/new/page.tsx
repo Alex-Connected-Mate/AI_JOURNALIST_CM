@@ -245,13 +245,13 @@ export default function NewSessionPage() {
           enabled: true
         },
         p_is_primary: agentType === 'nuggets',
-        p_session_id: sessionId,
         p_settings: {
           visibility: true,
           interaction_mode: 'auto',
           response_delay: 0,
           participation_rules: config.aiInteraction?.configuration?.[agentType]?.participationRules || {}
-        }
+        },
+        p_session_id: sessionId
       });
 
       if (sessionAgentError) throw sessionAgentError;
