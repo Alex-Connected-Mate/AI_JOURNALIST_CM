@@ -236,18 +236,17 @@ export default function NewSessionPage() {
       const { error: sessionAgentError } = await supabase.rpc('create_session_agent', {
         p_agent_id: agent,
         p_configuration: {
-          temperature: 0.7,
-          max_tokens: 2000,
-          prompt_template: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
+          type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
+          parameters: {
+            temperature: 0.7,
+            max_tokens: 2000,
+            prompt_template: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
+          },
+          enabled: true
         },
         p_is_primary: agentType === 'nuggets',
-        p_session_id: sessionId,
-        p_settings: {
-          visibility: true,
-          interaction_mode: 'auto',
-          response_delay: 0,
-          participation_rules: config.aiInteraction?.configuration?.[agentType]?.participationRules || {}
-        }
+        p_settings: null,
+        p_session_id: sessionId
       });
 
       if (sessionAgentError) throw sessionAgentError;
