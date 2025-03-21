@@ -6,14 +6,13 @@ import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import SessionCreationFlow from '@/components/SessionCreationFlow';
 import LogViewer from '@/components/LogViewer';
-import { createSession, validateSessionData } from '@/lib/supabase';
-import type { SessionData } from '@/lib/supabase';
 import sessionTracker from '@/lib/sessionTracker';
 import logger from '@/lib/logger';
 import AIConfigurationForm from '@/components/AIConfigurationForm';
-import { AgentService } from '@/lib/services/agentService';
-import { auth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { validateSessionSettings } from '@/lib/validation/sessionSchema';
+import { validateAIConfiguration, validateAISettings } from '@/lib/validation/aiConfigSchema';
+import { SessionConfigType } from '@/types/session';
 
 type AnonymityLevel = 'semi-anonymous' | 'anonymous' | 'non-anonymous' | 'fully-anonymous';
 type LoginMethod = 'email' | 'code' | 'none';
@@ -58,128 +57,141 @@ interface NewSessionData {
 
 const createAgentConfig = async (agentType: string, config: any): Promise<AIConfiguration> => {
   return {
-    style: agentType === 'nuggets' ? config.nuggetsStyle : config.lightbulbsStyle,
-    rules: agentType === 'nuggets' ? config.nuggetsRules : config.lightbulbsRules,
+    style: config.aiInteraction?.configuration?.[agentType]?.style || {},
+    rules: config.aiInteraction?.configuration?.[agentType]?.rules || [],
     enabled: true
   };
 };
 
 export default function NewSessionPage() {
   const router = useRouter();
-  const { user, createSession: storeCreateSession, userProfile } = useStore();
+  const { user } = useStore();
   
   // Session creation states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [step, setStep] = useState<'basic' | 'ai' | 'review'>('basic');
-  const [sessionData, setSessionData] = useState({
+  const [sessionConfig, setSessionConfig] = useState<SessionConfigType>({
     title: '',
     description: '',
-    max_participants: 100,
+    maxParticipants: 30,
+    institution: '',
+    professorName: '',
+    showProfessorName: true,
+    connection: {
+      anonymityLevel: 'semi-anonymous',
+      loginMethod: 'email',
+      approvalRequired: false
+    },
+    aiInteraction: {
+      enabled: true,
+      configuration: {
+        nuggets: {
+          style: {},
+          rules: [],
+          enabled: true
+        },
+        lightbulbs: {
+          style: {},
+          rules: [],
+          enabled: true
+        }
+      }
+    }
   });
-  
+
   // Vérifier les limites d'utilisation selon l'abonnement
   const canCreateSession = () => {
     return true; // Toujours permettre la création de sessions, indépendamment de l'abonnement
   };
 
-  // Handle the session creation process when the form is submitted
-  const handleCreateSession = async (sessionConfig: any) => {
+  const handleStepChange = (newStep: 'basic' | 'ai' | 'review') => {
+    setStep(newStep);
+  };
+
+  const handleCreateSession = async (config: Partial<SessionConfigType>) => {
     if (!user) {
       const errorMsg = 'Vous devez être connecté pour créer une session';
       setError(errorMsg);
-      sessionTracker.trackSessionCreation.error(sessionConfig, new Error(errorMsg));
+      sessionTracker.trackSessionCreation.error(config, new Error(errorMsg));
       router.push('/auth/login?redirect=/sessions/new');
       return;
     }
     
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
+    // Si nous ne sommes pas à l'étape de review, mettre à jour la config et passer à l'étape suivante
+    if (step !== 'review') {
+      setSessionConfig(prevConfig => ({
+        ...prevConfig,
+        ...config
+      }));
+      handleStepChange(step === 'basic' ? 'ai' : 'review');
+      return;
+    }
     
+    // Validation finale avant création
     try {
-      // Track creation start
-      sessionTracker.trackSessionCreation.start(sessionConfig);
+      const mergedConfig = {
+        ...sessionConfig,
+        ...config
+      };
+
+      // Vérification des champs requis
+      if (!mergedConfig.title?.trim()) {
+        throw new Error('Le nom de la session est requis');
+      }
+
+      if (!mergedConfig.maxParticipants || mergedConfig.maxParticipants < 1) {
+        throw new Error('Le nombre maximum de participants doit être supérieur à 0');
+      }
+
+      setLoading(true);
+      setError(null);
       
-      const sessionData = {
-        title: sessionConfig.sessionName || sessionConfig.basicInfo?.title || '',
-        description: sessionConfig.description || '',
-        settings: {
-          institution: sessionConfig.institution || '',
-          professorName: sessionConfig.professorName || '',
-          showProfessorName: sessionConfig.showProfessorName ?? true,
-          maxParticipants: sessionConfig.maxParticipants || 30,
-          connection: {
-            anonymityLevel: (sessionConfig.connection?.anonymityLevel || 'semi-anonymous') as AnonymityLevel,
-            loginMethod: (sessionConfig.connection?.loginMethod || 'email') as LoginMethod,
-            approvalRequired: sessionConfig.connection?.approvalRequired || false,
-            color: '#3490dc',
-            emoji: '🎓'
-          },
-          discussion: sessionConfig.discussion || {},
+      // Track creation start
+      sessionTracker.trackSessionCreation.start(mergedConfig);
+      
+      // Création de la session
+      const { data: session, error: sessionError } = await supabase.rpc('create_session_secure', {
+        p_title: mergedConfig.title,
+        p_description: mergedConfig.description || '',
+        p_settings: {
+          institution: mergedConfig.institution || '',
+          professorName: mergedConfig.professorName || '',
+          showProfessorName: mergedConfig.showProfessorName ?? true,
+          maxParticipants: mergedConfig.maxParticipants || 30,
+          connection: mergedConfig.connection,
           aiInteraction: {
             enabled: true,
             configuration: {
-              nuggets: await createAgentConfig('nuggets', sessionConfig),
-              lightbulbs: await createAgentConfig('lightbulbs', sessionConfig)
+              nuggets: await createAgentConfig('nuggets', mergedConfig),
+              lightbulbs: await createAgentConfig('lightbulbs', mergedConfig)
             }
           }
-        }
-      };
-
-      const { data: session, error: sessionError } = await supabase.rpc('create_session_secure', {
-        p_title: sessionData.title,
-        p_description: sessionData.description,
-        p_settings: sessionData.settings,
-        p_max_participants: sessionData.settings.maxParticipants
+        },
+        p_max_participants: mergedConfig.maxParticipants || 30
       });
       
-      if (sessionError) {
-        sessionTracker.trackSessionCreation.error(sessionConfig, sessionError);
-        throw sessionError;
-      }
+      if (sessionError) throw sessionError;
 
-      // Create agents for the session
+      // Création des agents
       await Promise.all([
-        createSessionAgent('nuggets', session.id, sessionConfig, user.id),
-        createSessionAgent('lightbulbs', session.id, sessionConfig, user.id)
+        createSessionAgent('nuggets', session.id, mergedConfig, user.id),
+        createSessionAgent('lightbulbs', session.id, mergedConfig, user.id)
       ]);
 
-      sessionTracker.trackSessionCreation.success(sessionConfig, session);
+      sessionTracker.trackSessionCreation.success(mergedConfig, session);
       setSuccess('Session créée avec succès !');
-      router.push(`/sessions/${session.id}/edit`);
+      
+      // Redirection après un court délai
+      setTimeout(() => {
+        router.push(`/sessions/${session.id}/edit`);
+      }, 1500);
+
     } catch (err: any) {
       const errorMsg = err.message || 'Une erreur est survenue lors de la création de la session';
-      sessionTracker.trackSessionCreation.error(sessionConfig, err);
+      sessionTracker.trackSessionCreation.error(config, err);
       setError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (step === 'basic') {
-      setStep('ai');
-      return;
-    }
-    if (step === 'ai') {
-      setStep('review');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const { data, error } = await storeCreateSession(sessionData);
-      if (error) throw error;
-      if (data?.id) {
-        router.push(`/sessions/${data.id}`);
-      } else {
-        throw new Error('No session data returned');
-      }
-    } catch (error) {
-      console.error('Error creating session:', error);
     } finally {
       setLoading(false);
     }
@@ -192,6 +204,27 @@ export default function NewSessionPage() {
     userId: string
   ) => {
     try {
+      // Validate AI configuration
+      const aiConfig = {
+        type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
+        parameters: {
+          temperature: 0.7,
+          max_tokens: 2000,
+          prompt_template: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
+        },
+        enabled: true
+      };
+      
+      const aiSettings = {
+        visibility: true,
+        interaction_mode: 'auto',
+        response_delay: 0,
+        participation_rules: config.aiInteraction?.configuration?.[agentType]?.participationRules || {}
+      };
+
+      validateAIConfiguration(aiConfig);
+      validateAISettings(aiSettings);
+
       // Créer ou récupérer l'agent en utilisant la fonction sécurisée
       const { data: agent, error: agentError } = await supabase.rpc('create_agent_secure', {
         p_name: agentType === 'nuggets' ? 'Elias' : 'Sonia',
@@ -235,22 +268,9 @@ export default function NewSessionPage() {
       // Lier l'agent à la session
       const { error: sessionAgentError } = await supabase.rpc('create_session_agent', {
         p_agent_id: agent,
-        p_configuration: {
-          type: agentType === 'nuggets' ? 'knowledge_extraction' : 'idea_generation',
-          parameters: {
-            temperature: 0.7,
-            max_tokens: 2000,
-            prompt_template: config.aiInteraction?.configuration?.[agentType]?.basePrompt || ''
-          },
-          enabled: true
-        },
+        p_configuration: aiConfig,
         p_is_primary: agentType === 'nuggets',
-        p_settings: {
-          visibility: true,
-          interaction_mode: 'auto',
-          response_delay: 0,
-          participation_rules: config.aiInteraction?.configuration?.[agentType]?.participationRules || {}
-        },
+        p_settings: aiSettings,
         p_session_id: sessionId
       });
 
@@ -306,134 +326,22 @@ export default function NewSessionPage() {
         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
           {success}
           <div className="mt-2 text-sm">
-            Redirection vers le tableau de bord dans quelques secondes...
+            Redirection vers l'édition de la session dans quelques secondes...
           </div>
         </div>
       )}
       
       <div className="bento-card mb-8">
         <SessionCreationFlow 
-          initialConfig={{}} 
+          initialConfig={sessionConfig} 
           onSubmit={handleCreateSession}
           isSubmitting={loading}
+          currentStep={step}
+          onStepChange={handleStepChange}
         />
       </div>
       
       <LogViewer />
-
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {step === 'basic' && 'Créer une nouvelle session'}
-            {step === 'ai' && "Configuration de l'IA"}
-            {step === 'review' && 'Vérification finale'}
-          </h1>
-          <p className="mt-2 text-gray-600">
-            {step === 'basic' && 'Commencez par définir les informations de base de votre session.'}
-            {step === 'ai' && "Configurez les paramètres de l'IA pour votre session."}
-            {step === 'review' && 'Vérifiez les informations avant de créer la session.'}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {step === 'basic' && (
-            <div className="first-level-block p-6 rounded-xl">
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nom de la session
-                  </label>
-                  <input
-                    type="text"
-                    value={sessionData.title}
-                    onChange={(e) => setSessionData({ ...sessionData, title: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    value={sessionData.description}
-                    onChange={(e) => setSessionData({ ...sessionData, description: e.target.value })}
-                    rows={4}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nombre maximum de participants
-                  </label>
-                  <input
-                    type="number"
-                    value={sessionData.max_participants}
-                    onChange={(e) => setSessionData({ ...sessionData, max_participants: parseInt(e.target.value) })}
-                    min="1"
-                    max="9999"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 'ai' && (
-            <div className="first-level-block p-6 rounded-xl">
-              <AIConfigurationForm
-                sessionId="temp"
-                onSave={() => setStep('review')}
-              />
-            </div>
-          )}
-
-          {step === 'review' && (
-            <div className="first-level-block p-6 rounded-xl">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">Informations de base</h3>
-                  <dl className="mt-4 space-y-4">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Nom</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{sessionData.title}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Description</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{sessionData.description}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Participants maximum</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{sessionData.max_participants}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between">
-            {step !== 'basic' && (
-              <button
-                type="button"
-                onClick={() => setStep(step === 'review' ? 'ai' : 'basic')}
-                className="cm-button-secondary"
-              >
-                Retour
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="cm-button"
-            >
-              {loading ? 'Création...' : step === 'review' ? 'Créer la session' : 'Continuer'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 } 
