@@ -1,8 +1,37 @@
 import { FC, useState, useEffect } from 'react';
 import { SessionConfigType } from '@/types/session';
 
+const defaultConfig: SessionConfigType = {
+  title: '',
+  description: '',
+  maxParticipants: 30,
+  institution: '',
+  professorName: '',
+  showProfessorName: true,
+  connection: {
+    anonymityLevel: 'semi-anonymous',
+    loginMethod: 'email',
+    approvalRequired: false
+  },
+  aiInteraction: {
+    enabled: true,
+    configuration: {
+      nuggets: {
+        style: {},
+        rules: [],
+        enabled: true
+      },
+      lightbulbs: {
+        style: {},
+        rules: [],
+        enabled: true
+      }
+    }
+  }
+};
+
 export interface SessionCreationFlowProps {
-  initialConfig: SessionConfigType;
+  initialConfig?: SessionConfigType;
   onSubmit: (config: Partial<SessionConfigType>) => Promise<void>;
   isSubmitting: boolean;
   currentStep: 'basic' | 'ai' | 'review';
@@ -10,7 +39,7 @@ export interface SessionCreationFlowProps {
 }
 
 const SessionCreationFlow: FC<SessionCreationFlowProps> = ({
-  initialConfig,
+  initialConfig = defaultConfig,
   onSubmit,
   isSubmitting,
   currentStep,

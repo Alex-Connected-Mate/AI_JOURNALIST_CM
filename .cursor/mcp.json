@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "@modelcontextprotocol/server-postgres",
+      "args": ["--host=db.ukmxqoazpujsvqmkzkpz.supabase.co", "--port=5432", "--user=postgres.ukmxqoazpujsvqmkzkpz", "--password=IAjfCjPATKYLfZfe", "--dbname=postgres", "--ssl=true"]
+    },
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"]
+    }
+  }
+} 
