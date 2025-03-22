@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -22,36 +22,39 @@ const PHASES = {
 export default function SessionRunPage({ params }) {
   const sessionId = params?.id;
   const router = useRouter();
+  
+  // États de base
   const [session, setSession] = useState(null);
   const [currentPhase, setCurrentPhase] = useState(PHASES.JOIN);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // États des participants
   const [participants, setParticipants] = useState([]);
+  const [topParticipants, setTopParticipants] = useState([]);
+  const [newParticipantIds, setNewParticipantIds] = useState([]);
+  
+  // États de la session
   const [shareUrl, setShareUrl] = useState('');
   const [timer, setTimer] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);
-  const [topParticipants, setTopParticipants] = useState([]);
+  
+  // États des analyses
   const [interactions, setInteractions] = useState([]);
   const [analyses, setAnalyses] = useState([]);
-  const [playSoundEnabled, setPlaySoundEnabled] = useState(true);
-  const audioRef = useRef(null);
   
-  // Référence au canal de broadcast Supabase
+  // États des préférences
+  const [playSoundEnabled, setPlaySoundEnabled] = useState(true);
+  
+  // Refs
+  const audioRef = useRef(null);
   const phaseChannelRef = useRef(null);
   
-  // Référence pour les nouveaux participants avec animation
-  const [newParticipantIds, setNewParticipantIds] = useState([]);
-  
-  // Traitement du son à la fin du chronomètre
-  const playTimerEndSound = () => {
-    if (playSoundEnabled && audioRef.current) {
-      audioRef.current.play().catch(err => console.error('Erreur lors de la lecture du son:', err));
-    }
-  };
-
-  // Chargement des données de la session
+  // Chargement initial de la session
   useEffect(() => {
+    let isMounted = true;
+    
     const loadSession = async () => {
       if (!sessionId) {
         setError('ID de session non valide');
@@ -60,7 +63,6 @@ export default function SessionRunPage({ params }) {
       }
 
       try {
-        setLoading(true);
         const { data: sessionData, error: sessionError } = await supabase
           .from('sessions')
           .select('*')
@@ -70,14 +72,18 @@ export default function SessionRunPage({ params }) {
         if (sessionError) throw sessionError;
         if (!sessionData) throw new Error('Session non trouvée');
         
+        if (!isMounted) return;
+        
         setSession(sessionData);
         
         // Générer l'URL de partage
-        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-        const shareUrl = `${baseUrl}/join/${sessionData.code || ''}`;
-        setShareUrl(shareUrl);
+        if (typeof window !== 'undefined') {
+          const baseUrl = window.location.origin;
+          const shareUrl = `${baseUrl}/join/${sessionData.code || ''}`;
+          setShareUrl(shareUrl);
+        }
         
-        // Configurer le timer si activé
+        // Configurer le timer
         if (sessionData.settings?.ai_configuration?.timerEnabled) {
           const duration = parseInt(sessionData.settings.ai_configuration.timerDuration) || 0;
           setTimerDuration(duration * 60);
@@ -85,6 +91,7 @@ export default function SessionRunPage({ params }) {
         
         setLoading(false);
       } catch (err) {
+        if (!isMounted) return;
         console.error('Error loading session:', err);
         setError(err.message || 'Erreur lors du chargement de la session');
         setLoading(false);
@@ -92,80 +99,138 @@ export default function SessionRunPage({ params }) {
     };
 
     loadSession();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [sessionId]);
-  
-  // Gestionnaire du timer
+
+  // Gestionnaire du timer optimisé
   useEffect(() => {
     let interval = null;
     
     if (timerActive && timer > 0) {
       interval = setInterval(() => {
-        setTimer(prevTimer => prevTimer - 1);
+        setTimer(prevTimer => {
+          const newTimer = prevTimer - 1;
+          if (newTimer === 0) {
+            setTimerActive(false);
+            playTimerEndSound();
+            handleTimerEnd();
+          }
+          return newTimer;
+        });
       }, 1000);
-    } else if (timerActive && timer === 0) {
-      setTimerActive(false);
-      
-      // Jouer un son à la fin du compteur
-      playTimerEndSound();
-      
-      // Logique de fin de phase selon la phase actuelle
-      if (currentPhase === PHASES.DISCUSSION) {
-        // Passer à la phase de vote après la discussion
-        setCurrentPhase(PHASES.VOTING);
-        broadcastPhaseChange(PHASES.VOTING);
-      } else if (currentPhase === PHASES.VOTING) {
-        // Passer à la phase d'interaction après le vote
-        handleVotingComplete();
-      } else if (currentPhase === PHASES.INTERACTION) {
-        // Passer à la phase d'analyse après l'interaction
-        setCurrentPhase(PHASES.ANALYSIS);
-        broadcastPhaseChange(PHASES.ANALYSIS, { analyses: generateMockAnalyses() });
-      }
     }
     
-    return () => clearInterval(interval);
-  }, [timerActive, timer, currentPhase]);
-  
-  // Fonction pour diffuser les changements de phase à tous les participants
-  const broadcastPhaseChange = (phase, additionalData = {}) => {
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerActive, timer]);
+
+  // Fonction pour gérer la fin du timer
+  const handleTimerEnd = useCallback(() => {
+    switch (currentPhase) {
+      case PHASES.DISCUSSION:
+        setCurrentPhase(PHASES.VOTING);
+        broadcastPhaseChange(PHASES.VOTING);
+        break;
+      case PHASES.VOTING:
+        handleVotingComplete();
+        break;
+      case PHASES.INTERACTION:
+        setCurrentPhase(PHASES.ANALYSIS);
+        const analysesData = generateMockAnalyses();
+        setAnalyses(analysesData);
+        broadcastPhaseChange(PHASES.ANALYSIS, { analyses: analysesData });
+        break;
+      default:
+        break;
+    }
+  }, [currentPhase]);
+
+  // Fonction pour diffuser les changements de phase
+  const broadcastPhaseChange = useCallback((phase, additionalData = {}) => {
     if (!phaseChannelRef.current) return;
     
-    // Préparer les données à diffuser
     const payload = {
-      phase: phase,
+      phase,
       ...additionalData
     };
     
-    // Ajouter des informations sur le timer si nécessaire
     if (phase === PHASES.DISCUSSION || phase === PHASES.VOTING || phase === PHASES.INTERACTION) {
       payload.timer = timer;
     }
     
-    // Diffuser le changement de phase
     phaseChannelRef.current.send({
       type: 'broadcast',
       event: 'phase_change',
-      payload: payload
-    }).then(
-      () => console.log(`Phase diffusée: ${phase}`),
-      (error) => console.error('Erreur lors de la diffusion de la phase:', error)
-    );
-  };
-  
-  // Générer des analyses simulées pour la démo
-  const generateMockAnalyses = () => {
+      payload
+    }).catch(error => console.error('Erreur lors de la diffusion de la phase:', error));
+  }, [timer]);
+
+  // Fonction pour générer des analyses
+  const generateMockAnalyses = useCallback(() => {
+    if (!Array.isArray(topParticipants) || !session?.topic) return [];
+    
     return topParticipants.map(participant => ({
-      participant: participant.display_name,
-      participant_id: participant.id,
-      content: `Analyse des idées de ${participant.display_name} sur ${session?.topic || 'le sujet de la session'}. Points clés abordés: vision unique, approche innovante et perspectives d'avenir.`,
+      participant: participant?.display_name || 'Anonyme',
+      participant_id: participant?.id || 'unknown',
+      content: `Analyse des idées de ${participant?.display_name || 'Anonyme'} sur ${session.topic}. Points clés abordés: vision unique, approche innovante et perspectives d'avenir.`,
       tags: ['Idée principale', 'Innovation', 'Perspective']
     }));
-  };
-  
-  // Gestion des votes complets
-  const handleVotingComplete = async () => {
+  }, [topParticipants, session]);
+
+  // Fonction pour jouer le son de fin
+  const playTimerEndSound = useCallback(() => {
+    if (playSoundEnabled && audioRef.current) {
+      audioRef.current.play().catch(err => console.error('Erreur lors de la lecture du son:', err));
+    }
+  }, [playSoundEnabled]);
+
+  // Fonction pour passer à la phase suivante
+  const goToNextPhase = useCallback(() => {
+    setTimerActive(false);
+    
+    switch (currentPhase) {
+      case PHASES.JOIN:
+        setCurrentPhase(PHASES.INSTRUCTIONS);
+        broadcastPhaseChange(PHASES.INSTRUCTIONS);
+        break;
+      case PHASES.INSTRUCTIONS:
+        setTimer(timerDuration);
+        setTimerActive(true);
+        setCurrentPhase(PHASES.DISCUSSION);
+        broadcastPhaseChange(PHASES.DISCUSSION, { timer: timerDuration });
+        break;
+      case PHASES.DISCUSSION:
+        const votingDuration = Math.min(timerDuration, 3 * 60);
+        setTimer(votingDuration);
+        setTimerActive(true);
+        setCurrentPhase(PHASES.VOTING);
+        broadcastPhaseChange(PHASES.VOTING, { timer: votingDuration });
+        break;
+      case PHASES.VOTING:
+        handleVotingComplete();
+        break;
+      case PHASES.INTERACTION:
+        setCurrentPhase(PHASES.ANALYSIS);
+        const analysesData = generateMockAnalyses();
+        setAnalyses(analysesData);
+        broadcastPhaseChange(PHASES.ANALYSIS, { analyses: analysesData });
+        break;
+      case PHASES.ANALYSIS:
+        setCurrentPhase(PHASES.CONCLUSION);
+        broadcastPhaseChange(PHASES.CONCLUSION);
+        break;
+      default:
+        break;
+    }
+  }, [currentPhase, timerDuration]);
+
+  // Fonction pour gérer la fin des votes
+  const handleVotingComplete = useCallback(async () => {
     try {
-      // Récupérer les participants avec le plus de votes
       const { data, error } = await supabase
         .from('participants')
         .select('id, display_name, votes')
@@ -175,8 +240,7 @@ export default function SessionRunPage({ params }) {
         
       if (error) {
         if (error.code === '42P01') {
-          console.error("La table 'participants' n'existe pas dans la base de données. Utilisation de données simulées pour la démo.");
-          // Utiliser des données simulées pour la démo
+          console.error("La table 'participants' n'existe pas. Utilisation de données simulées.");
           const mockParticipants = [
             { id: '1', display_name: 'Participant Demo 1', votes: 5 },
             { id: '2', display_name: 'Participant Demo 2', votes: 3 },
@@ -187,103 +251,32 @@ export default function SessionRunPage({ params }) {
           throw error;
         }
       } else {
-        const selectedParticipants = data || [];
-        setTopParticipants(selectedParticipants);
+        setTopParticipants(data || []);
       }
       
       setCurrentPhase(PHASES.INTERACTION);
+      const interactionDuration = 5 * 60;
+      setTimer(interactionDuration);
+      setTimerActive(true);
       
-      // Diffuser la liste des participants sélectionnés
       broadcastPhaseChange(PHASES.INTERACTION, { 
-        selected_participants: topParticipants.map(p => p.id)
+        selected_participants: (data || []).map(p => p.id),
+        timer: interactionDuration
       });
     } catch (err) {
-      console.error('Erreur lors de la récupération des participants avec le plus de votes:', err);
-      // Continuer avec une liste vide en cas d'erreur
+      console.error('Erreur lors de la récupération des participants:', err);
       setTopParticipants([]);
       setCurrentPhase(PHASES.INTERACTION);
       broadcastPhaseChange(PHASES.INTERACTION, { selected_participants: [] });
     }
-  };
-  
-  // Observer les changements de phase pour les diffuser
-  useEffect(() => {
-    // Si la phase change et que ce n'est pas dû à un timer qui se termine
-    if (currentPhase && !timerActive) {
-      // Diffuser le changement de phase
-      if (currentPhase === PHASES.INSTRUCTIONS) {
-        broadcastPhaseChange(PHASES.INSTRUCTIONS);
-      } else if (currentPhase === PHASES.CONCLUSION) {
-        broadcastPhaseChange(PHASES.CONCLUSION);
-      }
-      // Les autres phases sont diffusées avec leurs données spécifiques dans leurs fonctions respectives
-    }
-  }, [currentPhase]);
-  
-  // Commencer la discussion
-  const startDiscussion = () => {
-    setTimer(timerDuration);
-    setTimerActive(true);
-    setCurrentPhase(PHASES.DISCUSSION);
-    broadcastPhaseChange(PHASES.DISCUSSION, { timer: timerDuration });
-  };
-  
-  // Commencer le vote
-  const startVoting = () => {
-    // Durée de vote (vous pouvez la personnaliser selon vos besoins)
-    const votingDuration = Math.min(timerDuration, 3 * 60); // Maximum 3 minutes ou la durée définie
-    setTimer(votingDuration);
-    setTimerActive(true);
-    setCurrentPhase(PHASES.VOTING);
-    broadcastPhaseChange(PHASES.VOTING, { timer: votingDuration });
-  };
-  
-  // Commencer la phase d'interaction avec l'IA
-  const startInteraction = () => {
-    // Durée d'interaction (personnalisable)
-    const interactionDuration = 5 * 60; // 5 minutes par défaut
-    setTimer(interactionDuration);
-    setTimerActive(true);
-    
-    // Cette diffusion est gérée dans handleVotingComplete
-  };
-  
-  // Passer à la phase suivante manuellement
-  const goToNextPhase = () => {
-    setTimerActive(false); // Arrêter le timer actuel
-    
-    switch (currentPhase) {
-      case PHASES.JOIN:
-        setCurrentPhase(PHASES.INSTRUCTIONS);
-        break;
-      case PHASES.INSTRUCTIONS:
-        startDiscussion();
-        break;
-      case PHASES.DISCUSSION:
-        startVoting();
-        break;
-      case PHASES.VOTING:
-        handleVotingComplete();
-        break;
-      case PHASES.INTERACTION:
-        setCurrentPhase(PHASES.ANALYSIS);
-        broadcastPhaseChange(PHASES.ANALYSIS, { analyses: generateMockAnalyses() });
-        break;
-      case PHASES.ANALYSIS:
-        setCurrentPhase(PHASES.CONCLUSION);
-        broadcastPhaseChange(PHASES.CONCLUSION);
-        break;
-      default:
-        break;
-    }
-  };
-  
+  }, [sessionId]);
+
   // Formater le temps restant
-  const formatTime = (seconds) => {
+  const formatTime = useCallback((seconds) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
   // Rendu du contenu de la phase actuelle
   const renderPhaseContent = () => {
@@ -770,7 +763,7 @@ export default function SessionRunPage({ params }) {
     }
   };
 
-  // Vérification de sécurité pour le rendu
+  // Vérifications de sécurité pour le rendu
   if (!sessionId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -817,29 +810,27 @@ export default function SessionRunPage({ params }) {
     );
   }
 
+  // Rendu principal
   return (
     <div className="min-h-screen bg-gray-50 py-6 relative overflow-hidden">
       <DotPattern className="absolute inset-0 z-0" />
       
-      {/* Élément audio pour le son de fin de timer */}
       <audio ref={audioRef} preload="auto">
         <source src="/sounds/timer-end.mp3" type="audio/mpeg" />
       </audio>
       
-      {/* Contenu du slide actuel */}
       <div className="container mx-auto px-4 min-h-screen flex flex-col">
         <div className="flex-grow flex items-center justify-center">
           {renderPhaseContent()}
         </div>
         
-        {/* Navigation entre phases - redesigned and moved to bottom right */}
         <div className="fixed bottom-6 right-6 flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-30">
           <div className="flex items-center gap-1 mr-2">
             {Object.values(PHASES).map((phase) => (
               <div 
                 key={phase} 
                 className={`h-2 w-2 rounded-full ${currentPhase === phase ? 'bg-primary' : 'bg-gray-300'}`}
-              ></div>
+              />
             ))}
           </div>
           
