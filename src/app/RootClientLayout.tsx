@@ -205,8 +205,23 @@ export default function RootClientLayout({ children }: RootClientLayoutProps) {
             {/* Event tracker for analytics */}
             <EventTrackerInitializer />
             
-            {/* Dev tools - only in development */}
-            {process.env.NODE_ENV === 'development' && <LogViewer />}
+            {/* Logs viewer - always available */}
+            <LogViewer />
+            
+            {/* Floating logs button */}
+            <button
+              onClick={() => {
+                // Trigger log viewer visibility
+                const event = new CustomEvent('toggle-logs');
+                window.dispatchEvent(event);
+              }}
+              className="fixed bottom-4 left-4 bg-gray-800 text-white px-4 py-2 rounded-full shadow-lg hover:bg-gray-700 flex items-center space-x-2 z-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011-1h10a1 1 0 011 1v1h1a1 1 0 011 1v12a1 1 0 01-1 1h-1v1a1 1 0 01-1 1H5a1 1 0 01-1-1v-1H3a1 1 0 01-1-1V4a1 1 0 011-1h1V2zm2 0v1h8V2H6zm9 5H5v10h10V7zM7 9a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 3a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+              <span>Logs</span>
+            </button>
             
             {/* Afficher une notification visible uniquement si l'initialisation a été forcée */}
             {forceInitialized && !appInitialized && (
