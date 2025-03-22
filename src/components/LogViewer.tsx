@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import logger from '@/lib/logger';
+import logger, { Logger } from '@/lib/logger';
 
 export default function LogViewer() {
   const [isVisible, setIsVisible] = useState(false);
@@ -18,15 +18,26 @@ export default function LogViewer() {
       setIsVisible(prev => !prev);
     };
 
-    // Add event listeners
-    window.addEventListener('toggle-logs', handleToggle);
-    logger.subscribe(handleLog);
+    try {
+      // Add event listeners
+      window.addEventListener('toggle-logs', handleToggle);
+      logger.subscribe(handleLog);
 
-    // Cleanup
-    return () => {
-      window.removeEventListener('toggle-logs', handleToggle);
-      logger.unsubscribe(handleLog);
-    };
+      // Log component mount
+      logger.component('LogViewer', 'mounted');
+
+      // Cleanup
+      return () => {
+        window.removeEventListener('toggle-logs', handleToggle);
+        logger.unsubscribe(handleLog);
+        logger.component('LogViewer', 'unmounted');
+      };
+    } catch (error) {
+      console.error('Error in LogViewer setup:', error);
+      return () => {
+        window.removeEventListener('toggle-logs', handleToggle);
+      };
+    }
   }, []);
 
   if (!isVisible) return null;
@@ -37,13 +48,19 @@ export default function LogViewer() {
         <h3 className="text-sm font-medium">Application Logs</h3>
         <div className="space-x-2">
           <button
-            onClick={() => setLogs([])}
+            onClick={() => {
+              setLogs([]);
+              logger.info('Logs cleared by user');
+            }}
             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
           >
             Clear
           </button>
           <button
-            onClick={() => setIsVisible(false)}
+            onClick={() => {
+              setIsVisible(false);
+              logger.component('LogViewer', 'closed');
+            }}
             className="px-2 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600"
           >
             Close

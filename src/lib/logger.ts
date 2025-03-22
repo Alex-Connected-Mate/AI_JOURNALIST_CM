@@ -1,7 +1,20 @@
+// Type definitions
+interface Logger {
+  subscribe: (callback: (log: string) => void) => void;
+  unsubscribe: (callback: (log: string) => void) => void;
+  notify: (log: string) => void;
+  info: (message: string, data?: any) => void;
+  warning: (message: string, data?: any) => void;
+  error: (message: string, error?: any) => void;
+  debug: (message: string, data?: any) => void;
+  session: (message: string, data?: any) => void;
+  component: (componentName: string, event: string, props?: any) => void;
+}
+
 // Subscribers array
 let subscribers: ((log: string) => void)[] = [];
 
-const logger = {
+const logger: Logger = {
   // Subscribe to logs
   subscribe: (callback: (log: string) => void) => {
     subscribers.push(callback);
@@ -55,4 +68,5 @@ const logger = {
   }
 };
 
+export type { Logger };
 export default logger; 
