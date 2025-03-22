@@ -23,16 +23,16 @@ const QRCode = ({
   logo = null,
   className = "",
 }) => {
-  // Si aucune valeur n'est fournie, afficher un placeholder
+  // Si la valeur est undefined ou vide, afficher un placeholder
   if (!value) {
     return (
       <div 
-        className={`flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg ${className}`}
+        className={`flex items-center justify-center bg-gray-100 rounded-lg ${className}`}
         style={{ width: size, height: size }}
       >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
-          <span className="text-gray-500 text-sm">Génération du QR code...</span>
+        <div className="text-center p-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto mb-2"></div>
+          <p className="text-sm text-gray-500">Génération du QR code...</p>
         </div>
       </div>
     );
@@ -51,10 +51,14 @@ const QRCode = ({
       
       {logo && (
         <div 
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-1 rounded"
+          className="absolute" 
           style={{
-            width: size * 0.25,
-            height: size * 0.25,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            padding: '5px',
+            backgroundColor: '#fff',
+            borderRadius: '4px',
           }}
         >
           {logo}

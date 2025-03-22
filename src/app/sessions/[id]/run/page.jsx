@@ -52,40 +52,38 @@ export default function SessionRunPage({ params }) {
 
   // Chargement des données de la session
   useEffect(() => {
-    if (sessionId) {
-      // Générer l'URL de partage
-      const baseUrl = window.location.origin;
-      const shareUrl = `${baseUrl}/join/${sessionId}`;
-      setShareUrl(shareUrl);
-      
-      // Charger les données de la session
-      const fetchSession = async () => {
-        try {
-          setLoading(true);
-          const { data, error } = await supabase
-            .from('sessions')
-            .select('*')
-            .eq('id', sessionId)
-            .single();
-            
-          if (error) throw error;
-          setSession(data);
-          
-          // Configurer le timer si activé
-          if (data.settings?.ai_configuration?.timerEnabled) {
-            setTimerDuration(data.settings.ai_configuration.timerDuration * 60);
-            setTimer(data.settings.ai_configuration.timerDuration * 60);
-          }
-        } catch (err) {
-          console.error('Error fetching session:', err);
-          setError(err.message);
-        } finally {
-          setLoading(false);
+    const loadSession = async () => {
+      try {
+        setLoading(true);
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .single();
+
+        if (sessionError) throw sessionError;
+        
+        setSession(sessionData);
+        
+        // Générer l'URL de partage
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const shareUrl = `${baseUrl}/join/${sessionData.code}`;
+        setShareUrl(shareUrl);
+        
+        // Configurer le timer si activé
+        if (sessionData.settings?.ai_configuration?.timerEnabled) {
+          setTimerDuration(sessionData.settings.ai_configuration.timerDuration * 60);
         }
-      };
-      
-      fetchSession();
-    }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading session:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    loadSession();
   }, [sessionId]);
   
   // Gestionnaire du timer
@@ -121,62 +119,83 @@ export default function SessionRunPage({ params }) {
   }, [timerActive, timer, currentPhase]);
   
   // Fonction pour diffuser les changements de phase à tous les participants
-  const broadcastPhaseChange = async (newPhase, data = {}) => {
-    try {
-      if (!phaseChannelRef.current) return;
-      
-      const payload = {
-        type: 'phase_change',
-        phase: newPhase,
-        ...data
-      };
-      
-      await phaseChannelRef.current.send({
-        type: 'broadcast',
-        event: 'phase_change',
-        payload: JSON.stringify(payload)
-      });
-      
-    } catch (err) {
-      console.error('Error broadcasting phase change:', err);
+  const broadcastPhaseChange = (phase, additionalData = {}) => {
+    if (!phaseChannelRef.current) return;
+    
+    // Préparer les données à diffuser
+    const payload = {
+      phase: phase,
+      ...additionalData
+    };
+    
+    // Ajouter des informations sur le timer si nécessaire
+    if (phase === PHASES.DISCUSSION || phase === PHASES.VOTING || phase === PHASES.INTERACTION) {
+      payload.timer = timer;
     }
+    
+    // Diffuser le changement de phase
+    phaseChannelRef.current.send({
+      type: 'broadcast',
+      event: 'phase_change',
+      payload: payload
+    }).then(
+      () => console.log(`Phase diffusée: ${phase}`),
+      (error) => console.error('Erreur lors de la diffusion de la phase:', error)
+    );
   };
   
   // Générer des analyses simulées pour la démo
   const generateMockAnalyses = () => {
-    return {
-      nuggets: {
-        title: "Nuggets d'Or",
-        insights: [
-          "Les participants ont soulevé des points intéressants sur...",
-          "Une tendance claire se dégage concernant...",
-          "Plusieurs idées innovantes ont émergé autour de..."
-        ]
-      },
-      lightbulbs: {
-        title: "Lightbulbs",
-        ideas: [
-          "Une proposition créative pour résoudre...",
-          "Une approche novatrice concernant...",
-          "Une suggestion intéressante pour améliorer..."
-        ]
-      },
-      global: {
-        title: "Analyse Globale",
-        summary: "La session a été très productive avec plusieurs idées clés...",
-        mainThemes: [
-          "Innovation et créativité",
-          "Solutions pratiques",
-          "Perspectives d'avenir"
-        ]
-      }
-    };
+    return topParticipants.map(participant => ({
+      participant: participant.display_name,
+      participant_id: participant.id,
+      content: `Analyse des idées de ${participant.display_name} sur ${session?.topic || 'le sujet de la session'}. Points clés abordés: vision unique, approche innovante et perspectives d'avenir.`,
+      tags: ['Idée principale', 'Innovation', 'Perspective']
+    }));
   };
   
   // Gestion des votes complets
   const handleVotingComplete = async () => {
-    setCurrentPhase(PHASES.INTERACTION);
-    await broadcastPhaseChange(PHASES.INTERACTION);
+    try {
+      // Récupérer les participants avec le plus de votes
+      const { data, error } = await supabase
+        .from('participants')
+        .select('id, display_name, votes')
+        .eq('session_id', sessionId)
+        .order('votes', { ascending: false })
+        .limit(5);
+        
+      if (error) {
+        if (error.code === '42P01') {
+          console.error("La table 'participants' n'existe pas dans la base de données. Utilisation de données simulées pour la démo.");
+          // Utiliser des données simulées pour la démo
+          const mockParticipants = [
+            { id: '1', display_name: 'Participant Demo 1', votes: 5 },
+            { id: '2', display_name: 'Participant Demo 2', votes: 3 },
+            { id: '3', display_name: 'Participant Demo 3', votes: 2 }
+          ];
+          setTopParticipants(mockParticipants);
+        } else {
+          throw error;
+        }
+      } else {
+        const selectedParticipants = data || [];
+        setTopParticipants(selectedParticipants);
+      }
+      
+      setCurrentPhase(PHASES.INTERACTION);
+      
+      // Diffuser la liste des participants sélectionnés
+      broadcastPhaseChange(PHASES.INTERACTION, { 
+        selected_participants: topParticipants.map(p => p.id)
+      });
+    } catch (err) {
+      console.error('Erreur lors de la récupération des participants avec le plus de votes:', err);
+      // Continuer avec une liste vide en cas d'erreur
+      setTopParticipants([]);
+      setCurrentPhase(PHASES.INTERACTION);
+      broadcastPhaseChange(PHASES.INTERACTION, { selected_participants: [] });
+    }
   };
   
   // Observer les changements de phase pour les diffuser
@@ -194,20 +213,21 @@ export default function SessionRunPage({ params }) {
   }, [currentPhase]);
   
   // Commencer la discussion
-  const startDiscussion = async () => {
+  const startDiscussion = () => {
+    setTimer(timerDuration);
+    setTimerActive(true);
     setCurrentPhase(PHASES.DISCUSSION);
-    if (session?.settings?.ai_configuration?.timerEnabled) {
-      setTimer(session.settings.ai_configuration.timerDuration * 60);
-      setTimerActive(true);
-    }
-    await broadcastPhaseChange(PHASES.DISCUSSION);
+    broadcastPhaseChange(PHASES.DISCUSSION, { timer: timerDuration });
   };
   
   // Commencer le vote
-  const startVoting = async () => {
+  const startVoting = () => {
+    // Durée de vote (vous pouvez la personnaliser selon vos besoins)
+    const votingDuration = Math.min(timerDuration, 3 * 60); // Maximum 3 minutes ou la durée définie
+    setTimer(votingDuration);
+    setTimerActive(true);
     setCurrentPhase(PHASES.VOTING);
-    setTimerActive(false);
-    await broadcastPhaseChange(PHASES.VOTING);
+    broadcastPhaseChange(PHASES.VOTING, { timer: votingDuration });
   };
   
   // Commencer la phase d'interaction avec l'IA
@@ -292,97 +312,35 @@ export default function SessionRunPage({ params }) {
     switch (currentPhase) {
       case PHASES.JOIN:
         return (
-          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <motion.h2 
-                className="text-3xl font-bold mb-6"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                Join Session
-              </motion.h2>
+          <div className="max-w-4xl mx-auto p-6">
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold text-center mb-6">Join Session</h2>
               
-              <div className="flex flex-col lg:flex-row gap-8 items-center justify-center">
-                <motion.div 
-                  className="flex-shrink-0 bg-white p-4 border-2 border-gray-200 rounded-lg shadow-lg"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
-                  <div className="mb-3 text-base font-medium">Scan QR code</div>
-                  <QRCode 
-                    value={shareUrl}
-                    size={200}
-                    fgColor="#000000"
-                    bgColor="#ffffff"
-                    level="H"
-                  />
-                </motion.div>
-                
-                <motion.div 
-                  className="flex-1 max-w-md"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                >
-                  <div className="text-left mb-6">
-                    <p className="text-xl mb-2 font-medium">
-                      Join Instructions:
-                    </p>
-                    <ol className="list-decimal pl-6 text-base space-y-3 mb-4">
-                      <li>Open your browser</li>
-                      <li>Go to <span className="font-bold bg-yellow-100 p-1 rounded">
-                        {shareUrl ? (new URL(shareUrl).origin + "/join") : (window.location.origin + "/join")}
-                      </span></li>
-                      <li>Enter the session code below</li>
-                    </ol>
-                  </div>
-                  
-                  <div className="text-left mb-6">
-                    <p className="text-xl mb-2 font-medium">
-                      Session Code:
-                    </p>
-                    <div className="bg-primary p-4 rounded-lg text-center border-2 border-primary shadow-md">
-                      <p className="font-mono text-3xl font-bold tracking-wider text-white">
-                        {session?.code || session?.session_code || 'CODE'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="text-left">
-                    <p className="text-xl mb-2 font-medium">
-                      Connected Participants:
-                    </p>
-                    <div className="flex items-baseline">
-                      <p className="text-3xl font-bold text-primary">
-                        {participants.length}
-                      </p>
-                      <span className="text-gray-500 text-xl ml-2">/ {session?.max_participants || 30}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-            
-            {/* Afficher l'URL complète de manière plus visible */}
-            <div className="p-6 bg-yellow-50 border-t border-yellow-100">
-              <div className="max-w-2xl mx-auto">
-                <h3 className="text-lg font-medium mb-3 text-center">Can't scan the QR code?</h3>
-                <div className="flex items-center justify-center space-x-4">
-                  <div className="text-center">
-                    <p className="text-sm mb-2">Go to this URL:</p>
-                    <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                      <p className="font-mono font-bold text-lg break-all">{shareUrl}</p>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm mb-2">Enter this code:</p>
-                    <div className="bg-primary p-3 rounded-lg shadow-sm">
-                      <p className="font-mono font-bold text-lg text-white">{session?.code || session?.session_code || 'CODE'}</p>
-                    </div>
-                  </div>
+              <div className="flex justify-center mb-8">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <QRCode value={shareUrl} size={200} />
                 </div>
+              </div>
+              
+              <div className="text-center mb-8">
+                <p className="text-gray-600 mb-2">Go to this URL:</p>
+                <div className="flex items-center justify-center gap-2">
+                  <code className="bg-gray-100 px-4 py-2 rounded">{shareUrl}</code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareUrl);
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-gray-600">Connected Participants: {participants.length} / {session?.max_participants || 30}</p>
               </div>
             </div>
           </div>
