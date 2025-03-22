@@ -277,36 +277,6 @@ export default function SessionRunPage({ params }) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
-        <DotPattern className="absolute inset-0 z-0" />
-        <div className="text-center relative z-10">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto"></div>
-          <p className="mt-6 text-xl text-gray-600">Chargement de la présentation...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 relative overflow-hidden">
-        <DotPattern className="absolute inset-0 z-0" />
-        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md relative z-10">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
-          <p className="text-gray-700 mb-6">{error}</p>
-          <Link 
-            href={`/sessions/${sessionId}`}
-            className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
-          >
-            Retour à la session
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   // Rendu du contenu de la phase actuelle
   const renderPhaseContent = () => {
     switch (currentPhase) {
@@ -348,41 +318,19 @@ export default function SessionRunPage({ params }) {
         
       case PHASES.INSTRUCTIONS:
         return (
-          <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8 text-center">
-              <motion.h2 
-                className="text-3xl font-bold mb-6"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                Instructions
-              </motion.h2>
+          <div className="max-w-4xl mx-auto p-6">
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold text-center mb-6">Instructions</h2>
               
-              <motion.div 
-                className="bg-blue-50 p-8 rounded-lg border-2 border-blue-100 mb-8"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <motion.p 
-                  className="text-xl"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                >
+              <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-100 mb-8">
+                <p className="text-xl text-center">
                   {session?.discussion_instructions || 
                    "Les participants vont maintenant discuter entre eux. Échangez vos idées sur le sujet proposé."}
-                </motion.p>
-              </motion.div>
+                </p>
+              </div>
               
-              <motion.div 
-                className="mt-8 flex justify-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <div className="inline-block bg-white p-4 rounded-lg border-2 shadow-md">
+              <div className="flex justify-center">
+                <div className="bg-white p-4 rounded-lg border-2 shadow-md">
                   <div className="flex flex-col md:flex-row gap-6 items-center">
                     <div className="text-center">
                       <p className="text-base text-gray-600 mb-1">Participants</p>
@@ -397,7 +345,7 @@ export default function SessionRunPage({ params }) {
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         );
@@ -787,9 +735,44 @@ export default function SessionRunPage({ params }) {
         );
         
       default:
-        return <div>Contenu non disponible</div>;
+        return (
+          <div className="max-w-4xl mx-auto p-6">
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold text-center">Phase non disponible</h2>
+            </div>
+          </div>
+        );
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
+        <DotPattern className="absolute inset-0 z-0" />
+        <div className="text-center relative z-10">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto"></div>
+          <p className="mt-6 text-xl text-gray-600">Chargement de la présentation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
+          <p className="text-gray-700 mb-6">{error}</p>
+          <Link 
+            href={`/sessions/${sessionId}`}
+            className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
+          >
+            Retour à la session
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 relative overflow-hidden">
