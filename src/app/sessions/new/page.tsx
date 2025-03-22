@@ -161,7 +161,13 @@ export default function NewSessionPage() {
           showProfessorName: mergedConfig.showProfessorName ?? true,
           maxParticipants: mergedConfig.maxParticipants || 30,
           connection: mergedConfig.connection,
-          aiInteraction: mergedConfig.aiInteraction
+          aiInteraction: {
+            enabled: true,
+            configuration: {
+              nuggets: await createAgentConfig('nuggets', mergedConfig),
+              lightbulbs: await createAgentConfig('lightbulbs', mergedConfig)
+            }
+          }
         },
         p_max_participants: mergedConfig.maxParticipants || 30
       });
@@ -327,7 +333,7 @@ export default function NewSessionPage() {
       
       <div className="bento-card mb-8">
         <SessionCreationFlow 
-          initialConfig={sessionConfig}
+          initialConfig={sessionConfig} 
           onSubmit={handleCreateSession}
           isSubmitting={loading}
           currentStep={step}

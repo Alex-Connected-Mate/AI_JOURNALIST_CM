@@ -641,40 +641,12 @@ export async function createSession(sessionData: Partial<SessionData>) {
     }
 
     try {
-      // Prepare settings object
-      const settings = {
-        institution: sessionData.institution || '',
-        professorName: sessionData.professor_name || '',
-        showProfessorName: sessionData.show_professor_name ?? true,
-        maxParticipants: sessionData.max_participants || 30,
-        connection: sessionData.settings?.connection || {
-          anonymityLevel: 'semi-anonymous',
-          loginMethod: 'email',
-          approvalRequired: false
-        },
-        aiInteraction: {
-          enabled: true,
-          configuration: {
-            nuggets: {
-              style: {},
-              rules: [],
-              enabled: true
-            },
-            lightbulbs: {
-              style: {},
-              rules: [],
-              enabled: true
-            }
-          }
-        }
-      };
-
       // Call the secure function to create the session
       const { data, error } = await supabase
         .rpc('create_session_secure', {
           p_title: sessionData.title,
           p_description: sessionData.description || '',
-          p_settings: settings,
+          p_settings: sessionData.settings || {},
           p_max_participants: sessionData.max_participants || 30
         });
 
