@@ -21,8 +21,19 @@ export default function HomePage() {
   };
   
   return (
-    <div className="flex flex-col min-h-screen relative bg-white">
+    <div className="flex flex-col min-h-screen relative bg-white dot-pattern">
       <DotPattern className="absolute inset-0 z-0 opacity-70" />
+      
+      <div 
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          backgroundImage: `radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px)`,
+          backgroundSize: `24px 24px`,
+          backgroundPosition: '0 0',
+          opacity: 0.6,
+        }}
+        aria-hidden="true"
+      />
       
       <main className="flex-grow flex flex-col relative z-10 pt-8">
         {/* Header with Logo */}
