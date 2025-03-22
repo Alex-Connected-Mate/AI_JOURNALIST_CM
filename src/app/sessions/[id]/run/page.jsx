@@ -279,6 +279,19 @@ export default function SessionRunPage({ params }) {
 
   // Rendu du contenu de la phase actuelle
   const renderPhaseContent = () => {
+    if (!session) {
+      return (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h2 className="text-2xl font-bold text-center">Session non disponible</h2>
+          </div>
+        </div>
+      );
+    }
+
+    // Ensure shareUrl is a string
+    const displayShareUrl = typeof shareUrl === 'string' ? shareUrl : '';
+
     switch (currentPhase) {
       case PHASES.JOIN:
         return (
@@ -288,17 +301,17 @@ export default function SessionRunPage({ params }) {
               
               <div className="flex justify-center mb-8">
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <QRCode value={shareUrl} size={200} />
+                  <QRCode value={displayShareUrl} size={200} />
                 </div>
               </div>
               
               <div className="text-center mb-8">
                 <p className="text-gray-600 mb-2">Go to this URL:</p>
                 <div className="flex items-center justify-center gap-2">
-                  <code className="bg-gray-100 px-4 py-2 rounded">{shareUrl}</code>
+                  <code className="bg-gray-100 px-4 py-2 rounded">{displayShareUrl}</code>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(shareUrl);
+                      navigator.clipboard.writeText(displayShareUrl);
                     }}
                     className="p-2 hover:bg-gray-100 rounded"
                   >
@@ -310,7 +323,9 @@ export default function SessionRunPage({ params }) {
               </div>
               
               <div className="text-center">
-                <p className="text-gray-600">Connected Participants: {participants.length} / {session?.max_participants || 30}</p>
+                <p className="text-gray-600">
+                  Connected Participants: {Array.isArray(participants) ? participants.length : 0} / {session?.max_participants || 30}
+                </p>
               </div>
             </div>
           </div>
@@ -530,9 +545,9 @@ export default function SessionRunPage({ params }) {
                 <h3 className="text-2xl font-semibold mb-6">Participants sélectionnés</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {topParticipants.map((participant, index) => (
+                  {Array.isArray(topParticipants) && topParticipants.map((participant, index) => (
                     <motion.div 
-                      key={participant.id}
+                      key={participant?.id || index}
                       className="bg-white p-4 rounded-lg border-2 shadow-md"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -540,18 +555,20 @@ export default function SessionRunPage({ params }) {
                     >
                       <div className="flex flex-col items-center">
                         <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
-                          {participant.display_name?.charAt(0).toUpperCase() || 'A'}
+                          {(participant?.display_name || 'A').charAt(0).toUpperCase()}
                         </div>
-                        <p className="text-xl font-semibold mb-1">{participant.display_name || 'Anonyme'}</p>
-                        <p className="text-gray-500 text-sm mb-2">ID: {participant.id.substring(0, 8)}</p>
+                        <p className="text-xl font-semibold mb-1">{participant?.display_name || 'Anonyme'}</p>
+                        <p className="text-gray-500 text-sm mb-2">
+                          ID: {participant?.id ? participant.id.substring(0, 8) : 'N/A'}
+                        </p>
                         <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
-                          {participant.votes || 0} votes
+                          {participant?.votes || 0} votes
                         </div>
                       </div>
                     </motion.div>
                   ))}
                   
-                  {topParticipants.length === 0 && (
+                  {(!Array.isArray(topParticipants) || topParticipants.length === 0) && (
                     <p className="text-gray-500 col-span-3 text-center py-4">Aucun participant sélectionné</p>
                   )}
                 </div>
