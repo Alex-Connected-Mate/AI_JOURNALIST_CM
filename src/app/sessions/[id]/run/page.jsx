@@ -292,6 +292,20 @@ export default function SessionRunPage({ params }) {
 
     // Ensure shareUrl is a string
     const displayShareUrl = typeof shareUrl === 'string' ? shareUrl : '';
+    
+    // Ensure participants is an array
+    const safeParticipants = Array.isArray(participants) ? participants : [];
+    
+    // Ensure topParticipants is an array
+    const safeTopParticipants = Array.isArray(topParticipants) ? topParticipants : [];
+    
+    // Ensure analyses is an array
+    const safeAnalyses = Array.isArray(analyses) ? analyses : [];
+    
+    // Ensure session properties exist
+    const sessionTitle = session?.title || 'Session sans titre';
+    const sessionTopic = session?.topic || 'Sujet non défini';
+    const sessionDescription = session?.description || '';
 
     switch (currentPhase) {
       case PHASES.JOIN:
@@ -300,67 +314,82 @@ export default function SessionRunPage({ params }) {
             <div className="bg-white rounded-lg shadow-lg p-8">
               <h2 className="text-2xl font-bold text-center mb-6">Join Session</h2>
               
-              <div className="flex justify-center mb-8">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <QRCode value={displayShareUrl} size={200} />
-                </div>
-              </div>
-              
-              <div className="text-center mb-8">
-                <p className="text-gray-600 mb-2">Go to this URL:</p>
-                <div className="flex items-center justify-center gap-2">
-                  <code className="bg-gray-100 px-4 py-2 rounded">{displayShareUrl}</code>
+              <div className="mb-6 text-center">
+                <p className="text-lg mb-2">Partagez ce lien avec les participants :</p>
+                <div className="flex items-center justify-center">
+                  <input 
+                    type="text" 
+                    value={displayShareUrl}
+                    readOnly
+                    className="border rounded px-3 py-2 w-full max-w-md text-center"
+                  />
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(displayShareUrl);
                     }}
-                    className="p-2 hover:bg-gray-100 rounded"
+                    className="ml-2 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded"
                   >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
+                    Copier
                   </button>
                 </div>
               </div>
               
+              <div className="mb-6 flex justify-center">
+                <QRCode value={displayShareUrl} size={200} />
+              </div>
+              
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-2">Participants connectés ({safeParticipants.length})</h3>
+                <div className="flex flex-wrap gap-2">
+                  {safeParticipants.length === 0 ? (
+                    <p className="text-gray-500 italic">Aucun participant connecté</p>
+                  ) : (
+                    safeParticipants.map(participant => (
+                      <div key={participant.id} className="bg-gray-100 px-3 py-1 rounded">
+                        {participant.display_name || 'Anonyme'}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              
               <div className="text-center">
-                <p className="text-gray-600">
-                  Connected Participants: {Array.isArray(participants) ? participants.length : 0} / {session?.max_participants || 30}
-                </p>
+                <button
+                  onClick={goToNextPhase}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium"
+                >
+                  Commencer la session
+                </button>
               </div>
             </div>
           </div>
         );
-        
+      
       case PHASES.INSTRUCTIONS:
         return (
           <div className="max-w-4xl mx-auto p-6">
             <div className="bg-white rounded-lg shadow-lg p-8">
               <h2 className="text-2xl font-bold text-center mb-6">Instructions</h2>
-              
-              <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-100 mb-8">
-                <p className="text-xl text-center">
-                  {session?.discussion_instructions || 
-                   "Les participants vont maintenant discuter entre eux. Échangez vos idées sur le sujet proposé."}
-                </p>
-              </div>
-              
-              <div className="flex justify-center">
-                <div className="bg-white p-4 rounded-lg border-2 shadow-md">
-                  <div className="flex flex-col md:flex-row gap-6 items-center">
-                    <div className="text-center">
-                      <p className="text-base text-gray-600 mb-1">Participants</p>
-                      <p className="font-mono text-2xl font-semibold text-primary">{participants.length}</p>
-                    </div>
-                    
-                    <div className="h-10 w-px bg-gray-300 hidden md:block"></div>
-                    
-                    <div className="text-center">
-                      <p className="text-base text-gray-600 mb-1">Durée prévue</p>
-                      <p className="font-mono text-2xl font-semibold text-primary">{formatTime(timerDuration)}</p>
-                    </div>
-                  </div>
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold mb-2">Sujet: {sessionTopic}</h3>
+                <p className="mb-4">{sessionDescription}</p>
+                <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50">
+                  <p className="mb-2 text-lg font-medium">Déroulement de la session:</p>
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Discussion en groupe sur le sujet</li>
+                    <li>Vote pour les idées les plus pertinentes</li>
+                    <li>Interaction avec l'IA pour approfondir les idées sélectionnées</li>
+                    <li>Analyse et synthèse des contributions</li>
+                  </ol>
                 </div>
+              </div>
+              <div className="text-center">
+                <button
+                  onClick={goToNextPhase}
+                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium"
+                >
+                  Lancer la discussion ({formatTime(timerDuration)})
+                </button>
               </div>
             </div>
           </div>
@@ -546,44 +575,49 @@ export default function SessionRunPage({ params }) {
                 <h3 className="text-2xl font-semibold mb-6">Participants sélectionnés</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {Array.isArray(topParticipants) && topParticipants.map((participant, index) => (
-                    <motion.div 
-                      key={participant?.id || index}
-                      className="bg-white p-4 rounded-lg border-2 shadow-md"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 + (index * 0.1) }}
-                    >
-                      <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
-                          {(participant?.display_name || 'A').charAt(0).toUpperCase()}
+                  {safeTopParticipants.length > 0 ? (
+                    safeTopParticipants.map((participant, index) => (
+                      <motion.div 
+                        key={participant?.id || index}
+                        className="bg-white p-4 rounded-lg border-2 shadow-md"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 + (index * 0.1) }}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
+                            {(participant?.display_name || 'A').charAt(0).toUpperCase()}
+                          </div>
+                          <p className="text-xl font-semibold mb-1">{participant?.display_name || 'Anonyme'}</p>
+                          <p className="text-gray-500 text-sm mb-2">
+                            ID: {participant?.id ? participant.id.substring(0, 8) : 'N/A'}
+                          </p>
+                          <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
+                            {participant?.votes || 0} votes
+                          </div>
                         </div>
-                        <p className="text-xl font-semibold mb-1">{participant?.display_name || 'Anonyme'}</p>
-                        <p className="text-gray-500 text-sm mb-2">
-                          ID: {participant?.id ? participant.id.substring(0, 8) : 'N/A'}
-                        </p>
-                        <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
-                          {participant?.votes || 0} votes
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  {(!Array.isArray(topParticipants) || topParticipants.length === 0) && (
-                    <p className="text-gray-500 col-span-3 text-center py-4">Aucun participant sélectionné</p>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-8">
+                      <p className="text-gray-500 italic">Aucun participant sélectionné</p>
+                    </div>
                   )}
                 </div>
               </motion.div>
               
               <motion.div 
-                className="mt-10 text-center"
+                className="mt-12 text-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.8 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
               >
-                <p className="text-gray-600">
-                  Les participants interagissent avec l'IA sur leurs appareils mobiles.
-                </p>
+                <button 
+                  onClick={goToNextPhase}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-medium"
+                >
+                  Continuer vers l'analyse
+                </button>
               </motion.div>
             </div>
           </div>
@@ -591,70 +625,95 @@ export default function SessionRunPage({ params }) {
         
       case PHASES.ANALYSIS:
         return (
-          <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
-            <div className="p-8">
-              <h2 className="text-3xl font-bold text-center mb-6">Analyse des interactions</h2>
-              
-              <motion.div 
-                className="bg-purple-50 p-6 rounded-lg border border-purple-100 mb-6"
-                initial={{ opacity: 0, y: 20 }}
+          <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md relative z-10 border border-gray-200">
+            <div className="p-12 text-center">
+              <motion.h2 
+                className="text-4xl font-bold mb-10"
+                initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <p className="text-xl text-center mb-4">
-                  Voici l'analyse des discussions avec l'AI journaliste.
-                </p>
-                
-                <p className="text-center text-gray-600 mb-4">
-                  Ces "books" résument les échanges et mettent en avant les idées principales.
-                </p>
+                Analyse des résultats
+              </motion.h2>
+              
+              <motion.div 
+                className="bg-green-50 p-10 rounded-lg border-2 border-green-100 mb-8"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <motion.p 
+                  className="text-2xl mb-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  Les contributions des participants ont été analysées.
+                </motion.p>
               </motion.div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {topParticipants.slice(0, 4).map((participant, index) => (
-                  <motion.div 
-                    key={participant.id} 
-                    className="bg-white p-6 rounded-lg border shadow-md h-full"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.2, duration: 0.5 }}
-                  >
-                    <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center text-white bg-primary mr-3">
-                        {participant.display_name?.charAt(0) || 'A'}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{participant.display_name || 'Anonyme'}</h3>
-                        <p className="text-sm text-gray-600">ID: {participant.id.substring(0, 8)}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">Résumé de l'échange</h4>
-                      <p className="text-gray-600">
-                        {/* Ici, vous pourriez afficher le vrai résumé d'analyse depuis votre backend */}
-                        Analyse détaillée des idées échangées lors de la discussion avec l'IA journaliste.
-                        Les points clés abordés incluent des réflexions sur {session?.topic || 'le sujet de la session'}.
-                      </p>
-                      
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Idée clé</span>
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Innovation</span>
-                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Perspective</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+              <motion.div 
+                className="max-w-4xl mx-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              >
+                <h3 className="text-2xl font-semibold mb-6">Synthèse des idées</h3>
+                
+                {safeAnalyses.length > 0 ? (
+                  <div className="space-y-6">
+                    {safeAnalyses.map((analysis, index) => (
+                      <motion.div 
+                        key={analysis?.participant_id || index}
+                        className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-left"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 + (index * 0.1) }}
+                      >
+                        <div className="flex items-center mb-4">
+                          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold mr-3">
+                            {(analysis?.participant || 'A').charAt(0).toUpperCase()}
+                          </div>
+                          <h4 className="text-lg font-semibold">{analysis?.participant || 'Participant'}</h4>
+                        </div>
+                        
+                        <p className="text-gray-700 mb-4">{analysis?.content || 'Aucun contenu disponible'}</p>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(analysis?.tags) ? analysis.tags.map((tag, tagIndex) => (
+                            <span 
+                              key={tagIndex} 
+                              className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm"
+                            >
+                              {tag}
+                            </span>
+                          )) : (
+                            <span className="text-gray-500 italic">Aucun tag</span>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500 italic">Aucune analyse disponible</p>
+                  </div>
+                )}
+              </motion.div>
               
-              <div className="text-center">
-                <button
-                  onClick={() => {}} // Ajouter une action pour voir toutes les analyses
-                  className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition-colors"
+              <motion.div 
+                className="mt-12 text-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+              >
+                <button 
+                  onClick={goToNextPhase}
+                  className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-medium"
                 >
-                  Voir toutes les analyses
+                  Passer à la conclusion
                 </button>
-              </div>
+              </motion.div>
             </div>
           </div>
         );
@@ -669,83 +728,65 @@ export default function SessionRunPage({ params }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                Session terminée
+                Conclusion de la session
               </motion.h2>
               
               <motion.div 
-                className="bg-green-50 p-10 rounded-lg border-2 border-green-100 mb-10"
+                className="bg-purple-50 p-10 rounded-lg border-2 border-purple-100 mb-8"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center mx-auto mb-6 shadow-md">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                
                 <motion.p 
-                  className="text-2xl font-medium mb-4"
+                  className="text-2xl mb-6"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
                 >
-                  Merci à tous les participants pour cette session !
+                  Merci pour votre participation !
                 </motion.p>
                 
-                <motion.p 
-                  className="text-xl text-gray-600"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                <motion.p
+                  className="text-lg"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  Les participants peuvent se reconnecter à la session avec le même code pour accéder aux analyses et aux résultats.
+                  La session <span className="font-semibold">{sessionTitle}</span> est maintenant terminée. Les résultats et analyses sont disponibles pour consultation.
                 </motion.p>
               </motion.div>
               
               <motion.div 
-                className="bg-gray-50 p-8 rounded-lg border border-gray-200 max-w-2xl mx-auto"
+                className="bg-gray-50 p-8 rounded-lg border border-gray-200 max-w-2xl mx-auto mb-8"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
               >
-                <h3 className="text-xl font-semibold mb-4">Statistiques de la session</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <p className="text-gray-600 mb-2">Participants</p>
-                    <p className="text-4xl font-bold text-primary">{participants.length}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 mb-2">Votes totaux</p>
-                    <p className="text-4xl font-bold text-primary">
-                      {participants.reduce((sum, p) => sum + (p.votes || 0), 0)}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 mb-2">Idées exploréees</p>
-                    <p className="text-4xl font-bold text-primary">{topParticipants.length}</p>
-                  </div>
+                <h3 className="text-xl font-semibold mb-4">Résumé</h3>
+                <div className="text-left space-y-3">
+                  <p>
+                    <span className="font-medium">Sujet :</span> {sessionTopic}
+                  </p>
+                  <p>
+                    <span className="font-medium">Participants :</span> {safeParticipants.length}
+                  </p>
+                  <p>
+                    <span className="font-medium">Interactions :</span> {safeAnalyses.length}
+                  </p>
                 </div>
               </motion.div>
               
               <motion.div 
-                className="flex justify-center gap-4 mt-10"
+                className="mt-8 text-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
               >
-                <Link
-                  href={`/sessions/${sessionId}/results`}
-                  className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors text-lg"
-                >
-                  Voir les résultats détaillés
-                </Link>
-                
-                <Link
+                <Link 
                   href={`/sessions/${sessionId}`}
-                  className="px-6 py-3 bg-white border border-gray-300 text-gray-800 rounded-md hover:bg-gray-50 transition-colors text-lg"
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-3 rounded-lg text-lg font-medium inline-block"
                 >
-                  Retour à la session
+                  Retourner à la page de session
                 </Link>
               </motion.div>
             </div>
@@ -756,7 +797,10 @@ export default function SessionRunPage({ params }) {
         return (
           <div className="max-w-4xl mx-auto p-6">
             <div className="bg-white rounded-lg shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-center">Phase non disponible</h2>
+              <h2 className="text-2xl font-bold text-center">Phase non reconnue</h2>
+              <p className="text-center mt-4">
+                Une erreur s'est produite lors du chargement de cette phase
+              </p>
             </div>
           </div>
         );

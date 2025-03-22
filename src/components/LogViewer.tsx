@@ -21,16 +21,32 @@ export default function LogViewer() {
     try {
       // Add event listeners
       window.addEventListener('toggle-logs', handleToggle);
-      logger.subscribe(handleLog);
-
-      // Log component mount
-      logger.component('LogViewer', 'mounted');
+      
+      // Vérifier que logger existe et que subscribe est une fonction
+      if (logger && typeof logger.subscribe === 'function') {
+        logger.subscribe(handleLog);
+        
+        // Log component mount
+        if (typeof logger.component === 'function') {
+          logger.component('LogViewer', 'mounted');
+        }
+      } else {
+        console.error('Logger subscription failed: logger.subscribe is not a function');
+      }
 
       // Cleanup
       return () => {
         window.removeEventListener('toggle-logs', handleToggle);
-        logger.unsubscribe(handleLog);
-        logger.component('LogViewer', 'unmounted');
+        
+        // Vérifier que unsubscribe existe avant de l'appeler
+        if (logger && typeof logger.unsubscribe === 'function') {
+          logger.unsubscribe(handleLog);
+          
+          // Log component unmount
+          if (typeof logger.component === 'function') {
+            logger.component('LogViewer', 'unmounted');
+          }
+        }
       };
     } catch (error) {
       console.error('Error in LogViewer setup:', error);
@@ -50,7 +66,9 @@ export default function LogViewer() {
           <button
             onClick={() => {
               setLogs([]);
-              logger.info('Logs cleared by user');
+              if (logger && typeof logger.info === 'function') {
+                logger.info('Logs cleared by user');
+              }
             }}
             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
           >
@@ -59,7 +77,9 @@ export default function LogViewer() {
           <button
             onClick={() => {
               setIsVisible(false);
-              logger.component('LogViewer', 'closed');
+              if (logger && typeof logger.component === 'function') {
+                logger.component('LogViewer', 'closed');
+              }
             }}
             className="px-2 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600"
           >
