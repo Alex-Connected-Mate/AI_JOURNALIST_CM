@@ -20,7 +20,7 @@ const PHASES = {
 };
 
 export default function SessionRunPage({ params }) {
-  const sessionId = params.id;
+  const sessionId = params?.id;
   const router = useRouter();
   const [session, setSession] = useState(null);
   const [currentPhase, setCurrentPhase] = useState(PHASES.JOIN);
@@ -53,6 +53,12 @@ export default function SessionRunPage({ params }) {
   // Chargement des données de la session
   useEffect(() => {
     const loadSession = async () => {
+      if (!sessionId) {
+        setError('ID de session non valide');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const { data: sessionData, error: sessionError } = await supabase
@@ -62,23 +68,25 @@ export default function SessionRunPage({ params }) {
           .single();
 
         if (sessionError) throw sessionError;
+        if (!sessionData) throw new Error('Session non trouvée');
         
         setSession(sessionData);
         
         // Générer l'URL de partage
         const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-        const shareUrl = `${baseUrl}/join/${sessionData.code}`;
+        const shareUrl = `${baseUrl}/join/${sessionData.code || ''}`;
         setShareUrl(shareUrl);
         
         // Configurer le timer si activé
         if (sessionData.settings?.ai_configuration?.timerEnabled) {
-          setTimerDuration(sessionData.settings.ai_configuration.timerDuration * 60);
+          const duration = parseInt(sessionData.settings.ai_configuration.timerDuration) || 0;
+          setTimerDuration(duration * 60);
         }
         
         setLoading(false);
       } catch (err) {
         console.error('Error loading session:', err);
-        setError(err.message);
+        setError(err.message || 'Erreur lors du chargement de la session');
         setLoading(false);
       }
     };
@@ -762,6 +770,24 @@ export default function SessionRunPage({ params }) {
     }
   };
 
+  // Vérification de sécurité pour le rendu
+  if (!sessionId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
+          <p className="text-gray-700 mb-6">ID de session non valide</p>
+          <Link 
+            href="/sessions"
+            className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
+          >
+            Retour aux sessions
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 relative overflow-hidden">
@@ -781,10 +807,10 @@ export default function SessionRunPage({ params }) {
           <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
           <p className="text-gray-700 mb-6">{error}</p>
           <Link 
-            href={`/sessions/${sessionId}`}
+            href="/sessions"
             className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/90"
           >
-            Retour à la session
+            Retour aux sessions
           </Link>
         </div>
       </div>
