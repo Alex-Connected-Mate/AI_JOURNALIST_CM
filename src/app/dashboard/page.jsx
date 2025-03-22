@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { useSearchParams } from 'next/navigation';
 import { getSessions } from '@/lib/supabase';
+import logger from '@/lib/logger';
 
 function LoadingFallback() {
   return (
@@ -58,7 +59,7 @@ function DashboardContent() {
   useEffect(() => {
     if (loadingTimeout && loading) {
       setLoading(false);
-      console.warn('Loading sessions timed out - forcing end of loading state');
+      logger.warning('Loading sessions timed out - forcing end of loading state');
     }
   }, [loadingTimeout, loading]);
 
@@ -72,23 +73,23 @@ function DashboardContent() {
       
       try {
         setLoading(true);
-        console.info('Fetching sessions for user:', user.id);
+        logger.info('Fetching sessions for user:', user.id);
         
         // Fetch real session data from Supabase
         const { data, error } = await getSessions(user.id);
         
         if (error) {
-          console.error('Error fetching sessions:', error);
+          logger.error('Error fetching sessions:', error);
           setError('Unable to load sessions. Please try again later.');
           setLoading(false);
           return;
         }
         
-        console.info(`Fetched ${data?.length || 0} sessions`);
+        logger.info(`Fetched ${data?.length || 0} sessions`);
         setSessions(data || []);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching sessions:', error);
+        logger.error('Error fetching sessions:', error);
         setError('An unexpected error occurred. Please try again later.');
         setLoading(false);
       }
@@ -135,7 +136,7 @@ function DashboardContent() {
             {t('dashboard.welcomeMessage', 'Bienvenue sur AI Journalist')}
           </h2>
           <p className="text-gray-600">
-            Créez et gérez vos sessions interactives avec l'assistance IA
+            Créez et gérez vos sessions interactives avec l'assistance IA (test Maxime)
           </p>
         </div>
 
@@ -191,6 +192,7 @@ function DashboardContent() {
                       Voir les détails
                     </Link>
                     
+                    {/* Bouton d'édition pour toutes les sessions */}
                     <Link 
                       href={`/sessions/${session.id}/edit`}
                       className="text-indigo-600 hover:text-indigo-800 text-sm px-3 py-1 rounded-md hover:bg-indigo-50 flex-1 text-center"
@@ -198,6 +200,7 @@ function DashboardContent() {
                       Éditer
                     </Link>
                     
+                    {/* Ajouter un bouton "Launch Session" pour toutes les sessions actives */}
                     {session.status === 'active' && (
                       <Link 
                         href={`/sessions/${session.id}/run`}
@@ -207,6 +210,7 @@ function DashboardContent() {
                       </Link>
                     )}
                     
+                    {/* Bouton pour voir les résultats des sessions terminées */}
                     {session.status === 'ended' && (
                       <Link 
                         href={`/sessions/${session.id}/results`}

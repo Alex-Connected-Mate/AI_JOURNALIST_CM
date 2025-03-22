@@ -52,121 +52,40 @@ export default function SessionRunPage({ params }) {
 
   // Chargement des données de la session
   useEffect(() => {
-    async function loadSessionData() {
-      try {
-        // Charger les informations de base de la session
-        const { data: sessionData, error: sessionError } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('id', sessionId)
-          .single();
-          
-        if (sessionError) {
-          if (sessionError.code === '42P01') {
-            console.error("La table 'sessions' n'existe pas dans la base de données:", sessionError);
-            setError("La table 'sessions' n'existe pas dans la base de données. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer la base de données.");
-            setLoading(false);
-            return;
-          }
-          throw sessionError;
-        }
-        
-        setSession(sessionData);
-        
-        // Définir la durée du timer à partir des réglages
-        if (sessionData.voting_duration) {
-          setTimerDuration(sessionData.voting_duration);
-        } else {
-          // Valeur par défaut (5 minutes)
-          setTimerDuration(5 * 60);
-        }
-
-        try {
-          // Charger les participants
-          const { data: participantsData, error: participantsError } = await supabase
-            .from('participants')
-            .select('*')
-            .eq('session_id', sessionId);
-            
-          if (participantsError) {
-            if (participantsError.code === '42P01') {
-              console.error("La table 'participants' n'existe pas dans la base de données:", participantsError);
-              // Afficher un message mais continuer le flux
-              setError("La table 'participants' n'existe pas dans la base de données. Certaines fonctionnalités seront limitées. Veuillez suivre les instructions dans DATABASE_SETUP.md pour configurer correctement la base de données.");
-              setParticipants([]);
-            } else {
-              throw participantsError;
-            }
-          } else {
-            setParticipants(participantsData || []);
-          }
-        } catch (participantsErr) {
-          console.error("Erreur lors du chargement des participants:", participantsErr);
-          // Continuer le flux sans planter l'application
-          setParticipants([]);
-        }
-
-        // Générer l'URL de partage
-        if (typeof window !== 'undefined') {
-          // Utiliser session_code, code ou access_code selon ce qui est disponible
-          const sessionCode = sessionData?.session_code || sessionData?.code || sessionData?.access_code;
-          if (sessionCode) {
-            const baseUrl = window.location.origin;
-            setShareUrl(`${baseUrl}/join?code=${sessionCode}`);
-          } else {
-            console.error("Aucun code de session trouvé dans les données de session:", sessionData);
-          }
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading session data:', err);
-        setError(err.message || 'Impossible de charger les données de la session');
-        setLoading(false);
-      }
-    }
-    
-    loadSessionData();
-    
-    // Configurer une mise à jour en temps réel des participants
-    const participantsSubscription = supabase
-      .channel(`session_${sessionId}_participants`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'participants',
-        filter: `session_id=eq.${sessionId}`
-      }, (payload) => {
-        // Mettre à jour la liste des participants
-        if (payload.eventType === 'INSERT') {
-          setParticipants(prev => [...prev, payload.new]);
-          // Ajouter à la liste des nouveaux pour l'animation
-          setNewParticipantIds(prev => [...prev, payload.new.id]);
-          // Après 2 secondes, supprimer de la liste des nouveaux
-          setTimeout(() => {
-            setNewParticipantIds(prev => prev.filter(id => id !== payload.new.id));
-          }, 2000);
-        } else if (payload.eventType === 'DELETE') {
-          setParticipants(prev => prev.filter(p => p.id !== payload.old.id));
-        } else if (payload.eventType === 'UPDATE') {
-          setParticipants(prev => 
-            prev.map(p => p.id === payload.new.id ? payload.new : p)
-          );
-        }
-      })
-      .subscribe();
-    
-    // Initialiser le canal de broadcast pour les changements de phase
-    phaseChannelRef.current = supabase
-      .channel(`session_${sessionId}_phase`)
-      .subscribe();
+    if (sessionId) {
+      // Générer l'URL de partage
+      const baseUrl = window.location.origin;
+      const shareUrl = `${baseUrl}/join/${sessionId}`;
+      setShareUrl(shareUrl);
       
-    return () => {
-      supabase.removeChannel(participantsSubscription);
-      if (phaseChannelRef.current) {
-        supabase.removeChannel(phaseChannelRef.current);
-      }
-    };
+      // Charger les données de la session
+      const fetchSession = async () => {
+        try {
+          setLoading(true);
+          const { data, error } = await supabase
+            .from('sessions')
+            .select('*')
+            .eq('id', sessionId)
+            .single();
+            
+          if (error) throw error;
+          setSession(data);
+          
+          // Configurer le timer si activé
+          if (data.settings?.ai_configuration?.timerEnabled) {
+            setTimerDuration(data.settings.ai_configuration.timerDuration * 60);
+            setTimer(data.settings.ai_configuration.timerDuration * 60);
+          }
+        } catch (err) {
+          console.error('Error fetching session:', err);
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchSession();
+    }
   }, [sessionId]);
   
   // Gestionnaire du timer
@@ -407,36 +326,21 @@ export default function SessionRunPage({ params }) {
               </motion.h2>
               
               <div className="flex flex-col lg:flex-row gap-8 items-center justify-center">
-                {shareUrl ? (
-                  <motion.div 
-                    className="flex-shrink-0 bg-white p-4 border-3 border-gray-200 rounded-lg shadow-lg"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                  >
-                    <div className="mb-3 text-base font-medium">Scan QR code</div>
-                    <QRCode 
-                      value={shareUrl}
-                      size={200}
-                      fgColor="#000000"
-                      bgColor="#ffffff"
-                      level="H"
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    className="flex-shrink-0 bg-white p-4 border-3 border-gray-200 rounded-lg shadow-lg flex items-center justify-center"
-                    style={{ width: 200, height: 200 }}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                  >
-                    <div className="text-gray-500 text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-                      <p>Generating QR code...</p>
-                    </div>
-                  </motion.div>
-                )}
+                <motion.div 
+                  className="flex-shrink-0 bg-white p-4 border-2 border-gray-200 rounded-lg shadow-lg"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <div className="mb-3 text-base font-medium">Scan QR code</div>
+                  <QRCode 
+                    value={shareUrl}
+                    size={200}
+                    fgColor="#000000"
+                    bgColor="#ffffff"
+                    level="H"
+                  />
+                </motion.div>
                 
                 <motion.div 
                   className="flex-1 max-w-md"
@@ -463,7 +367,7 @@ export default function SessionRunPage({ params }) {
                     </p>
                     <div className="bg-primary p-4 rounded-lg text-center border-2 border-primary shadow-md">
                       <p className="font-mono text-3xl font-bold tracking-wider text-white">
-                        {session?.session_code || session?.code || session?.access_code || 'CODE'}
+                        {session?.code || session?.session_code || 'CODE'}
                       </p>
                     </div>
                   </div>
@@ -491,13 +395,13 @@ export default function SessionRunPage({ params }) {
                   <div className="text-center">
                     <p className="text-sm mb-2">Go to this URL:</p>
                     <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                      <p className="font-mono font-bold text-lg">{shareUrl ? (new URL(shareUrl).origin + "/join") : (window.location.origin + "/join")}</p>
+                      <p className="font-mono font-bold text-lg break-all">{shareUrl}</p>
                     </div>
                   </div>
                   <div className="text-center">
                     <p className="text-sm mb-2">Enter this code:</p>
                     <div className="bg-primary p-3 rounded-lg shadow-sm">
-                      <p className="font-mono font-bold text-lg text-white">{session?.session_code || session?.code || session?.access_code || 'CODE'}</p>
+                      <p className="font-mono font-bold text-lg text-white">{session?.code || session?.session_code || 'CODE'}</p>
                     </div>
                   </div>
                 </div>
