@@ -290,23 +290,33 @@ export default function SessionRunPage({ params }) {
       );
     }
 
-    // Ensure shareUrl is a string
+    // Ensure all session values are properly type-checked before rendering
     const displayShareUrl = typeof shareUrl === 'string' ? shareUrl : '';
     
-    // Ensure participants is an array
+    // Ensure participants arrays
     const safeParticipants = Array.isArray(participants) ? participants : [];
-    
-    // Ensure topParticipants is an array
     const safeTopParticipants = Array.isArray(topParticipants) ? topParticipants : [];
-    
-    // Ensure analyses is an array
     const safeAnalyses = Array.isArray(analyses) ? analyses : [];
     
-    // Ensure session properties exist and are strings
+    // Ensure session properties are strings
     const sessionTitle = typeof session.title === 'string' ? session.title : 'Session sans titre';
     const sessionTopic = typeof session.topic === 'string' ? session.topic : 'Sujet non défini';
     const sessionDescription = typeof session.description === 'string' ? session.description : '';
     const sessionDiscussionTopic = typeof session.discussion_topic === 'string' ? session.discussion_topic : '';
+    
+    // Safe formatTime function that always returns a string
+    const safeFormatTime = (seconds) => {
+      if (typeof seconds !== 'number') {
+        return '0:00';
+      }
+      return formatTime(seconds);
+    };
+
+    // Helper to safely render map items
+    const safeMap = (array, mapFn) => {
+      if (!Array.isArray(array)) return null;
+      return array.map(mapFn);
+    };
 
     switch (currentPhase) {
       case PHASES.JOIN:
@@ -345,11 +355,19 @@ export default function SessionRunPage({ params }) {
                   {safeParticipants.length === 0 ? (
                     <p className="text-gray-500 italic">Aucun participant connecté</p>
                   ) : (
-                    safeParticipants.map(participant => (
-                      <div key={participant.id} className="bg-gray-100 px-3 py-1 rounded">
-                        {participant.display_name || 'Anonyme'}
-                      </div>
-                    ))
+                    safeMap(safeParticipants, participant => {
+                      // Ensure participant data is valid
+                      if (!participant || typeof participant !== 'object') return null;
+                      
+                      const participantId = typeof participant.id === 'string' ? participant.id : `unknown-${Math.random()}`;
+                      const displayName = typeof participant.display_name === 'string' ? participant.display_name : 'Anonyme';
+                      
+                      return (
+                        <div key={participantId} className="bg-gray-100 px-3 py-1 rounded">
+                          {displayName}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -389,7 +407,7 @@ export default function SessionRunPage({ params }) {
                   onClick={goToNextPhase}
                   className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg text-lg font-medium"
                 >
-                  Lancer la discussion ({formatTime(timerDuration)})
+                  Lancer la discussion ({safeFormatTime(timerDuration)})
                 </button>
               </div>
             </div>
@@ -432,7 +450,7 @@ export default function SessionRunPage({ params }) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
                   >
-                    <p className="text-center text-5xl font-bold text-primary">{formatTime(timer)}</p>
+                    <p className="text-center text-5xl font-bold text-primary">{safeFormatTime(timer)}</p>
                     <p className="text-center text-lg text-gray-600 mt-2">Temps restant</p>
                   </motion.div>
                 )}
@@ -491,7 +509,7 @@ export default function SessionRunPage({ params }) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
                   >
-                    <p className="text-center text-5xl font-bold text-primary">{formatTime(timer)}</p>
+                    <p className="text-center text-5xl font-bold text-primary">{safeFormatTime(timer)}</p>
                     <p className="text-center text-lg text-gray-600 mt-2">Temps restant</p>
                   </motion.div>
                 )}
@@ -561,7 +579,7 @@ export default function SessionRunPage({ params }) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
                   >
-                    <p className="text-center text-5xl font-bold text-primary">{formatTime(timer)}</p>
+                    <p className="text-center text-5xl font-bold text-primary">{safeFormatTime(timer)}</p>
                     <p className="text-center text-lg text-gray-600 mt-2">Temps restant</p>
                   </motion.div>
                 )}
@@ -577,28 +595,39 @@ export default function SessionRunPage({ params }) {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {safeTopParticipants.length > 0 ? (
-                    safeTopParticipants.map((participant, index) => (
-                      <motion.div 
-                        key={participant?.id || index}
-                        className="bg-white p-4 rounded-lg border-2 shadow-md"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 + (index * 0.1) }}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
-                            {(participant?.display_name || 'A').charAt(0).toUpperCase()}
+                    safeMap(safeTopParticipants, (participant, index) => {
+                      // Ensure participant data is valid
+                      if (!participant || typeof participant !== 'object') return null;
+                      
+                      const participantId = typeof participant.id === 'string' ? participant.id : `unknown-${index}`;
+                      const displayName = typeof participant.display_name === 'string' ? participant.display_name : 'Anonyme';
+                      const displayInitial = displayName.charAt(0).toUpperCase();
+                      const votes = typeof participant.votes === 'number' ? participant.votes : 0;
+                      const participantIdDisplay = participantId.substring(0, 8);
+                      
+                      return (
+                        <motion.div 
+                          key={participantId}
+                          className="bg-white p-4 rounded-lg border-2 shadow-md"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 + (index * 0.1) }}
+                        >
+                          <div className="flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
+                              {displayInitial}
+                            </div>
+                            <p className="text-xl font-semibold mb-1">{displayName}</p>
+                            <p className="text-gray-500 text-sm mb-2">
+                              ID: {participantIdDisplay}
+                            </p>
+                            <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
+                              {votes} votes
+                            </div>
                           </div>
-                          <p className="text-xl font-semibold mb-1">{participant?.display_name || 'Anonyme'}</p>
-                          <p className="text-gray-500 text-sm mb-2">
-                            ID: {participant?.id ? participant.id.substring(0, 8) : 'N/A'}
-                          </p>
-                          <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
-                            {participant?.votes || 0} votes
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
+                        </motion.div>
+                      );
+                    })
                   ) : (
                     <div className="col-span-3 text-center py-8">
                       <p className="text-gray-500 italic">Aucun participant sélectionné</p>
