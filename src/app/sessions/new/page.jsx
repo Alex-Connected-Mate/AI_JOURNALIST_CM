@@ -86,7 +86,23 @@ export default function NewSessionPage() {
       )}
 
       <SessionCreationFlow
-        initialConfig={{}}
+        initialConfig={{
+          title: '',
+          description: '',
+          institution: '',
+          professorName: '',
+          showProfessorName: true,
+          maxParticipants: 30,
+          timerEnabled: false,
+          timerDuration: 5,
+          settings: {
+            connection: {
+              anonymityLevel: 'semi-anonymous',
+              loginMethod: 'email',
+              approvalRequired: false
+            }
+          }
+        }}
         onSubmit={handleCreateSession}
         isSubmitting={loading}
         currentStep={currentStep}

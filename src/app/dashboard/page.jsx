@@ -151,7 +151,7 @@ function DashboardContent() {
                 <div key={session.id} className="border rounded-lg overflow-hidden bg-white hover:shadow-md transition-shadow">
                   <div className="p-4">
                     <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-lg">{session.name || 'Session sans titre'}</h3>
+                      <h3 className="font-medium text-lg">{session.title || 'Session sans titre'}</h3>
                       <span className={`text-xs px-2 py-1 rounded-full ${
                         session.status === 'draft' ? 'bg-gray-100 text-gray-700' : 
                         session.status === 'active' ? 'bg-green-100 text-green-700' : 
