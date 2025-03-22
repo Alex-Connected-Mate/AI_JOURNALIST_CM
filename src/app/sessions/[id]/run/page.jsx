@@ -107,15 +107,14 @@ export default function SessionRunPage({ params }) {
         }
 
         // Générer l'URL de partage
-        if (sessionData) {
-          // Générer l'URL de partage pour rejoindre la session
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-          const sessionCode = sessionData.code || sessionData.session_code || sessionData.access_code;
-          
-          if (baseUrl && sessionCode) {
-            // Construire l'URL complète pour rejoindre la session
-            const url = `${baseUrl}/join?code=${sessionCode}`;
-            setShareUrl(url);
+        if (typeof window !== 'undefined') {
+          // Utiliser session_code, code ou access_code selon ce qui est disponible
+          const sessionCode = sessionData?.session_code || sessionData?.code || sessionData?.access_code;
+          if (sessionCode) {
+            const baseUrl = window.location.origin;
+            setShareUrl(`${baseUrl}/join?code=${sessionCode}`);
+          } else {
+            console.error("Aucun code de session trouvé dans les données de session:", sessionData);
           }
         }
 

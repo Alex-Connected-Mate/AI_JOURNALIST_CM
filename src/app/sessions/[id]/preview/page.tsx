@@ -107,7 +107,7 @@ export default function SessionPreviewPage() {
         throw new Error(errorMessage);
       }
       
-      // Redirect to the active session page
+      // Redirect to the new manage page we created
       router.push(`/sessions/${session.id}/manage`);
     } catch (err: any) {
       console.error('Error launching session:', err);

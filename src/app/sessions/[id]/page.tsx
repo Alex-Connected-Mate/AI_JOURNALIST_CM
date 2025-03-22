@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import SessionStartedNotification from '@/components/SessionStartedNotification';
-import QRCode from '@/components/QRCode.jsx';
+import QRCode from '@/components/QRCode';
 
 interface SessionDetailPageProps {
   params: {
@@ -172,24 +172,18 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   
   // Créer une URL de partage pour la session
   const getShareUrl = () => {
-    if (typeof window === 'undefined' || !session) return '';
+    if (typeof window === 'undefined') return '';
     
     // Utiliser code ou session_code selon ce qui est disponible
-    const sessionCode = session.code || session.session_code;
+    const sessionCode = session?.code || session?.session_code;
     if (!sessionCode) return '';
     
     return `${window.location.origin}/join?code=${sessionCode}`;
   };
   
-  // Créer une URL pour le QR code (utilise la même URL que pour le partage)
+  // Créer une URL plus directe pour le QR code (même format)
   const getDirectJoinUrl = () => {
-    if (typeof window === 'undefined' || !session) return '';
-    
-    // Utiliser code ou session_code selon ce qui est disponible
-    const sessionCode = session.code || session.session_code;
-    if (!sessionCode) return '';
-    
-    return `${window.location.origin}/join?code=${sessionCode}`;
+    return getShareUrl(); // Utiliser la même URL pour cohérence
   };
   
   // Copier l'URL dans le presse-papier
@@ -211,7 +205,7 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
   const getQRCodeUrl = () => {
     const directUrl = getDirectJoinUrl();
     if (!directUrl) return '';
-    return directUrl; // Retourne simplement l'URL à encoder
+    return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(directUrl)}`;
   };
   
   // Fonction pour supprimer une session
@@ -494,12 +488,11 @@ export default function SessionDetailPage({ params }: SessionDetailPageProps) {
               
               <div className="flex-shrink-0 flex flex-col items-center">
                 <div className="bg-white p-2 border rounded-lg shadow-sm">
-                  <QRCode
-                    value={getDirectJoinUrl()}
-                    size={150}
-                    fgColor="#000000"
-                    bgColor="#ffffff"
-                    level="M"
+                  <img
+                    src={getQRCodeUrl()}
+                    alt="QR Code pour rejoindre la session"
+                    width={150}
+                    height={150}
                   />
                 </div>
                 <p className="text-sm text-gray-500 mt-2">Scanner pour rejoindre</p>

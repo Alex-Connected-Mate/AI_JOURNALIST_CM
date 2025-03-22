@@ -23,22 +23,11 @@ const QRCode = ({
   logo = null,
   className = "",
 }) => {
-  // Si value est undefined, null, vide ou non-string, retourner un placeholder
-  if (!value || typeof value !== 'string' || value.trim() === '') {
-    // Utiliser des classes fixes au lieu de w-${size} pour éviter des problèmes de purge CSS
-    const sizeStyle = { width: `${size}px`, height: `${size}px` };
-    
-    return (
-      <div 
-        className={`border border-dashed border-gray-300 rounded flex items-center justify-center ${className}`}
-        style={sizeStyle}
-      >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-          <span className="text-gray-500 text-sm">QR Code en préparation...</span>
-        </div>
-      </div>
-    );
+  // If no value is provided, return empty div
+  if (!value) {
+    return <div className={`w-${size} h-${size} border border-dashed border-gray-300 rounded flex items-center justify-center ${className}`}>
+      <span className="text-gray-400 text-sm">QR Code sera généré</span>
+    </div>;
   }
 
   return (
