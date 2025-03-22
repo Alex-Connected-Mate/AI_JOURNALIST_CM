@@ -1,13 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import logger, { Logger } from '@/lib/logger';
+import logger from '@/lib/logger';
 
 export default function LogViewer() {
   const [isVisible, setIsVisible] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
+    // Load existing logs
+    setLogs(logger.getLogs());
+
     // Subscribe to logger events
     const handleLog = (log: string) => {
       setLogs(prevLogs => [...prevLogs, log].slice(-100)); // Keep only last 100 logs
@@ -40,17 +44,36 @@ export default function LogViewer() {
     }
   }, []);
 
+  // Filter logs based on type
+  const filteredLogs = logs.filter(log => {
+    if (filter === 'all') return true;
+    return log.includes(`[${filter.toUpperCase()}]`);
+  });
+
   if (!isVisible) return null;
 
   return (
     <div className="fixed bottom-20 left-4 w-96 max-h-[60vh] bg-gray-900 text-gray-100 rounded-lg shadow-xl overflow-hidden z-50">
       <div className="flex justify-between items-center p-2 bg-gray-800">
         <h3 className="text-sm font-medium">Application Logs</h3>
-        <div className="space-x-2">
+        <div className="flex items-center space-x-2">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="text-xs bg-gray-700 text-white rounded px-2 py-1"
+          >
+            <option value="all">All Logs</option>
+            <option value="info">Info</option>
+            <option value="warning">Warnings</option>
+            <option value="error">Errors</option>
+            <option value="debug">Debug</option>
+            <option value="session">Session</option>
+            <option value="component">Component</option>
+          </select>
           <button
             onClick={() => {
+              logger.clearLogs();
               setLogs([]);
-              logger.info('Logs cleared by user');
             }}
             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
           >
@@ -68,11 +91,31 @@ export default function LogViewer() {
         </div>
       </div>
       <div className="overflow-auto p-2 max-h-[calc(60vh-40px)]">
-        {logs.length === 0 ? (
+        {filteredLogs.length === 0 ? (
           <p className="text-gray-500 text-sm italic">No logs yet...</p>
         ) : (
           <pre className="text-xs font-mono whitespace-pre-wrap">
-            {logs.join('\n')}
+            {filteredLogs.map((log, index) => {
+              const isError = log.includes('[ERROR]');
+              const isWarning = log.includes('[WARNING]');
+              const isSession = log.includes('[SESSION]');
+              const isComponent = log.includes('[COMPONENT]');
+              
+              return (
+                <div
+                  key={index}
+                  className={`mb-1 ${
+                    isError ? 'text-red-400' :
+                    isWarning ? 'text-yellow-400' :
+                    isSession ? 'text-purple-400' :
+                    isComponent ? 'text-blue-400' :
+                    'text-gray-300'
+                  }`}
+                >
+                  {log}
+                </div>
+              );
+            })}
           </pre>
         )}
       </div>

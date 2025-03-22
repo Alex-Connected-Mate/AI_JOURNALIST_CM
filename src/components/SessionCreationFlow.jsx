@@ -11,6 +11,7 @@ import logger from '@/lib/logger';
 import ConnectionSettings from './ConnectionSettings';
 import { useStore } from '@/lib/store';
 import ImageSelector from './ImageSelector';
+import Link from 'next/link';
 
 /**
  * SessionCreationFlow Component
@@ -400,6 +401,10 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       logger.info('Session creation cancelled by user');
       router.push('/sessions');
     }
+  };
+
+  const handleShowLogs = () => {
+    window.dispatchEvent(new Event('toggle-logs'));
   };
 
   const renderStepContent = () => {
@@ -1496,40 +1501,28 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
   };
 
   return (
-    <div className="flex flex-row h-screen">
-      {/* Left Column - Flow Map */}
-      <div className="w-2/5 sticky top-0 h-screen overflow-auto pb-8 pr-4">
-        <SessionFlowMap 
-          activeStep={activeStep}
-          onStepChange={handleStepChange}
-          sessionConfig={sessionConfig}
-        />
+    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <div className="flex justify-between w-full max-w-4xl px-4 mb-8">
+        <Link href="/sessions" className="text-gray-600 hover:text-gray-900">
+          ← Retour aux sessions
+        </Link>
+        <button
+          onClick={handleShowLogs}
+          className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+        >
+          Voir les logs
+        </button>
       </div>
-      
-      {/* Right Column - Step Content */}
-      <div className="w-3/5 h-screen overflow-auto pb-8">
-        <div className="second-level-block p-6">
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold font-bricolage">
-              {steps.find(step => step.id === activeStep)?.label}
-            </h3>
-            <p className="text-gray-600 mt-1">
-              Étape {getCurrentStepIndex() + 1} sur {steps.length}
-            </p>
-          </div>
-          
+
+      {Object.keys(errors).length > 0 && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+          Erreur : {errors.submit}
+        </div>
+      )}
+
+      <div className="w-full max-w-4xl bg-white rounded-lg shadow-md p-6">
+        <form onSubmit={handleSubmit}>
           {renderStepContent()}
-          
-          {Object.keys(errors).length > 0 && (
-            <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-md">
-              <h4 className="text-red-800 font-medium mb-2">Erreurs de validation</h4>
-              <ul className="list-disc pl-5 text-red-700">
-                {Object.entries(errors).map(([field, message]) => (
-                  <li key={field}>{message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
           
           <div className="mt-8 flex items-center justify-between border-t pt-6">
             <button
@@ -1564,7 +1557,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
               </button>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
