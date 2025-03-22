@@ -302,10 +302,11 @@ export default function SessionRunPage({ params }) {
     // Ensure analyses is an array
     const safeAnalyses = Array.isArray(analyses) ? analyses : [];
     
-    // Ensure session properties exist
-    const sessionTitle = session?.title || 'Session sans titre';
-    const sessionTopic = session?.topic || 'Sujet non défini';
-    const sessionDescription = session?.description || '';
+    // Ensure session properties exist and are strings
+    const sessionTitle = typeof session.title === 'string' ? session.title : 'Session sans titre';
+    const sessionTopic = typeof session.topic === 'string' ? session.topic : 'Sujet non défini';
+    const sessionDescription = typeof session.description === 'string' ? session.description : '';
+    const sessionDiscussionTopic = typeof session.discussion_topic === 'string' ? session.discussion_topic : '';
 
     switch (currentPhase) {
       case PHASES.JOIN:
@@ -420,7 +421,7 @@ export default function SessionRunPage({ params }) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
                 >
-                  {session?.discussion_topic || 
+                  {sessionDiscussionTopic || 
                    "Les participants échangent leurs idées sur le sujet de la session."}
                 </motion.p>
                 
@@ -662,37 +663,48 @@ export default function SessionRunPage({ params }) {
                 
                 {safeAnalyses.length > 0 ? (
                   <div className="space-y-6">
-                    {safeAnalyses.map((analysis, index) => (
-                      <motion.div 
-                        key={analysis?.participant_id || index}
-                        className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-left"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 + (index * 0.1) }}
-                      >
-                        <div className="flex items-center mb-4">
-                          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold mr-3">
-                            {(analysis?.participant || 'A').charAt(0).toUpperCase()}
+                    {safeAnalyses.map((analysis, index) => {
+                      // Ensure analysis properties are strings
+                      const participantName = typeof analysis?.participant === 'string' ? analysis.participant : 'Participant';
+                      const participantId = typeof analysis?.participant_id === 'string' ? analysis.participant_id : `unknown-${index}`;
+                      const content = typeof analysis?.content === 'string' ? analysis.content : 'Aucun contenu disponible';
+                      const tags = Array.isArray(analysis?.tags) ? analysis.tags : [];
+                      
+                      return (
+                        <motion.div 
+                          key={participantId}
+                          className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-left"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 + (index * 0.1) }}
+                        >
+                          <div className="flex items-center mb-4">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold mr-3">
+                              {participantName.charAt(0).toUpperCase()}
+                            </div>
+                            <h4 className="text-lg font-semibold">{participantName}</h4>
                           </div>
-                          <h4 className="text-lg font-semibold">{analysis?.participant || 'Participant'}</h4>
-                        </div>
-                        
-                        <p className="text-gray-700 mb-4">{analysis?.content || 'Aucun contenu disponible'}</p>
-                        
-                        <div className="flex flex-wrap gap-2">
-                          {Array.isArray(analysis?.tags) ? analysis.tags.map((tag, tagIndex) => (
-                            <span 
-                              key={tagIndex} 
-                              className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm"
-                            >
-                              {tag}
-                            </span>
-                          )) : (
-                            <span className="text-gray-500 italic">Aucun tag</span>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
+                          
+                          <p className="text-gray-700 mb-4">{content}</p>
+                          
+                          <div className="flex flex-wrap gap-2">
+                            {tags.length > 0 ? tags.map((tag, tagIndex) => {
+                              const tagText = typeof tag === 'string' ? tag : `Tag ${tagIndex + 1}`;
+                              return (
+                                <span 
+                                  key={tagIndex} 
+                                  className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm"
+                                >
+                                  {tagText}
+                                </span>
+                              );
+                            }) : (
+                              <span className="text-gray-500 italic">Aucun tag</span>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 bg-gray-50 rounded-lg">
