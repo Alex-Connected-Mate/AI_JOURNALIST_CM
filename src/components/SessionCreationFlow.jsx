@@ -293,22 +293,23 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     }
   };
 
-  const handleSubmit = () => {
-    logger.info('Attempting to submit session configuration');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    // Check if title/sessionName is set
-    if (!sessionConfig.title && !sessionConfig.sessionName) {
-      setErrors({
-        ...errors,
-        title: 'Le titre de la session est requis',
-        sessionName: 'Le titre de la session est requis'
-      });
-      logger.warning('Session submission prevented: missing title');
+    if (!validateAllSteps()) {
       return;
     }
     
-<<<<<<< HEAD
     try {
+      // Ensure basicInfo.title is set from sessionName/title
+      if (sessionConfig.sessionName || sessionConfig.title) {
+        const titleValue = sessionConfig.title || sessionConfig.sessionName;
+        sessionConfig.basicInfo = {
+          ...sessionConfig.basicInfo,
+          title: titleValue
+        };
+      }
+
       // Prepare session data for submission
       const sessionData = {
         title: sessionConfig.title,
@@ -317,84 +318,38 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
         professor_name: sessionConfig.professorName,
         show_professor_name: sessionConfig.showProfessorName,
         max_participants: sessionConfig.maxParticipants,
-=======
-    // Ensure basicInfo.title is set from sessionName/title
-    if (sessionConfig.sessionName || sessionConfig.title) {
-      const titleValue = sessionConfig.title || sessionConfig.sessionName;
-      
-      // Update session config with title in all places
-      const updatedConfig = {
-        ...sessionConfig,
-        title: titleValue,
-        sessionName: titleValue,
-        basicInfo: {
-          ...sessionConfig.basicInfo,
-          title: titleValue
-        },
-        // Ensure timer settings are included
-        timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
-        timerDuration: sessionConfig.timerDuration || 5,
-        // Ensure image settings are included
-        useProfileAvatar: sessionConfig.useProfileAvatar !== undefined ? sessionConfig.useProfileAvatar : false,
-        companyLogo: sessionConfig.companyLogo || null,
-        // Ensure settings structure includes AI configuration
->>>>>>> parent of db4cbcd (feat(session-creation): Implement multi-step session creation flow with basic info, AI config, and review steps)
         settings: {
           ...sessionConfig.settings,
-          ai_configuration: {
-            ...(sessionConfig.settings?.ai_configuration || {}),
-            timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
-            timerDuration: sessionConfig.timerDuration || 5
+          institution: sessionConfig.institution || sessionConfig.basicInfo.institution,
+          professorName: sessionConfig.professorName,
+          showProfessorName: sessionConfig.showProfessorName,
+          maxParticipants: sessionConfig.maxParticipants,
+          connection: sessionConfig.connection,
+          aiInteraction: {
+            enabled: true,
+            configuration: {
+              nuggets: {
+                style: {},
+                rules: sessionConfig.nuggetsRules,
+                enabled: true
+              },
+              lightbulbs: {
+                style: {},
+                rules: sessionConfig.lightbulbsRules,
+                enabled: true
+              }
+            }
           }
         }
       };
       
-      setSessionConfig(updatedConfig);
-      
-      // Final validation of all steps
-      if (validateAllSteps()) {
-        logger.info('Session validation successful, submitting data', updatedConfig);
-        onSubmit(updatedConfig);
-      } else {
-        logger.warning('Session submission prevented due to validation errors');
-      }
-    } else {
-      // Final validation of all steps
-      if (validateAllSteps()) {
-        logger.info('Session validation successful, submitting data');
-        
-        // Ensure title is properly set before submitting
-        const finalConfig = { 
-          ...sessionConfig,
-          // Ensure timer settings are included
-          timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
-          timerDuration: sessionConfig.timerDuration || 5,
-          // Ensure image settings are included
-          useProfileAvatar: sessionConfig.useProfileAvatar !== undefined ? sessionConfig.useProfileAvatar : false,
-          companyLogo: sessionConfig.companyLogo || null,
-          // Ensure settings structure includes AI configuration
-          settings: {
-            ...sessionConfig.settings,
-            ai_configuration: {
-              ...(sessionConfig.settings?.ai_configuration || {}),
-              timerEnabled: sessionConfig.timerEnabled !== undefined ? sessionConfig.timerEnabled : false,
-              timerDuration: sessionConfig.timerDuration || 5
-            }
-          }
-        };
-        
-        if (finalConfig.basicInfo?.title && !finalConfig.title) {
-          finalConfig.title = finalConfig.basicInfo.title;
-        }
-        
-        if (finalConfig.sessionName && !finalConfig.title) {
-          finalConfig.title = finalConfig.sessionName;
-        }
-        
-        onSubmit(finalConfig);
-      } else {
-        logger.warning('Session submission prevented due to validation errors');
-      }
+      logger.info('[SESSION_CREATION] Submitting session data', sessionData);
+      await onSubmit(sessionData);
+    } catch (error) {
+      logger.error('[SESSION_CREATION] Error submitting session', error);
+      setErrors({
+        submit: error.message || 'Une erreur est survenue lors de la création de la session'
+      });
     }
   };
 
@@ -431,13 +386,8 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     
     if (!isValid) {
       // If basic info validation fails, go to that step
-<<<<<<< HEAD
       if (newErrors.title || newErrors.institution) {
-        onStepChange('basic');
-=======
-      if (newErrors.title || newErrors.sessionName || newErrors.institution) {
         setActiveStep('basic-info');
->>>>>>> parent of db4cbcd (feat(session-creation): Implement multi-step session creation flow with basic info, AI config, and review steps)
       }
     }
     
@@ -1545,91 +1495,6 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     });
   };
 
-<<<<<<< HEAD
-        return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Basic Info Step */}
-      {currentStep === 'basic' && (
-          <BasicInfoStep 
-          config={sessionConfig}
-          onChange={handleConfigChange}
-            errors={errors}
-          />
-      )}
-      
-      {/* AI Interaction Step */}
-      {currentStep === 'ai' && (
-          <AIInteractionConfig 
-          config={sessionConfig}
-          onChange={handleConfigChange}
-            errors={errors}
-        />
-      )}
-      
-      {/* Review Step */}
-      {currentStep === 'review' && (
-          <div className="space-y-6">
-          <h3 className="text-lg font-semibold">Vérification finale</h3>
-          
-          <div className="grid grid-cols-2 gap-6">
-              <div>
-              <h4 className="font-medium mb-2">Informations de base</h4>
-              <dl className="space-y-2">
-                <dt className="text-sm text-gray-600">Titre</dt>
-                <dd>{sessionConfig.title || sessionConfig.sessionName}</dd>
-                
-                <dt className="text-sm text-gray-600">Institution</dt>
-                <dd>{sessionConfig.institution}</dd>
-                
-                <dt className="text-sm text-gray-600">Professeur</dt>
-                <dd>{sessionConfig.professorName}</dd>
-                
-                <dt className="text-sm text-gray-600">Participants maximum</dt>
-                <dd>{sessionConfig.maxParticipants}</dd>
-              </dl>
-                </div>
-                
-              <div>
-              <h4 className="font-medium mb-2">Configuration IA</h4>
-              <dl className="space-y-2">
-                <dt className="text-sm text-gray-600">Mode de connexion</dt>
-                <dd>{sessionConfig.connection.loginMethod}</dd>
-                
-                <dt className="text-sm text-gray-600">Niveau d'anonymat</dt>
-                <dd>{sessionConfig.connection.anonymityLevel}</dd>
-                
-                <dt className="text-sm text-gray-600">Timer</dt>
-                <dd>{sessionConfig.timerEnabled ? `${sessionConfig.timerDuration} minutes` : 'Désactivé'}</dd>
-              </dl>
-                  </div>
-                  </div>
-                </div>
-      )}
-      
-      {/* Error Messages */}
-      {errors.submit && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {errors.submit}
-                  </div>
-      )}
-      
-      {/* Navigation Buttons */}
-      <div className="flex justify-between mt-8">
-          <button
-            type="button"
-            onClick={handleCancel}
-          className="cm-button-outline"
-          >
-            Annuler
-          </button>
-          
-        <div className="space-x-4">
-          {currentStep !== 'basic' && (
-              <button
-                type="button"
-              onClick={() => onStepChange(currentStep === 'review' ? 'ai' : 'basic')}
-              className="cm-button-secondary"
-=======
   return (
     <div className="flex flex-row h-screen">
       {/* Left Column - Flow Map */}
@@ -1681,34 +1546,11 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
                 type="button"
                 onClick={handlePrevious}
                 className="cm-button-secondary px-4 py-2"
->>>>>>> parent of db4cbcd (feat(session-creation): Implement multi-step session creation flow with basic info, AI config, and review steps)
               >
                 Retour
               </button>
             )}
             
-<<<<<<< HEAD
-          {currentStep === 'review' ? (
-            <button
-              type="submit"
-              className="cm-button"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Création...' : 'Créer la session'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onStepChange(currentStep === 'basic' ? 'ai' : 'review')}
-              className="cm-button"
-            >
-              Suivant
-            </button>
-          )}
-            </div>
-          </div>
-    </form>
-=======
             <button
               type="button"
               onClick={handleNext}
@@ -1720,12 +1562,10 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
                 <span className="ml-2 inline-block animate-spin">⟳</span>
               )}
             </button>
-            </div>
           </div>
         </div>
       </div>
     </div>
->>>>>>> parent of db4cbcd (feat(session-creation): Implement multi-step session creation flow with basic info, AI config, and review steps)
   );
 };
 
