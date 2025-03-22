@@ -71,14 +71,19 @@ export default function SessionRunPage({ params }) {
           throw sessionError;
         }
         
-        setSession(sessionData);
-        
-        // Définir la durée du timer à partir des réglages
-        if (sessionData.voting_duration) {
-          setTimerDuration(sessionData.voting_duration);
+        // S'assurer que sessionData n'est pas null avant de le définir
+        if (sessionData) {
+          setSession(sessionData);
+          
+          // Définir la durée du timer à partir des réglages
+          if (sessionData.voting_duration) {
+            setTimerDuration(sessionData.voting_duration);
+          } else {
+            // Valeur par défaut (5 minutes)
+            setTimerDuration(5 * 60);
+          }
         } else {
-          // Valeur par défaut (5 minutes)
-          setTimerDuration(5 * 60);
+          throw new Error("Aucune donnée de session trouvée");
         }
 
         try {
@@ -129,42 +134,65 @@ export default function SessionRunPage({ params }) {
     loadSessionData();
     
     // Configurer une mise à jour en temps réel des participants
-    const participantsSubscription = supabase
-      .channel(`session_${sessionId}_participants`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'participants',
-        filter: `session_id=eq.${sessionId}`
-      }, (payload) => {
-        // Mettre à jour la liste des participants
-        if (payload.eventType === 'INSERT') {
-          setParticipants(prev => [...prev, payload.new]);
-          // Ajouter à la liste des nouveaux pour l'animation
-          setNewParticipantIds(prev => [...prev, payload.new.id]);
-          // Après 2 secondes, supprimer de la liste des nouveaux
-          setTimeout(() => {
-            setNewParticipantIds(prev => prev.filter(id => id !== payload.new.id));
-          }, 2000);
-        } else if (payload.eventType === 'DELETE') {
-          setParticipants(prev => prev.filter(p => p.id !== payload.old.id));
-        } else if (payload.eventType === 'UPDATE') {
-          setParticipants(prev => 
-            prev.map(p => p.id === payload.new.id ? payload.new : p)
-          );
-        }
-      })
-      .subscribe();
+    let participantsSubscription;
+    try {
+      participantsSubscription = supabase
+        .channel(`session_${sessionId}_participants`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'participants',
+          filter: `session_id=eq.${sessionId}`
+        }, (payload) => {
+          if (!payload) return;
+          
+          // Mettre à jour la liste des participants
+          if (payload.eventType === 'INSERT' && payload.new) {
+            setParticipants(prev => [...prev, payload.new]);
+            // Ajouter à la liste des nouveaux pour l'animation
+            setNewParticipantIds(prev => [...prev, payload.new.id]);
+            // Après 2 secondes, supprimer de la liste des nouveaux
+            setTimeout(() => {
+              setNewParticipantIds(prev => prev.filter(id => id !== payload.new.id));
+            }, 2000);
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setParticipants(prev => prev.filter(p => p.id !== payload.old.id));
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            setParticipants(prev => 
+              prev.map(p => p.id === payload.new.id ? payload.new : p)
+            );
+          }
+        })
+        .subscribe();
+    } catch (subErr) {
+      console.error('Erreur lors de la création de la souscription aux participants:', subErr);
+    }
     
     // Initialiser le canal de broadcast pour les changements de phase
-    phaseChannelRef.current = supabase
-      .channel(`session_${sessionId}_phase`)
-      .subscribe();
+    try {
+      phaseChannelRef.current = supabase
+        .channel(`session_${sessionId}_phase`)
+        .subscribe();
+    } catch (phaseSubErr) {
+      console.error('Erreur lors de la création du canal de phase:', phaseSubErr);
+    }
       
     return () => {
-      supabase.removeChannel(participantsSubscription);
+      // Nettoyer les souscriptions
+      if (participantsSubscription) {
+        try {
+          supabase.removeChannel(participantsSubscription);
+        } catch (cleanupErr) {
+          console.error('Erreur lors du nettoyage de la souscription:', cleanupErr);
+        }
+      }
+      
       if (phaseChannelRef.current) {
-        supabase.removeChannel(phaseChannelRef.current);
+        try {
+          supabase.removeChannel(phaseChannelRef.current);
+        } catch (cleanupErr) {
+          console.error('Erreur lors du nettoyage du canal de phase:', cleanupErr);
+        }
       }
     };
   }, [sessionId]);
@@ -203,36 +231,45 @@ export default function SessionRunPage({ params }) {
   
   // Fonction pour diffuser les changements de phase à tous les participants
   const broadcastPhaseChange = (phase, additionalData = {}) => {
-    if (!phaseChannelRef.current) return;
-    
-    // Préparer les données à diffuser
-    const payload = {
-      phase: phase,
-      ...additionalData
-    };
-    
-    // Ajouter des informations sur le timer si nécessaire
-    if (phase === PHASES.DISCUSSION || phase === PHASES.VOTING || phase === PHASES.INTERACTION) {
-      payload.timer = timer;
+    if (!phaseChannelRef.current) {
+      console.error('Canal de phase non initialisé');
+      return;
     }
     
-    // Diffuser le changement de phase
-    phaseChannelRef.current.send({
-      type: 'broadcast',
-      event: 'phase_change',
-      payload: payload
-    }).then(
-      () => console.log(`Phase diffusée: ${phase}`),
-      (error) => console.error('Erreur lors de la diffusion de la phase:', error)
-    );
+    try {
+      // Préparer les données à diffuser
+      const payload = {
+        phase: phase,
+        ...additionalData
+      };
+      
+      // Ajouter des informations sur le timer si nécessaire
+      if (phase === PHASES.DISCUSSION || phase === PHASES.VOTING || phase === PHASES.INTERACTION) {
+        payload.timer = timer;
+      }
+      
+      // Diffuser le changement de phase
+      phaseChannelRef.current.send({
+        type: 'broadcast',
+        event: 'phase_change',
+        payload: payload
+      }).then(
+        () => console.log(`Phase diffusée: ${phase}`),
+        (error) => console.error('Erreur lors de la diffusion de la phase:', error)
+      );
+    } catch (err) {
+      console.error('Erreur lors de la diffusion du changement de phase:', err);
+    }
   };
   
   // Générer des analyses simulées pour la démo
   const generateMockAnalyses = () => {
-    return topParticipants.map(participant => ({
-      participant: participant.display_name,
-      participant_id: participant.id,
-      content: `Analyse des idées de ${participant.display_name} sur ${session?.topic || 'le sujet de la session'}. Points clés abordés: vision unique, approche innovante et perspectives d'avenir.`,
+    const topParticipantsData = Array.isArray(topParticipants) ? topParticipants : [];
+    
+    return topParticipantsData.map(participant => ({
+      participant: participant.display_name || 'Participant anonyme',
+      participant_id: participant.id || 'unknown',
+      content: `Analyse des idées de ${participant.display_name || 'Participant anonyme'} sur ${session?.topic || 'le sujet de la session'}. Points clés abordés: vision unique, approche innovante et perspectives d'avenir.`,
       tags: ['Idée principale', 'Innovation', 'Perspective']
     }));
   };
@@ -268,9 +305,13 @@ export default function SessionRunPage({ params }) {
       
       setCurrentPhase(PHASES.INTERACTION);
       
+      // S'assurer que topParticipants est bien un tableau avant de diffuser
+      const selectedParticipantsForBroadcast = Array.isArray(topParticipants) ? 
+        topParticipants.map(p => p.id).filter(Boolean) : [];
+      
       // Diffuser la liste des participants sélectionnés
       broadcastPhaseChange(PHASES.INTERACTION, { 
-        selected_participants: topParticipants.map(p => p.id)
+        selected_participants: selectedParticipantsForBroadcast
       });
     } catch (err) {
       console.error('Erreur lors de la récupération des participants avec le plus de votes:', err);
@@ -742,28 +783,28 @@ export default function SessionRunPage({ params }) {
                 <h3 className="text-2xl font-semibold mb-6">Participants sélectionnés</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {topParticipants.map((participant, index) => (
-                    <motion.div 
-                      key={participant.id}
-                      className="bg-white p-4 rounded-lg border-2 shadow-md"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 + (index * 0.1) }}
-                    >
-                      <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
-                          {participant.display_name?.charAt(0).toUpperCase() || 'A'}
+                  {Array.isArray(topParticipants) && topParticipants.length > 0 ? (
+                    topParticipants.map((participant, index) => (
+                      <motion.div 
+                        key={participant.id || `participant-${index}`}
+                        className="bg-white p-4 rounded-lg border-2 shadow-md"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 + (index * 0.1) }}
+                      >
+                        <div className="flex flex-col items-center">
+                          <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
+                            {(participant.display_name && participant.display_name.charAt(0).toUpperCase()) || 'A'}
+                          </div>
+                          <p className="text-xl font-semibold mb-1">{participant.display_name || 'Anonyme'}</p>
+                          <p className="text-gray-500 text-sm mb-2">ID: {participant.id ? participant.id.substring(0, 8) : 'Unknown'}</p>
+                          <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
+                            {(participant.votes !== undefined ? participant.votes : 0)} votes
+                          </div>
                         </div>
-                        <p className="text-xl font-semibold mb-1">{participant.display_name || 'Anonyme'}</p>
-                        <p className="text-gray-500 text-sm mb-2">ID: {participant.id.substring(0, 8)}</p>
-                        <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
-                          {participant.votes || 0} votes
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  {topParticipants.length === 0 && (
+                      </motion.div>
+                    ))
+                  ) : (
                     <p className="text-gray-500 col-span-3 text-center py-4">Aucun participant sélectionné</p>
                   )}
                 </div>
@@ -805,9 +846,9 @@ export default function SessionRunPage({ params }) {
               </motion.div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {topParticipants.slice(0, 4).map((participant, index) => (
+                {Array.isArray(topParticipants) && topParticipants.slice(0, 4).map((participant, index) => (
                   <motion.div 
-                    key={participant.id} 
+                    key={participant.id || `analysis-${index}`} 
                     className="bg-white p-6 rounded-lg border shadow-md h-full"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -815,11 +856,11 @@ export default function SessionRunPage({ params }) {
                   >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center text-white bg-primary mr-3">
-                        {participant.display_name?.charAt(0) || 'A'}
+                        {(participant.display_name && participant.display_name.charAt(0)) || 'A'}
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg">{participant.display_name || 'Anonyme'}</h3>
-                        <p className="text-sm text-gray-600">ID: {participant.id.substring(0, 8)}</p>
+                        <p className="text-sm text-gray-600">ID: {participant.id ? participant.id.substring(0, 8) : 'Unknown'}</p>
                       </div>
                     </div>
                     
@@ -907,17 +948,18 @@ export default function SessionRunPage({ params }) {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   <div className="text-center">
                     <p className="text-gray-600 mb-2">Participants</p>
-                    <p className="text-4xl font-bold text-primary">{participants.length}</p>
+                    <p className="text-4xl font-bold text-primary">{Array.isArray(participants) ? participants.length : 0}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-gray-600 mb-2">Votes totaux</p>
                     <p className="text-4xl font-bold text-primary">
-                      {participants.reduce((sum, p) => sum + (p.votes || 0), 0)}
+                      {Array.isArray(participants) ? 
+                        participants.reduce((sum, p) => sum + (p.votes ? Number(p.votes) : 0), 0) : 0}
                     </p>
                   </div>
                   <div className="text-center">
                     <p className="text-gray-600 mb-2">Idées exploréees</p>
-                    <p className="text-4xl font-bold text-primary">{topParticipants.length}</p>
+                    <p className="text-4xl font-bold text-primary">{Array.isArray(topParticipants) ? topParticipants.length : 0}</p>
                   </div>
                 </div>
               </motion.div>

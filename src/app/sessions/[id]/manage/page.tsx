@@ -128,7 +128,9 @@ export default function SessionManagePage() {
   const baseUrl = typeof window !== 'undefined' 
     ? window.location.origin 
     : '';
-  const joinUrl = `${baseUrl}/join/${session.code}`;
+  const joinUrl = session && session.code 
+    ? `${baseUrl}/join/${session.code}`
+    : '';
   
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -141,8 +143,8 @@ export default function SessionManagePage() {
           >
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-2xl font-bold">{session.title || session.name}</h1>
-                <p className="text-lg opacity-90">{session.institution || session.settings?.institution}</p>
+                <h1 className="text-2xl font-bold">{session.title || session.name || 'Session'}</h1>
+                <p className="text-lg opacity-90">{session.institution || session.settings?.institution || 'Institution'}</p>
                 {(session.professor_name || session.settings?.professorName) && (
                   <p className="text-sm opacity-80 mt-1">
                     par {session.professor_name || session.settings?.professorName}
@@ -176,22 +178,24 @@ export default function SessionManagePage() {
                   
                   <div className="bg-gray-50 p-4 rounded-lg mb-4 flex flex-col md:flex-row gap-6 items-center">
                     <div className="flex-shrink-0">
-                      <QRCode value={joinUrl} size={150} />
+                      {joinUrl && <QRCode value={joinUrl} size={150} />}
                     </div>
                     
                     <div className="flex-1">
                       <p className="text-gray-600 mb-2">Les participants peuvent rejoindre via :</p>
                       <div className="bg-white p-2 rounded border border-gray-200 flex items-center justify-between mb-3">
-                        <span className="text-gray-800 font-mono text-sm">{joinUrl}</span>
-                        <CopyButton textToCopy={joinUrl} />
+                        <span className="text-gray-800 font-mono text-sm">{joinUrl || 'URL non disponible'}</span>
+                        {joinUrl && <CopyButton textToCopy={joinUrl} />}
                       </div>
                       
                       <div className="flex items-center gap-2">
                         <span className="text-gray-600">Code d'accès :</span>
                         <span className="font-mono font-bold text-lg bg-primary/10 px-2 py-1 rounded text-primary">
-                          {session.code || session.session_code || session.access_code}
+                          {session.code || session.session_code || session.access_code || 'CODE'}
                         </span>
-                        <CopyButton textToCopy={session.code || session.session_code || session.access_code} />
+                        {(session.code || session.session_code || session.access_code) && 
+                          <CopyButton textToCopy={session.code || session.session_code || session.access_code} />
+                        }
                       </div>
                     </div>
                   </div>
@@ -200,26 +204,32 @@ export default function SessionManagePage() {
               
               {/* Right Column - Actions */}
               <div className="lg:w-80 space-y-4">
-                <Link
-                  href={`/sessions/${session.id}/run`}
-                  className="block w-full bg-primary hover:bg-primary/90 text-white py-3 px-4 rounded-lg text-center font-medium transition-colors"
-                >
-                  Lancer la présentation
-                </Link>
+                {session && session.id && (
+                  <Link
+                    href={`/sessions/${session.id}/run`}
+                    className="block w-full bg-primary hover:bg-primary/90 text-white py-3 px-4 rounded-lg text-center font-medium transition-colors"
+                  >
+                    Lancer la présentation
+                  </Link>
+                )}
                 
-                <Link
-                  href={`/sessions/${session.id}`}
-                  className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-4 rounded-lg text-center font-medium transition-colors"
-                >
-                  Gérer la session
-                </Link>
+                {session && session.id && (
+                  <Link
+                    href={`/sessions/${session.id}`}
+                    className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-4 rounded-lg text-center font-medium transition-colors"
+                  >
+                    Gérer la session
+                  </Link>
+                )}
                 
-                <Link
-                  href={`/sessions/${session.id}/edit`}
-                  className="block w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg text-center font-medium transition-colors"
-                >
-                  Modifier la session
-                </Link>
+                {session && session.id && (
+                  <Link
+                    href={`/sessions/${session.id}/edit`}
+                    className="block w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg text-center font-medium transition-colors"
+                  >
+                    Modifier la session
+                  </Link>
+                )}
                 
                 <Link
                   href="/dashboard"
