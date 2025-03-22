@@ -1508,60 +1508,61 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
       
       {/* Right Column - Step Content */}
       <div className="w-3/5 h-screen overflow-auto pb-8">
-      <div className="second-level-block p-6">
-        <div className="mb-4">
-          <h3 className="text-xl font-semibold font-bricolage">
-            {steps.find(step => step.id === activeStep)?.label}
-          </h3>
-          <p className="text-gray-600 mt-1">
-            Étape {getCurrentStepIndex() + 1} sur {steps.length}
-          </p>
-        </div>
-        
-        {renderStepContent()}
-        
-        {Object.keys(errors).length > 0 && (
-          <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-md">
-            <h4 className="text-red-800 font-medium mb-2">Erreurs de validation</h4>
-            <ul className="list-disc pl-5 text-red-700">
-              {Object.entries(errors).map(([field, message]) => (
-                <li key={field}>{message}</li>
-              ))}
-            </ul>
+        <div className="second-level-block p-6">
+          <div className="mb-4">
+            <h3 className="text-xl font-semibold font-bricolage">
+              {steps.find(step => step.id === activeStep)?.label}
+            </h3>
+            <p className="text-gray-600 mt-1">
+              Étape {getCurrentStepIndex() + 1} sur {steps.length}
+            </p>
           </div>
-        )}
-        
-        <div className="mt-8 flex items-center justify-between border-t pt-6">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="cm-button-secondary px-4 py-2"
-          >
-            Annuler
-          </button>
           
-          <div className="flex gap-4">
-            {getCurrentStepIndex() > 0 && (
-              <button
-                type="button"
-                onClick={handlePrevious}
-                className="cm-button-secondary px-4 py-2"
-              >
-                Retour
-              </button>
-            )}
-            
+          {renderStepContent()}
+          
+          {Object.keys(errors).length > 0 && (
+            <div className="mt-6 p-4 border border-red-200 bg-red-50 rounded-md">
+              <h4 className="text-red-800 font-medium mb-2">Erreurs de validation</h4>
+              <ul className="list-disc pl-5 text-red-700">
+                {Object.entries(errors).map(([field, message]) => (
+                  <li key={field}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <div className="mt-8 flex items-center justify-between border-t pt-6">
             <button
               type="button"
-              onClick={handleNext}
-              disabled={isSubmitting}
-              className="cm-button-primary px-6 py-2"
+              onClick={handleCancel}
+              className="cm-button-secondary px-4 py-2"
             >
-              {isLastStep ? 'Créer la session' : 'Continuer'}
-              {isSubmitting && (
-                <span className="ml-2 inline-block animate-spin">⟳</span>
-              )}
+              Annuler
             </button>
+            
+            <div className="flex gap-4">
+              {getCurrentStepIndex() > 0 && (
+                <button
+                  type="button"
+                  onClick={handlePrevious}
+                  className="cm-button-secondary px-4 py-2"
+                >
+                  Retour
+                </button>
+              )}
+              
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={isSubmitting}
+                className="cm-button-primary px-6 py-2"
+              >
+                {isLastStep ? 'Créer la session' : 'Continuer'}
+                {isSubmitting && (
+                  <span className="ml-2 inline-block animate-spin">⟳</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
