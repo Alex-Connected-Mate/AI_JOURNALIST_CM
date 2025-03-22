@@ -121,83 +121,62 @@ export default function SessionRunPage({ params }) {
   }, [timerActive, timer, currentPhase]);
   
   // Fonction pour diffuser les changements de phase à tous les participants
-  const broadcastPhaseChange = (phase, additionalData = {}) => {
-    if (!phaseChannelRef.current) return;
-    
-    // Préparer les données à diffuser
-    const payload = {
-      phase: phase,
-      ...additionalData
-    };
-    
-    // Ajouter des informations sur le timer si nécessaire
-    if (phase === PHASES.DISCUSSION || phase === PHASES.VOTING || phase === PHASES.INTERACTION) {
-      payload.timer = timer;
+  const broadcastPhaseChange = async (newPhase, data = {}) => {
+    try {
+      if (!phaseChannelRef.current) return;
+      
+      const payload = {
+        type: 'phase_change',
+        phase: newPhase,
+        ...data
+      };
+      
+      await phaseChannelRef.current.send({
+        type: 'broadcast',
+        event: 'phase_change',
+        payload: JSON.stringify(payload)
+      });
+      
+    } catch (err) {
+      console.error('Error broadcasting phase change:', err);
     }
-    
-    // Diffuser le changement de phase
-    phaseChannelRef.current.send({
-      type: 'broadcast',
-      event: 'phase_change',
-      payload: payload
-    }).then(
-      () => console.log(`Phase diffusée: ${phase}`),
-      (error) => console.error('Erreur lors de la diffusion de la phase:', error)
-    );
   };
   
   // Générer des analyses simulées pour la démo
   const generateMockAnalyses = () => {
-    return topParticipants.map(participant => ({
-      participant: participant.display_name,
-      participant_id: participant.id,
-      content: `Analyse des idées de ${participant.display_name} sur ${session?.topic || 'le sujet de la session'}. Points clés abordés: vision unique, approche innovante et perspectives d'avenir.`,
-      tags: ['Idée principale', 'Innovation', 'Perspective']
-    }));
+    return {
+      nuggets: {
+        title: "Nuggets d'Or",
+        insights: [
+          "Les participants ont soulevé des points intéressants sur...",
+          "Une tendance claire se dégage concernant...",
+          "Plusieurs idées innovantes ont émergé autour de..."
+        ]
+      },
+      lightbulbs: {
+        title: "Lightbulbs",
+        ideas: [
+          "Une proposition créative pour résoudre...",
+          "Une approche novatrice concernant...",
+          "Une suggestion intéressante pour améliorer..."
+        ]
+      },
+      global: {
+        title: "Analyse Globale",
+        summary: "La session a été très productive avec plusieurs idées clés...",
+        mainThemes: [
+          "Innovation et créativité",
+          "Solutions pratiques",
+          "Perspectives d'avenir"
+        ]
+      }
+    };
   };
   
   // Gestion des votes complets
   const handleVotingComplete = async () => {
-    try {
-      // Récupérer les participants avec le plus de votes
-      const { data, error } = await supabase
-        .from('participants')
-        .select('id, display_name, votes')
-        .eq('session_id', sessionId)
-        .order('votes', { ascending: false })
-        .limit(5);
-        
-      if (error) {
-        if (error.code === '42P01') {
-          console.error("La table 'participants' n'existe pas dans la base de données. Utilisation de données simulées pour la démo.");
-          // Utiliser des données simulées pour la démo
-          const mockParticipants = [
-            { id: '1', display_name: 'Participant Demo 1', votes: 5 },
-            { id: '2', display_name: 'Participant Demo 2', votes: 3 },
-            { id: '3', display_name: 'Participant Demo 3', votes: 2 }
-          ];
-          setTopParticipants(mockParticipants);
-        } else {
-          throw error;
-        }
-      } else {
-        const selectedParticipants = data || [];
-        setTopParticipants(selectedParticipants);
-      }
-      
-      setCurrentPhase(PHASES.INTERACTION);
-      
-      // Diffuser la liste des participants sélectionnés
-      broadcastPhaseChange(PHASES.INTERACTION, { 
-        selected_participants: topParticipants.map(p => p.id)
-      });
-    } catch (err) {
-      console.error('Erreur lors de la récupération des participants avec le plus de votes:', err);
-      // Continuer avec une liste vide en cas d'erreur
-      setTopParticipants([]);
-      setCurrentPhase(PHASES.INTERACTION);
-      broadcastPhaseChange(PHASES.INTERACTION, { selected_participants: [] });
-    }
+    setCurrentPhase(PHASES.INTERACTION);
+    await broadcastPhaseChange(PHASES.INTERACTION);
   };
   
   // Observer les changements de phase pour les diffuser
@@ -215,21 +194,20 @@ export default function SessionRunPage({ params }) {
   }, [currentPhase]);
   
   // Commencer la discussion
-  const startDiscussion = () => {
-    setTimer(timerDuration);
-    setTimerActive(true);
+  const startDiscussion = async () => {
     setCurrentPhase(PHASES.DISCUSSION);
-    broadcastPhaseChange(PHASES.DISCUSSION, { timer: timerDuration });
+    if (session?.settings?.ai_configuration?.timerEnabled) {
+      setTimer(session.settings.ai_configuration.timerDuration * 60);
+      setTimerActive(true);
+    }
+    await broadcastPhaseChange(PHASES.DISCUSSION);
   };
   
   // Commencer le vote
-  const startVoting = () => {
-    // Durée de vote (vous pouvez la personnaliser selon vos besoins)
-    const votingDuration = Math.min(timerDuration, 3 * 60); // Maximum 3 minutes ou la durée définie
-    setTimer(votingDuration);
-    setTimerActive(true);
+  const startVoting = async () => {
     setCurrentPhase(PHASES.VOTING);
-    broadcastPhaseChange(PHASES.VOTING, { timer: votingDuration });
+    setTimerActive(false);
+    await broadcastPhaseChange(PHASES.VOTING);
   };
   
   // Commencer la phase d'interaction avec l'IA
