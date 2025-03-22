@@ -25,7 +25,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
   const { userProfile } = useStore();
   const [sessionConfig, setSessionConfig] = useState({
     basicInfo: {
-      title: initialConfig.title || initialConfig.sessionName || '',
+      title: initialConfig.title || '',
       description: initialConfig.description || '',
       institution: initialConfig.institution || '',
       date: new Date().toISOString().split('T')[0]
@@ -99,8 +99,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
     enablePresentationMode: true,
     autoExportSessionData: false,
     // other default sections...
-    sessionName: initialConfig.title || initialConfig.sessionName || '',
-    title: initialConfig.title || initialConfig.sessionName || '',
+    title: initialConfig.title || '',
     professorName: initialConfig.professorName || '',
     showInstitution: initialConfig.showInstitution ?? true,
     showProfessorName: initialConfig.showProfessorName ?? true,
@@ -132,7 +131,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
     try {
       // Prepare session data for submission
       const sessionData = {
-        title: sessionConfig.title || sessionConfig.sessionName || sessionConfig.basicInfo.title,
+        title: sessionConfig.title,
         description: sessionConfig.description || sessionConfig.basicInfo.description,
         institution: sessionConfig.institution || sessionConfig.basicInfo.institution,
         professor_name: sessionConfig.professorName,
@@ -179,9 +178,8 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
     let isValid = true;
     
     // Validate basic info
-    if (!sessionConfig.title && !sessionConfig.sessionName && !sessionConfig.basicInfo?.title) {
+    if (!sessionConfig.title) {
       newErrors.title = 'Le titre de la session est requis';
-      newErrors.sessionName = 'Le titre de la session est requis';
       isValid = false;
     }
     
@@ -194,7 +192,7 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
     
     if (!isValid) {
       // If basic info validation fails, go to that step
-      if (newErrors.title || newErrors.sessionName || newErrors.institution) {
+      if (newErrors.title || newErrors.institution) {
         onStepChange('basic');
       }
     }
@@ -217,33 +215,33 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
     }));
   };
 
-  return (
+        return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Basic Info Step */}
       {currentStep === 'basic' && (
-        <BasicInfoStep
+          <BasicInfoStep 
           config={sessionConfig}
           onChange={handleConfigChange}
-          errors={errors}
-        />
+            errors={errors}
+          />
       )}
       
       {/* AI Interaction Step */}
       {currentStep === 'ai' && (
-        <AIInteractionConfig
+          <AIInteractionConfig 
           config={sessionConfig}
           onChange={handleConfigChange}
-          errors={errors}
+            errors={errors}
         />
       )}
       
       {/* Review Step */}
       {currentStep === 'review' && (
-        <div className="space-y-6">
+          <div className="space-y-6">
           <h3 className="text-lg font-semibold">Vérification finale</h3>
           
           <div className="grid grid-cols-2 gap-6">
-            <div>
+              <div>
               <h4 className="font-medium mb-2">Informations de base</h4>
               <dl className="space-y-2">
                 <dt className="text-sm text-gray-600">Titre</dt>
@@ -258,9 +256,9 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
                 <dt className="text-sm text-gray-600">Participants maximum</dt>
                 <dd>{sessionConfig.maxParticipants}</dd>
               </dl>
-            </div>
-            
-            <div>
+                </div>
+                
+              <div>
               <h4 className="font-medium mb-2">Configuration IA</h4>
               <dl className="space-y-2">
                 <dt className="text-sm text-gray-600">Mode de connexion</dt>
@@ -272,39 +270,39 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
                 <dt className="text-sm text-gray-600">Timer</dt>
                 <dd>{sessionConfig.timerEnabled ? `${sessionConfig.timerDuration} minutes` : 'Désactivé'}</dd>
               </dl>
-            </div>
-          </div>
-        </div>
+                  </div>
+                  </div>
+                </div>
       )}
       
       {/* Error Messages */}
       {errors.submit && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {errors.submit}
-        </div>
+                  </div>
       )}
       
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-8">
-        <button
-          type="button"
-          onClick={handleCancel}
+          <button
+            type="button"
+            onClick={handleCancel}
           className="cm-button-outline"
-        >
-          Annuler
-        </button>
-        
+          >
+            Annuler
+          </button>
+          
         <div className="space-x-4">
           {currentStep !== 'basic' && (
-            <button
-              type="button"
+              <button
+                type="button"
               onClick={() => onStepChange(currentStep === 'review' ? 'ai' : 'basic')}
               className="cm-button-secondary"
-            >
-              Retour
-            </button>
-          )}
-          
+              >
+                Retour
+              </button>
+            )}
+            
           {currentStep === 'review' ? (
             <button
               type="submit"
@@ -322,8 +320,8 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting, curre
               Suivant
             </button>
           )}
-        </div>
-      </div>
+            </div>
+          </div>
     </form>
   );
 };
