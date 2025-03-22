@@ -403,10 +403,6 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
     }
   };
 
-  const handleShowLogs = () => {
-    window.dispatchEvent(new Event('toggle-logs'));
-  };
-
   const renderStepContent = () => {
     logger.debug(`Rendering content for step: ${activeStep}`);
     
@@ -1506,17 +1502,11 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
         <Link href="/sessions" className="text-gray-600 hover:text-gray-900">
           ← Retour aux sessions
         </Link>
-        <button
-          onClick={handleShowLogs}
-          className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-        >
-          Voir les logs
-        </button>
       </div>
 
       {Object.keys(errors).length > 0 && (
         <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-          Erreur : {errors.submit}
+          {errors.submit || "Une erreur est survenue. Veuillez réessayer."}
         </div>
       )}
 
