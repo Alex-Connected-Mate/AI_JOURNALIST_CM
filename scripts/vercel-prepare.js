@@ -565,394 +565,143 @@ function checkEssentialDependencies() {
   }
 }
 
-// Fonction pour corriger les options obsolètes dans next.config.js
-function fixNextConfigOptions() {
-  console.log(`${colors.blue}🔍 Vérification des options obsolètes dans next.config.js...${colors.reset}`);
+// Fonction pour corriger les fichiers JavaScript problématiques après conversion
+async function fixJavaScriptFiles() {
+  console.log(`${colors.cyan}🔧 Correction des fichiers JavaScript après conversion TypeScript...${colors.reset}`);
   
-  const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+  // Liste des fichiers à corriger manuellement
+  const problematicFiles = [
+    'src/lib/store.js',
+    'src/lib/supabase.js',
+    'src/config/ai-agents.js',
+    'src/lib/logger.js',
+    'src/lib/promptParser.js',
+    'src/lib/types.js'
+  ];
   
-  if (!fs.existsSync(nextConfigPath)) {
-    console.error(`${colors.red}❌ next.config.js introuvable.${colors.reset}`);
-    return;
-  }
-  
-  try {
-    const content = fs.readFileSync(nextConfigPath, 'utf8');
-    
-    // Vérifier les options obsolètes
-    let needsUpdate = false;
-    let updatedContent = content;
-    
-    // Vérifier serverComponentsExternalPackages
-    if (content.includes('serverComponentsExternalPackages') && !content.includes('serverExternalPackages')) {
-      console.log(`${colors.yellow}⚠️ Option obsolète détectée: serverComponentsExternalPackages${colors.reset}`);
-      updatedContent = updatedContent.replace(
-        /serverComponentsExternalPackages\s*:\s*\[(.*?)\]/s,
-        (match, packages) => {
-          needsUpdate = true;
-          // Supprimer l'option de experimental
-          return '';
-        }
-      );
-      
-      // Ajouter serverExternalPackages au niveau racine
-      if (!updatedContent.includes('serverExternalPackages')) {
-        const packagesMatch = content.match(/serverComponentsExternalPackages\s*:\s*\[(.*?)\]/s);
-        if (packagesMatch && packagesMatch[1]) {
-          const packages = packagesMatch[1];
-          updatedContent = updatedContent.replace(
-            /(experimental\s*:\s*{[^}]*})/s,
-            `$1,\n\n  // Packages externes pour les composants serveur\n  serverExternalPackages: [${packages}]`
-          );
-        }
-      }
-    }
-    
-    // Vérifier swcMinify (déplacé dans Next.js 15)
-    if (content.includes('swcMinify') && content.includes('Next.js 15')) {
-      console.log(`${colors.yellow}⚠️ Option obsolète détectée: swcMinify${colors.reset}`);
-      updatedContent = updatedContent.replace(
-        /swcMinify\s*:\s*true,?\n/,
-        ''
-      );
-      needsUpdate = true;
-    }
-    
-    // Vérifier compress (déplacé dans Next.js 15)
-    if (content.includes('compress') && content.includes('Next.js 15')) {
-      console.log(`${colors.yellow}⚠️ Option obsolète détectée: compress${colors.reset}`);
-      updatedContent = updatedContent.replace(
-        /compress\s*:\s*true,?\n/,
-        ''
-      );
-      needsUpdate = true;
-    }
-    
-    if (needsUpdate) {
-      // Créer une sauvegarde
-      const backupPath = nextConfigPath + '.backup.' + Date.now();
-      fs.writeFileSync(backupPath, content);
-      
-      // Mettre à jour next.config.js
-      fs.writeFileSync(nextConfigPath, updatedContent);
-      console.log(`${colors.green}✅ next.config.js mis à jour avec les options correctes.${colors.reset}`);
-    } else {
-      console.log(`${colors.green}✅ Aucune option obsolète détectée dans next.config.js.${colors.reset}`);
-    }
-  } catch (error) {
-    console.error(`${colors.red}❌ Erreur lors de la vérification des options obsolètes: ${error.message}${colors.reset}`);
-  }
-}
-
-// Fonction pour vérifier et corriger spécifiquement @headlessui/react
-function fixHeadlessUIReact() {
-  console.log(`${colors.blue}🔍 Vérification spécifique de @headlessui/react...${colors.reset}`);
-  
-  try {
-    const packageJsonPath = path.join(process.cwd(), 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    
-    if (packageJson.dependencies['@headlessui/react']) {
-      const currentVersion = packageJson.dependencies['@headlessui/react'];
-      const targetVersion = '1.7.15'; // Version spécifique connue pour être compatible
-      
-      if (currentVersion !== targetVersion) {
-        console.log(`${colors.yellow}⚠️ Version de @headlessui/react (${currentVersion}) potentiellement problématique${colors.reset}`);
-        console.log(`${colors.yellow}⚠️ Fixation à la version exacte ${targetVersion}${colors.reset}`);
-        
-        // Créer une sauvegarde
-        const backupPath = packageJsonPath + '.backup.' + Date.now();
-        fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
-        
-        // Mettre à jour la version
-        packageJson.dependencies['@headlessui/react'] = targetVersion;
-        
-        // Écrire le package.json mis à jour
-        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-        
-        // Supprimer le dossier node_modules/@headlessui
-        const headlessUIPath = path.join(process.cwd(), 'node_modules', '@headlessui');
-        if (fs.existsSync(headlessUIPath)) {
-          try {
-            execSync(`rm -rf "${headlessUIPath}"`, { stdio: 'inherit' });
-            console.log(`${colors.green}✅ Cache de @headlessui nettoyé${colors.reset}`);
-          } catch (error) {
-            console.error(`${colors.red}❌ Erreur lors du nettoyage du cache: ${error.message}${colors.reset}`);
-          }
-        }
-        
-        // Réinstaller spécifiquement @headlessui/react
-        try {
-          execSync('npm install @headlessui/react@1.7.15 --save-exact', { stdio: 'inherit' });
-          console.log(`${colors.green}✅ @headlessui/react@${targetVersion} installé avec succès${colors.reset}`);
-        } catch (error) {
-          console.error(`${colors.red}❌ Erreur lors de l'installation: ${error.message}${colors.reset}`);
-        }
-      } else {
-        console.log(`${colors.green}✅ @headlessui/react est déjà en version ${targetVersion}${colors.reset}`);
-      }
-    }
-  } catch (error) {
-    console.error(`${colors.red}❌ Erreur lors de la vérification de @headlessui/react: ${error.message}${colors.reset}`);
-  }
-}
-
-// Modifier la fonction checkDependencyCompatibility pour être plus stricte
-function checkDependencyCompatibility() {
-  console.log(`${colors.blue}🔍 Vérification de la compatibilité des versions des dépendances...${colors.reset}`);
-  
-  // Définir les versions exactes requises pour la compatibilité
-  const reactCompatibilityMap = {
-    '@headlessui/react': '1.7.15', // Version exacte requise
-    'framer-motion': '^10.16.4',
-    'react': '^18.2.0',
-    'react-dom': '^18.2.0'
-  };
-  
-  try {
-    const packageJsonPath = path.join(process.cwd(), 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    
-    let needsUpdate = false;
-    
-    // Vérifier toutes les dépendances critiques
-    for (const [dep, version] of Object.entries(reactCompatibilityMap)) {
-      if (packageJson.dependencies[dep]) {
-        const currentVersion = packageJson.dependencies[dep];
-        
-        // Pour @headlessui/react, exiger la version exacte
-        if (dep === '@headlessui/react' && currentVersion !== version) {
-          console.log(`${colors.yellow}⚠️ Version incompatible détectée: ${dep}@${currentVersion}${colors.reset}`);
-          console.log(`${colors.yellow}⚠️ Mise à jour vers la version exacte: ${version}${colors.reset}`);
-          packageJson.dependencies[dep] = version;
-          needsUpdate = true;
-        }
-        // Pour les autres dépendances, vérifier la compatibilité générale
-        else if (dep !== '@headlessui/react' && currentVersion !== version) {
-          console.log(`${colors.yellow}⚠️ Version potentiellement incompatible: ${dep}@${currentVersion}${colors.reset}`);
-          console.log(`${colors.yellow}⚠️ Mise à jour vers: ${version}${colors.reset}`);
-          packageJson.dependencies[dep] = version;
-          needsUpdate = true;
-        }
-      }
-    }
-    
-    if (needsUpdate) {
-      // Créer une sauvegarde
-      const backupPath = packageJsonPath + '.backup.' + Date.now();
-      fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
-      
-      // Mettre à jour package.json
-      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-      console.log(`${colors.green}✅ package.json mis à jour avec des versions compatibles${colors.reset}`);
-      
-      // Nettoyer et réinstaller les dépendances si nécessaire
-      try {
-        console.log(`${colors.blue}📦 Réinstallation des dépendances mises à jour...${colors.reset}`);
-        execSync('npm install', { stdio: 'inherit' });
-        console.log(`${colors.green}✅ Dépendances réinstallées avec succès${colors.reset}`);
-      } catch (error) {
-        console.error(`${colors.red}❌ Erreur lors de la réinstallation: ${error.message}${colors.reset}`);
-      }
-    } else {
-      console.log(`${colors.green}✅ Toutes les dépendances sont compatibles${colors.reset}`);
-    }
-  } catch (error) {
-    console.error(`${colors.red}❌ Erreur lors de la vérification de la compatibilité: ${error.message}${colors.reset}`);
-  }
-}
-
-// Fonction pour détecter automatiquement les imports manquants
-function detectMissingImports() {
-  console.log(`${colors.blue}🔍 Détection automatique des imports manquants...${colors.reset}`);
-  
-  try {
-    // Liste des modules Node.js intégrés pour les exclure
-    const nodeBuiltins = [
-      'fs', 'path', 'http', 'https', 'crypto', 'util', 'stream', 'events', 
-      'querystring', 'url', 'child_process', 'os', 'zlib'
-    ];
-    
-    // Liste des préfixes d'imports internes au projet
-    const internalPrefixes = ['@/', './', '../'];
-
-    // Commande pour trouver tous les imports dans le code
-    const cmd = `find src -type f -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | xargs grep -h "from ['\\\"]" | grep -v "from ['\\\"]\\(@/\\|\\.\\)" | sed "s/.*from ['\\\"]\\([^'\\\"/]\\+\\).*/\\1/g"`;
-    
-    // Exécuter la commande et récupérer les imports uniques
-    const result = execSync(cmd, { encoding: 'utf8' }).trim();
-    const imports = [...new Set(result.split('\n'))].filter(
-      imp => imp && !nodeBuiltins.includes(imp) && !internalPrefixes.some(prefix => imp.startsWith(prefix))
-    );
-    
-    // Lire le package.json
-    const packageJsonPath = path.join(process.cwd(), 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    
-    // Filtrer les imports qui ne correspondent pas à une dépendance installée
-    // Considérer aussi les sous-packages comme react-dom/client -> react-dom
-    const missingDependencies = imports.filter(imp => {
-      // Gérer les sous-packages (ex: @mui/material/Button -> @mui/material)
-      const packageName = imp.includes('/') ? imp.split('/')[0] : imp;
-      
-      // Cas spécial pour les packages scoped (@)
-      if (packageName.startsWith('@')) {
-        const scopedPackage = packageName.split('/').slice(0, 2).join('/');
-        return !dependencies[scopedPackage];
-      }
-      
-      return !dependencies[packageName];
-    });
-    
-    if (missingDependencies.length > 0) {
-      console.log(`${colors.yellow}⚠️ Imports sans dépendances correspondantes détectés:${colors.reset}`);
-      const uniquePackages = [...new Set(missingDependencies.map(imp => 
-        imp.includes('/') ? imp.split('/')[0] : imp
-      ))];
-      
-      uniquePackages.forEach(pkg => {
-        console.log(`${colors.yellow}   - ${pkg}${colors.reset}`);
-      });
-      
-      console.log(`${colors.yellow}⚠️ Considérez l'ajout de ces packages à la liste des dépendances requises.${colors.reset}`);
-    } else {
-      console.log(`${colors.green}✅ Pas d'imports sans dépendances correspondantes détectés.${colors.reset}`);
-    }
-  } catch (error) {
-    console.error(`${colors.red}❌ Erreur lors de la détection des imports manquants: ${error.message}${colors.reset}`);
-  }
-}
-
-// Fonction pour s'assurer que TypeScript est correctement installé
-function ensureTypescript() {
-  console.log(`${colors.blue}🔍 Préparation de la configuration TypeScript pour le build...${colors.reset}`);
-  
-  // Vérifier si TypeScript est déjà installé
-  try {
-    const typescriptVersion = execSync('npx tsc --version', { stdio: 'pipe' }).toString().trim();
-    console.log(`${colors.green}✅ TypeScript est déjà installé: ${typescriptVersion}${colors.reset}`);
-  } catch (error) {
-    console.warn(`${colors.yellow}⚠️ TypeScript n'est pas correctement installé: ${error.message}${colors.reset}`);
-  }
-  
-  // Suppression de tsconfig.json s'il existe
-  const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
-  if (fs.existsSync(tsconfigPath)) {
+  for (const file of problematicFiles) {
     try {
-      fs.unlinkSync(tsconfigPath);
-      console.log(`${colors.green}✅ Ancien fichier tsconfig.json supprimé.${colors.reset}`);
-    } catch (error) {
-      console.warn(`${colors.yellow}⚠️ Impossible de supprimer tsconfig.json: ${error.message}${colors.reset}`);
-    }
-  }
-  
-  // Suppression de next-env.d.ts s'il existe
-  const nextEnvPath = path.join(process.cwd(), 'next-env.d.ts');
-  if (fs.existsSync(nextEnvPath)) {
-    try {
-      fs.unlinkSync(nextEnvPath);
-      console.log(`${colors.green}✅ Fichier next-env.d.ts supprimé.${colors.reset}`);
-    } catch (error) {
-      console.warn(`${colors.yellow}⚠️ Impossible de supprimer next-env.d.ts: ${error.message}${colors.reset}`);
-    }
-  }
-  
-  // Création d'un tsconfig.json minimal qui désactive TypeScript
-  const tsconfig = {
-    compilerOptions: {
-      target: "es5",
-      lib: ["dom", "dom.iterable", "esnext"],
-      allowJs: true,
-      skipLibCheck: true,
-      strict: false,
-      noEmit: true,
-      esModuleInterop: true,
-      module: "esnext",
-      moduleResolution: "bundler",
-      resolveJsonModule: true,
-      isolatedModules: true,
-      jsx: "preserve",
-      incremental: true,
-      plugins: [
-        {
-          name: "next"
-        }
-      ],
-      baseUrl: ".",
-      paths: {
-        "@/*": ["./src/*"]
-      }
-    },
-    include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
-    exclude: ["node_modules"]
-  };
-  
-  try {
-    fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2));
-    console.log(`${colors.green}✅ Fichier tsconfig.json créé avec succès.${colors.reset}`);
-  } catch (error) {
-    console.warn(`${colors.yellow}⚠️ Impossible de créer tsconfig.json: ${error.message}${colors.reset}`);
-  }
-  
-  // Créer un fichier next-env.d.ts vide pour satisfaire Next.js
-  try {
-    fs.writeFileSync(nextEnvPath, '/// <reference types="next" />\n/// <reference types="next/types/global" />\n');
-    console.log(`${colors.green}✅ Fichier next-env.d.ts créé avec succès.${colors.reset}`);
-  } catch (error) {
-    console.warn(`${colors.yellow}⚠️ Impossible de créer next-env.d.ts: ${error.message}${colors.reset}`);
-  }
-  
-  // Installation de TypeScript comme dépendance pour satisfaire Vercel
-  console.warn(`${colors.yellow}⚠️ Installation de TypeScript avec toutes les dépendances nécessaires...${colors.reset}`);
-  try {
-    execSync('npm install --save typescript@latest', { stdio: 'pipe' });
-    execSync('npm install --save-dev typescript@latest @types/node @types/react @types/react-dom', { stdio: 'pipe' });
-    console.log(`${colors.green}✅ TypeScript et types associés installés avec succès.${colors.reset}`);
-  } catch (error) {
-    console.error(`${colors.red}❌ Erreur lors de l'installation de TypeScript: ${error.message}${colors.reset}`);
-  }
-  
-  // Tentative d'installation globale
-  try {
-    console.log(`${colors.blue}🔍 Tentative d'installation globale de TypeScript...${colors.reset}`);
-    execSync('npm install -g typescript@latest', { stdio: 'pipe' });
-    console.log(`${colors.green}✅ TypeScript installé globalement avec succès.${colors.reset}`);
-  } catch (error) {
-    console.warn(`${colors.yellow}⚠️ Impossible d'installer TypeScript globalement: ${error.message}${colors.reset}`);
-  }
-  
-  // Vérification de l'installation
-  try {
-    const typescriptVersionAfter = execSync('npx tsc --version', { stdio: 'pipe' }).toString().trim();
-    console.log(`${colors.green}✅ Vérification TypeScript après installation: ${typescriptVersionAfter}${colors.reset}`);
-  } catch (error) {
-    console.error(`${colors.red}❌ TypeScript n'est toujours pas correctement installé: ${error.message}${colors.reset}`);
-  }
-  
-  // Modification du next.config.js pour désactiver complètement TypeScript
-  try {
-    const nextConfigPath = path.join(process.cwd(), 'next.config.js');
-    if (fs.existsSync(nextConfigPath)) {
-      let nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
-      
-      // Vérifier si la configuration TypeScript existe déjà
-      if (!nextConfig.includes('typescript: {')) {
-        // Ajouter la configuration TypeScript pour désactiver complètement
-        nextConfig = nextConfig.replace(
-          /const nextConfig = {/,
-          `const path = require('path');\n\nconst nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true,\n    tsconfigPath: path.resolve('./tsconfig.json')\n  },`
-        );
+      if (fs.existsSync(file)) {
+        console.log(`${colors.blue}🔍 Correction du fichier: ${file}${colors.reset}`);
         
-        fs.writeFileSync(nextConfigPath, nextConfig);
-        console.log(`${colors.green}✅ next.config.js mis à jour pour désactiver TypeScript.${colors.reset}`);
+        // Lire le contenu du fichier
+        let content = fs.readFileSync(file, 'utf8');
+        
+        // Corriger les imports malformés
+        content = content.replace(/import\s*{\s*['"]([^'"]+)['"]\s*}/g, "import $1 from '$1'");
+        content = content.replace(/import\s*{\s*['"]([^'"]+)['"]\s*}\s*from/g, "import $1 from");
+        
+        // Remplacer les imports avec chaînes entre guillemets
+        content = content.replace(/import\s*{\s*([^}]+)\s*}\s*from\s*['"]([^'"]+)['"]/g, (match, imports, source) => {
+          // Nettoyer les imports
+          const cleanedImports = imports.replace(/['"]/g, '');
+          return `import { ${cleanedImports} } from '${source}'`;
+        });
+        
+        // Supprimer les annotations de types restantes
+        content = content.replace(/:\s*[A-Za-z0-9_]+(\[\])?\s*([,)])/g, '$2');
+        content = content.replace(/:\s*{[^}]+}\s*([,)])/g, '$1');
+        
+        // Remplacer interface et type par un commentaire
+        content = content.replace(/interface\s+[A-Za-z0-9_]+\s*{[\s\S]*?}/g, '// TypeScript interface removed');
+        content = content.replace(/type\s+[A-Za-z0-9_]+\s*=[\s\S]*?;/g, '// TypeScript type removed');
+        content = content.replace(/export\s+interface\s+[A-Za-z0-9_]+\s*{[\s\S]*?}/g, '// TypeScript interface removed');
+        content = content.replace(/export\s+type\s+[A-Za-z0-9_]+\s*=[\s\S]*?;/g, '// TypeScript type removed');
+        
+        // Écrire les modifications
+        fs.writeFileSync(file, content, 'utf8');
+        console.log(`${colors.green}✅ Fichier ${file} corrigé avec succès${colors.reset}`);
       }
+    } catch (error) {
+      console.error(`${colors.red}❌ Erreur lors de la correction de ${file}: ${error.message}${colors.reset}`);
     }
-  } catch (error) {
-    console.warn(`${colors.yellow}⚠️ Impossible de mettre à jour next.config.js: ${error.message}${colors.reset}`);
   }
   
-  console.log(`${colors.green}✅ Préparation de la configuration TypeScript terminée.${colors.reset}`);
+  // Cas spécifique pour store.js - Complètement réécrire si nécessaire
+  if (fs.existsSync('src/lib/store.js')) {
+    try {
+      const storeContent = `
+// Store for state management
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from './supabase';
+
+// Create a store with authentication state
+const useStore = create(
+  persist(
+    (set, get) => ({
+      // Auth state
+      session: null,
+      user: null,
+      
+      // Session data
+      currentSession: null,
+      
+      // Actions
+      setSession: (session) => set({ session }),
+      setUser: (user) => set({ user }),
+      setCurrentSession: (currentSession) => set({ currentSession }),
+      
+      logout: async () => {
+        const supabase = createSupabaseClient();
+        await supabase.auth.signOut();
+        set({ session: null, user: null, currentSession: null });
+      }
+    }),
+    {
+      name: 'app-storage'
+    }
+  )
+);
+
+export default useStore;
+`;
+      
+      fs.writeFileSync('src/lib/store.js', storeContent, 'utf8');
+      console.log(`${colors.green}✅ Fichier src/lib/store.js réécrit avec succès${colors.reset}`);
+    } catch (error) {
+      console.error(`${colors.red}❌ Erreur lors de la réécriture de src/lib/store.js: ${error.message}${colors.reset}`);
+    }
+  }
+  
+  // Cas spécifique pour supabase.js - Réécrire si nécessaire
+  if (fs.existsSync('src/lib/supabase.js')) {
+    try {
+      const supabaseContent = `
+import { createClient } from '@supabase/supabase-js';
+
+// Créer un client Supabase avec les variables d'environnement
+export function createClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Missing Supabase environment variables');
+    throw new Error('Missing Supabase environment variables');
+  }
+  
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+}
+
+// Client Supabase pour l'utilisation côté client
+const supabase = createClient();
+
+export default supabase;
+`;
+      
+      fs.writeFileSync('src/lib/supabase.js', supabaseContent, 'utf8');
+      console.log(`${colors.green}✅ Fichier src/lib/supabase.js réécrit avec succès${colors.reset}`);
+    } catch (error) {
+      console.error(`${colors.red}❌ Erreur lors de la réécriture de src/lib/supabase.js: ${error.message}${colors.reset}`);
+    }
+  }
 }
 
 // Exécuter les fonctions
@@ -1000,6 +749,9 @@ try {
   
   // S'assurer que TypeScript est installé
   ensureTypescript();
+  
+  // Correction des fichiers JavaScript problématiques après conversion
+  await fixJavaScriptFiles();
   
   console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
 } catch (error) {
