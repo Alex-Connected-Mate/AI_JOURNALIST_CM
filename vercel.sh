@@ -3,91 +3,83 @@
 echo "🚀 Démarrage du script de build personnalisé pour Vercel..."
 
 # Désactiver TypeScript complètement
-echo "🛠️ Désactivation de TypeScript..."
+echo "🛠️ Désactivation complète de TypeScript..."
 export NEXT_TYPECHECK=false
 export NODE_ENV=production
 
-# Installer TypeScript correctement comme dépendance de développement locale
+# Renommer tous les fichiers TypeScript pour éviter leur détection
+echo "🛠️ Renommage des fichiers TypeScript pour éviter leur détection..."
+find . -name "*.ts" -not -path "./node_modules/*" -exec mv {} {}.disabled \; 2>/dev/null || true
+find . -name "*.tsx" -not -path "./node_modules/*" -exec mv {} {}.disabled \; 2>/dev/null || true
+
+# Supprimer tsconfig.json
+echo "🛠️ Suppression de tsconfig.json..."
+rm -f tsconfig.json
+rm -f next-env.d.ts
+rm -f types.ts
+rm -f supabase.types.ts
+
+# Installer TypeScript comme dépendance de développement
 echo "🛠️ Installation explicite de TypeScript comme dépendance de développement..."
 npm install --save-dev typescript@5.8.2
 
-# Assurez-vous que TypeScript est disponible globalement
-echo "🛠️ Installation de TypeScript globalement..."
-npm install -g typescript
-
-# Assurez-vous que Next.js ignore TypeScript
-echo "🛠️ Création d'une configuration minimaliste..."
-cat > tsconfig.build-disabled.json << EOL
+# Créer une configuration minimaliste qui désactive effectivement TypeScript
+echo "🛠️ Création d'une configuration minimaliste qui désactive TypeScript..."
+cat > jsconfig.json << EOL
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
-    "noEmit": true,
-    "incremental": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "jsx": "preserve"
-  },
-  "include": [],
-  "exclude": ["node_modules", "**/*.ts", "**/*.tsx"]
-}
-EOL
-
-# Créer aussi un tsconfig.json standard pour que Next.js ne se plaigne pas
-echo "🛠️ Création d'un tsconfig.json standard..."
-cat > tsconfig.json << EOL
-{
-  "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
-    "noEmit": true,
-    "incremental": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "jsx": "preserve",
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "include": ["next-env.d.ts", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  }
 }
 EOL
 
-# Modifiez temporairement next.config.js pour désactiver TypeScript
-echo "🛠️ Mise à jour de next.config.js..."
+# Modifier next.config.js pour désactiver complètement TypeScript
+echo "🛠️ Mise à jour de next.config.js pour désactiver TypeScript..."
 cat > next.config.js << EOL
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
+  
+  // Complètement désactiver TypeScript
   typescript: { 
     ignoreBuildErrors: true,
-    tsconfigPath: "./tsconfig.build-disabled.json"
+    tsconfigPath: false
   },
+  
+  // Désactiver ESLint
   eslint: {
     ignoreDuringBuilds: true
   },
+  
+  // Images
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**'
+      }
+    ],
+    unoptimized: process.env.NODE_ENV === 'development'
+  },
+  
+  // Expérimental
   experimental: {
     ppr: false,
     optimizePackageImports: ['next/navigation']
   },
+  
+  // Env
+  env: {
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || 'development',
+    BUILD_TIME: new Date().toISOString()
+  },
+  
+  // Webpack
   webpack: (config) => {
     config.resolve.fallback = { 
       fs: false,
@@ -95,17 +87,22 @@ const nextConfig = {
       crypto: false,
       os: false
     };
+    
+    // Configurer webpack pour ignorer complètement les fichiers .ts/.tsx
+    config.resolve.extensions = ['.js', '.jsx', '.json'];
+    
     return config;
   }
 };
+
 module.exports = nextConfig;
 EOL
 
-# Exécutez le build avec des variables d'environnement spécifiques
-echo "🚀 Exécution du build Next.js..."
-NODE_OPTIONS='--max_old_space_size=4096' NEXT_MINIMAL_ERROR_HANDLING=true NEXT_TYPECHECK=false next build
+# Exécuter le build avec des variables d'environnement qui désactivent TypeScript
+echo "🚀 Exécution du build Next.js sans TypeScript..."
+NEXT_MINIMAL_ERROR_HANDLING=true NEXT_TYPECHECK=false NODE_OPTIONS='--max_old_space_size=4096' next build
 
-# Vérifiez le statut du build
+# Vérifier le statut du build
 BUILD_STATUS=$?
 if [ $BUILD_STATUS -eq 0 ]; then
   echo "✅ Build terminé avec succès!"

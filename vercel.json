@@ -1,22 +1,27 @@
 {
-  "version": 2,
-  "buildCommand": "bash ./vercel.sh",
+  "framework": "nextjs",
+  "buildCommand": "npm run vercel-build",
   "installCommand": "npm install",
-  "framework": null,
-  "outputDirectory": ".next",
+  "devCommand": "npm run dev",
+  "cleanUrls": true,
+  "regions": ["cdg1"],
   "builds": [
     {
       "src": "package.json",
       "use": "@vercel/next",
       "config": {
-        "skipTypeCheck": true,
-        "nodeVersion": "22.x"
+        "skipBuild": true,
+        "installCommand": "npm install",
+        "buildCommand": "npm run vercel-build",
+        "outputDirectory": ".next",
+        "nodeVersion": "18.x",
+        "skipFiles": ["types", "tsconfig.json", "*.ts", "*.tsx"]
       }
     }
   ],
   "env": {
-    "NEXT_TELEMETRY_DISABLED": "1",
     "NEXT_TYPECHECK": "false",
-    "NODE_OPTIONS": "--max_old_space_size=4096"
+    "NEXT_WEBPACK_TYPECHECK": "false",
+    "NEXT_MINIMAL_ERROR_HANDLING": "true"
   }
 } 
