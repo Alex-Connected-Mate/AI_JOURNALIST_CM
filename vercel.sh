@@ -9,8 +9,8 @@ export NODE_ENV=production
 
 # Renommer les fichiers TypeScript SAUF les fichiers essentiels
 echo "🛠️ Renommage des fichiers TypeScript non essentiels..."
-find . -name "*.ts" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \; 2>/dev/null || true
-find . -name "*.tsx" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \; 2>/dev/null || true
+find . -name "*.ts" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -path "./src/components/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \; 2>/dev/null || true
+find . -name "*.tsx" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -path "./src/components/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \; 2>/dev/null || true
 
 # Supprimer tsconfig.json
 echo "🛠️ Suppression de tsconfig.json..."
