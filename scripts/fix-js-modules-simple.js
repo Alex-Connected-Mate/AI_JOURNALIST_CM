@@ -157,6 +157,19 @@ function convertFileContent(content) {
     // Corriger les problèmes avec les "require" suivis d'un point-virgule supplémentaire
     newContent = newContent.replace(/require\('([^']+)'\);;/g, "require('$1');");
     
+    // Supprimer les exports ES modules si un module.exports est déjà présent
+    if (newContent.includes('module.exports =')) {
+      newContent = newContent.replace(/export\s+\{\s*([^}]+)\s*\};?/g, '');
+    } else {
+      // Convertir les exports nommés sous forme d'objet: export { x, y };
+      newContent = newContent.replace(/export\s+\{\s*([^}]+)\s*\};?/g, 
+        (match, exportNames) => {
+          const names = exportNames.split(',').map(name => name.trim());
+          return `module.exports = { ${names.join(', ')} };`;
+        }
+      );
+    }
+    
     // Convertir les exports nommés: export const x = y;
     newContent = newContent.replace(/export\s+(const|let|var|function|class)\s+(\w+)/g, 
       (match, type, name) => {
