@@ -194,6 +194,28 @@ function convertFileContent(content) {
       namedExports.push(match[2]);
     }
     
+    // Vérifier si le fichier est un module de logging ou contient des constantes LOG_LEVELS
+    // et s'assurer que ces constantes sont accessibles globalement
+    if (content.includes('LOG_LEVELS')) {
+      // Remplacer les références à LOG_LEVELS.X par des références directes aux propriétés de LOG_LEVELS
+      // Dans certains fichiers, LOG_LEVELS peut ne pas être accessible après conversion
+      if (newContent.includes('LOG_LEVELS.INFO')) {
+        newContent = newContent.replace(/LOG_LEVELS\.INFO/g, "LOG_LEVELS && LOG_LEVELS.INFO || { label: 'INFO', color: '#3b82f6' }");
+      }
+      if (newContent.includes('LOG_LEVELS.WARNING')) {
+        newContent = newContent.replace(/LOG_LEVELS\.WARNING/g, "LOG_LEVELS && LOG_LEVELS.WARNING || { label: 'WARN', color: '#f59e0b' }");
+      }
+      if (newContent.includes('LOG_LEVELS.ERROR')) {
+        newContent = newContent.replace(/LOG_LEVELS\.ERROR/g, "LOG_LEVELS && LOG_LEVELS.ERROR || { label: 'ERROR', color: '#ef4444' }");
+      }
+      if (newContent.includes('LOG_LEVELS.DEBUG')) {
+        newContent = newContent.replace(/LOG_LEVELS\.DEBUG/g, "LOG_LEVELS && LOG_LEVELS.DEBUG || { label: 'DEBUG', color: '#10b981' }");
+      }
+      if (newContent.includes('LOG_LEVELS.SESSION')) {
+        newContent = newContent.replace(/LOG_LEVELS\.SESSION/g, "LOG_LEVELS && LOG_LEVELS.SESSION || { label: 'SESSION', color: '#8b5cf6' }");
+      }
+    }
+    
     if (namedExports.length > 0) {
       // Ajouter l'export à la fin seulement s'il n'y a pas déjà d'export par défaut
       if (!content.includes('export default')) {
