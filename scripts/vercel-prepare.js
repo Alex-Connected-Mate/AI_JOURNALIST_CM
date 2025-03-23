@@ -902,8 +902,8 @@ function ensureTypescript() {
   // Renommer les fichiers TypeScript pour éviter leur détection
   try {
     console.log(`${colors.blue}🔍 Tentative de renommage des fichiers TypeScript...${colors.reset}`);
-    execSync('find . -name "*.ts" -not -path "./node_modules/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \\; 2>/dev/null || true', { stdio: 'pipe' });
-    execSync('find . -name "*.tsx" -not -path "./node_modules/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \\; 2>/dev/null || true', { stdio: 'pipe' });
+    execSync('find . -name "*.ts" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \\; 2>/dev/null || true', { stdio: 'pipe' });
+    execSync('find . -name "*.tsx" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \\; 2>/dev/null || true', { stdio: 'pipe' });
     console.log(`${colors.green}✅ Fichiers TypeScript non essentiels renommés.${colors.reset}`);
   } catch (error) {
     console.warn(`${colors.yellow}⚠️ Impossible de renommer les fichiers TypeScript: ${error.message}${colors.reset}`);
