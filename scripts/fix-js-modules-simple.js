@@ -100,8 +100,18 @@ function convertFileContent(content) {
     // Convertir les imports nommés: import { x, y } from 'module';
     newContent = newContent.replace(/import\s*\{\s*([^}]+)\s*\}\s*from\s*['"]([^'"]+)['"]/g, 
       (match, importNames, moduleName) => {
-        const names = importNames.split(',').map(name => name.trim());
-        const destructuring = names.join(', ');
+        // Prétraitement pour gérer les renommages avec "as"
+        const processedNames = importNames.split(',').map(item => {
+          const trimmed = item.trim();
+          // Si c'est un renommage avec "as", le convertir en format CommonJS
+          if (trimmed.includes(' as ')) {
+            const [original, renamed] = trimmed.split(' as ').map(x => x.trim());
+            return `${original}: ${renamed}`;
+          }
+          return trimmed;
+        });
+        
+        const destructuring = processedNames.join(', ');
         return `const { ${destructuring} } = require('${moduleName}');`;
       }
     );
@@ -151,6 +161,15 @@ function convertFileContent(content) {
     newContent = newContent.replace(/export\s+(const|let|var|function|class)\s+(\w+)/g, 
       (match, type, name) => {
         return `${type} ${name}`;
+      }
+    );
+    
+    // Gérer les API routes de Next.js App Router
+    // Convertir "export async function GET()" en "module.exports.GET = async function()"
+    newContent = newContent.replace(/export\s+(async\s+)?function\s+(\w+)\s*\(/g, 
+      (match, asyncKeyword, functionName) => {
+        const async = asyncKeyword || '';
+        return `module.exports.${functionName} = ${async}function(`;
       }
     );
     
