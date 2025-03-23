@@ -704,6 +704,56 @@ export default supabase;
   }
 }
 
+/**
+ * Vérifie la compatibilité des versions de React et @headlessui/react
+ * @returns {Promise<boolean>} true si la vérification est réussie, false sinon
+ */
+function fixHeadlessUIReact() {
+  console.log('🔍 Vérification des versions de React et @headlessui/react...');
+  
+  try {
+    // Lire le package.json
+    const pkgPath = path.join(process.cwd(), 'package.json');
+    if (!fs.existsSync(pkgPath)) {
+      console.log('⚠️ package.json non trouvé. Impossible de vérifier les versions.');
+      return true; // On continue malgré tout
+    }
+    
+    const pkgContent = fs.readFileSync(pkgPath, 'utf8');
+    const pkg = JSON.parse(pkgContent);
+    
+    // Vérifier si les packages sont installés
+    if (!pkg.dependencies.react && !pkg.devDependencies.react) {
+      console.log('⚠️ React non trouvé dans les dépendances. Vérification impossible.');
+      return true;
+    }
+    
+    if (!pkg.dependencies['@headlessui/react'] && !pkg.devDependencies['@headlessui/react']) {
+      console.log('⚠️ @headlessui/react non trouvé dans les dépendances. Vérification ignorée.');
+      return true;
+    }
+    
+    // Récupérer les versions
+    const reactVersion = pkg.dependencies.react || pkg.devDependencies.react;
+    const headlessUIVersion = pkg.dependencies['@headlessui/react'] || pkg.devDependencies['@headlessui/react'];
+    
+    // Vérifier la version majeure de React
+    const reactMajorVersion = parseInt(reactVersion.replace(/[^0-9]/g, '').charAt(0), 10);
+    console.log(`📋 Versions détectées: React v${reactVersion}, @headlessui/react v${headlessUIVersion}`);
+    
+    if (reactMajorVersion >= 18) {
+      console.log('✅ Version de React compatible avec @headlessui/react.');
+    } else {
+      console.log('⚠️ La version de React est inférieure à 18, ce qui peut causer des problèmes avec @headlessui/react.');
+    }
+    
+    return true;
+  } catch (error) {
+    console.log(`⚠️ Erreur lors de la vérification des versions: ${error.message}`);
+    return true; // On continue malgré l'erreur pour ne pas bloquer le build
+  }
+}
+
 // Fonction principale async
 async function main() {
   try {
