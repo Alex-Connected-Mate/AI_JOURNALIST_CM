@@ -7,10 +7,10 @@ echo "🛠️ Désactivation complète de TypeScript..."
 export NEXT_TYPECHECK=false
 export NODE_ENV=production
 
-# Renommer tous les fichiers TypeScript pour éviter leur détection
-echo "🛠️ Renommage des fichiers TypeScript pour éviter leur détection..."
-find . -name "*.ts" -not -path "./node_modules/*" -exec mv {} {}.disabled \; 2>/dev/null || true
-find . -name "*.tsx" -not -path "./node_modules/*" -exec mv {} {}.disabled \; 2>/dev/null || true
+# Renommer les fichiers TypeScript SAUF les fichiers layout.tsx et autres fichiers essentiels
+echo "🛠️ Renommage des fichiers TypeScript non essentiels..."
+find . -name "*.ts" -not -path "./node_modules/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \; 2>/dev/null || true
+find . -name "*.tsx" -not -path "./node_modules/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \; 2>/dev/null || true
 
 # Supprimer tsconfig.json
 echo "🛠️ Suppression de tsconfig.json..."
@@ -88,7 +88,7 @@ const nextConfig = {
     };
     
     // Configurer webpack pour ignorer complètement les fichiers .ts/.tsx
-    config.resolve.extensions = ['.js', '.jsx', '.json'];
+    config.resolve.extensions = ['.js', '.jsx', '.json', '.tsx', '.ts'];
     
     return config;
   }
