@@ -197,22 +197,50 @@ function convertFileContent(content) {
     // Vérifier si le fichier est un module de logging ou contient des constantes LOG_LEVELS
     // et s'assurer que ces constantes sont accessibles globalement
     if (content.includes('LOG_LEVELS')) {
+      // Définir explicitement les constantes de niveau de log pour éviter les erreurs de référence
+      // C'est nécessaire car les constantes peuvent être référencées directement sans utiliser LOG_LEVELS
+      const logLevelDefines = `
+// Définition explicite des constantes de niveau de log
+var INFO = { label: 'INFO', color: '#3b82f6' };
+var WARNING = { label: 'WARN', color: '#f59e0b' };
+var ERROR = { label: 'ERROR', color: '#ef4444' };
+var DEBUG = { label: 'DEBUG', color: '#10b981' };
+var SESSION = { label: 'SESSION', color: '#8b5cf6' };
+
+// Définir LOG_LEVELS s'il n'existe pas déjà
+var LOG_LEVELS = LOG_LEVELS || {
+  INFO: INFO,
+  WARNING: WARNING,
+  ERROR: ERROR,
+  DEBUG: DEBUG,
+  SESSION: SESSION
+};
+`;
+      
+      // Ajouter ces définitions au début du fichier, après les imports/requires
+      const firstLineBreakIndex = newContent.indexOf('\n\n');
+      if (firstLineBreakIndex > 0) {
+        newContent = newContent.slice(0, firstLineBreakIndex + 2) + logLevelDefines + newContent.slice(firstLineBreakIndex + 2);
+      } else {
+        newContent = logLevelDefines + newContent;
+      }
+      
       // Remplacer les références à LOG_LEVELS.X par des références directes aux propriétés de LOG_LEVELS
       // Dans certains fichiers, LOG_LEVELS peut ne pas être accessible après conversion
       if (newContent.includes('LOG_LEVELS.INFO')) {
-        newContent = newContent.replace(/LOG_LEVELS\.INFO/g, "LOG_LEVELS && LOG_LEVELS.INFO || { label: 'INFO', color: '#3b82f6' }");
+        newContent = newContent.replace(/LOG_LEVELS\.INFO/g, "INFO");
       }
       if (newContent.includes('LOG_LEVELS.WARNING')) {
-        newContent = newContent.replace(/LOG_LEVELS\.WARNING/g, "LOG_LEVELS && LOG_LEVELS.WARNING || { label: 'WARN', color: '#f59e0b' }");
+        newContent = newContent.replace(/LOG_LEVELS\.WARNING/g, "WARNING");
       }
       if (newContent.includes('LOG_LEVELS.ERROR')) {
-        newContent = newContent.replace(/LOG_LEVELS\.ERROR/g, "LOG_LEVELS && LOG_LEVELS.ERROR || { label: 'ERROR', color: '#ef4444' }");
+        newContent = newContent.replace(/LOG_LEVELS\.ERROR/g, "ERROR");
       }
       if (newContent.includes('LOG_LEVELS.DEBUG')) {
-        newContent = newContent.replace(/LOG_LEVELS\.DEBUG/g, "LOG_LEVELS && LOG_LEVELS.DEBUG || { label: 'DEBUG', color: '#10b981' }");
+        newContent = newContent.replace(/LOG_LEVELS\.DEBUG/g, "DEBUG");
       }
       if (newContent.includes('LOG_LEVELS.SESSION')) {
-        newContent = newContent.replace(/LOG_LEVELS\.SESSION/g, "LOG_LEVELS && LOG_LEVELS.SESSION || { label: 'SESSION', color: '#8b5cf6' }");
+        newContent = newContent.replace(/LOG_LEVELS\.SESSION/g, "SESSION");
       }
     }
     
