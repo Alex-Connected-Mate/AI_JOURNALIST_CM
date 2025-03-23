@@ -1,5 +1,6 @@
-import { useCallback, useRef } from 'react';
-import useLogStore, { LogType } from '@/lib/logStore';
+const { useCallback, useRef } = require('react');
+const useLogStore = require('@/lib/logStore');
+const { LogType } = require('@/lib/logStore');
 
 // Cache global pour éviter les logs trop fréquents et redondants
 const logCache = new Map();
@@ -74,4 +75,4 @@ const useLogger = (componentName = '') => {
   };
 };
 
-export default useLogger; 
+module.exports = useLogger; 

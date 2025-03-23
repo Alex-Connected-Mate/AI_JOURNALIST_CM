@@ -90,6 +90,10 @@ function convertFileContent(content) {
     // Conversion basique des imports
     let newContent = content;
     
+    // Supprimer ou remplacer les références à import.meta.webpackHot qui causent des problèmes
+    newContent = newContent.replace(/\/\/ @ts-ignore importMeta is replaced in the loader[\s\S]*?import\.meta\.webpackHot\.accept\(\);/g, 
+      '// Hot Module Replacement disabled in CommonJS conversion');
+    
     // Première étape : Correction des exports default de composants React
     // Cela remplace "export default function ComponentName" par "module.exports = function ComponentName"
     newContent = newContent.replace(
