@@ -828,6 +828,14 @@ function detectMissingImports() {
 function ensureTypescript() {
   console.log(`${colors.blue}🔍 Préparation de la configuration TypeScript pour le build...${colors.reset}`);
   
+  // Vérifier si TypeScript est déjà installé
+  try {
+    const typescriptVersion = execSync('npx tsc --version', { stdio: 'pipe' }).toString().trim();
+    console.log(`${colors.green}✅ TypeScript est déjà installé: ${typescriptVersion}${colors.reset}`);
+  } catch (error) {
+    console.warn(`${colors.yellow}⚠️ TypeScript n'est pas correctement installé: ${error.message}${colors.reset}`);
+  }
+  
   // Suppression de tsconfig.json s'il existe
   const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
   if (fs.existsSync(tsconfigPath)) {
@@ -887,13 +895,39 @@ function ensureTypescript() {
     console.warn(`${colors.yellow}⚠️ Impossible de créer tsconfig.json: ${error.message}${colors.reset}`);
   }
   
-  // Installation de TypeScript comme dépendance pour satisfaire Vercel
-  console.warn(`${colors.yellow}⚠️ Installation de TypeScript uniquement comme dépendance de développement...${colors.reset}`);
+  // Créer un fichier next-env.d.ts vide pour satisfaire Next.js
   try {
-    execSync('npm install --save-dev typescript@latest --no-audit', { stdio: 'pipe' });
-    console.log(`${colors.green}✅ TypeScript installé comme dépendance de développement.${colors.reset}`);
+    fs.writeFileSync(nextEnvPath, '/// <reference types="next" />\n/// <reference types="next/types/global" />\n');
+    console.log(`${colors.green}✅ Fichier next-env.d.ts créé avec succès.${colors.reset}`);
+  } catch (error) {
+    console.warn(`${colors.yellow}⚠️ Impossible de créer next-env.d.ts: ${error.message}${colors.reset}`);
+  }
+  
+  // Installation de TypeScript comme dépendance pour satisfaire Vercel
+  console.warn(`${colors.yellow}⚠️ Installation de TypeScript avec toutes les dépendances nécessaires...${colors.reset}`);
+  try {
+    execSync('npm install --save typescript@latest', { stdio: 'pipe' });
+    execSync('npm install --save-dev typescript@latest @types/node @types/react @types/react-dom', { stdio: 'pipe' });
+    console.log(`${colors.green}✅ TypeScript et types associés installés avec succès.${colors.reset}`);
   } catch (error) {
     console.error(`${colors.red}❌ Erreur lors de l'installation de TypeScript: ${error.message}${colors.reset}`);
+  }
+  
+  // Tentative d'installation globale
+  try {
+    console.log(`${colors.blue}🔍 Tentative d'installation globale de TypeScript...${colors.reset}`);
+    execSync('npm install -g typescript@latest', { stdio: 'pipe' });
+    console.log(`${colors.green}✅ TypeScript installé globalement avec succès.${colors.reset}`);
+  } catch (error) {
+    console.warn(`${colors.yellow}⚠️ Impossible d'installer TypeScript globalement: ${error.message}${colors.reset}`);
+  }
+  
+  // Vérification de l'installation
+  try {
+    const typescriptVersionAfter = execSync('npx tsc --version', { stdio: 'pipe' }).toString().trim();
+    console.log(`${colors.green}✅ Vérification TypeScript après installation: ${typescriptVersionAfter}${colors.reset}`);
+  } catch (error) {
+    console.error(`${colors.red}❌ TypeScript n'est toujours pas correctement installé: ${error.message}${colors.reset}`);
   }
   
   // Modification du next.config.js pour désactiver complètement TypeScript
@@ -907,7 +941,7 @@ function ensureTypescript() {
         // Ajouter la configuration TypeScript pour désactiver complètement
         nextConfig = nextConfig.replace(
           /const nextConfig = {/,
-          `const nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true,\n    tsconfigPath: './tsconfig.json'\n  },`
+          `const path = require('path');\n\nconst nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true,\n    tsconfigPath: path.resolve('./tsconfig.json')\n  },`
         );
         
         fs.writeFileSync(nextConfigPath, nextConfig);

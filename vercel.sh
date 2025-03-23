@@ -13,6 +13,14 @@ echo "🛠️ Suppression des configurations TypeScript existantes..."
 rm -f tsconfig.json
 rm -f next-env.d.ts
 
+# Vérifier si TypeScript est déjà présent globalement
+if ! command -v tsc &> /dev/null; then
+  echo "🛠️ Installation de TypeScript globalement..."
+  npm install -g typescript@latest
+else
+  echo "✅ TypeScript est déjà installé globalement."
+fi
+
 # Création d'un fichier tsconfig.json minimaliste qui ignore les erreurs
 echo "🛠️ Création d'une configuration TypeScript minimaliste..."
 cat > tsconfig.json << EOL
@@ -46,14 +54,22 @@ cat > tsconfig.json << EOL
 }
 EOL
 
-# Installer TypeScript comme dépendance de développement
-echo "🛠️ Installation de TypeScript comme dépendance de développement..."
-npm install --save-dev typescript@latest --no-audit
+# Installer TypeScript localement ET avec option --save
+echo "🛠️ Installation de TypeScript à la fois comme dépendance de production et de développement..."
+npm install typescript@latest --save
+npm install typescript@latest --save-dev
+npm install @types/node @types/react @types/react-dom --save-dev
+
+# Créer un fichier next-env.d.ts vide pour satisfaire Next.js
+echo "🛠️ Création d'un fichier next-env.d.ts vide..."
+touch next-env.d.ts
 
 # Modifier next.config.js pour désactiver les vérifications TypeScript
 echo "🛠️ Mise à jour de next.config.js pour désactiver les vérifications TypeScript..."
 cat > next.config.js << EOL
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
@@ -62,7 +78,7 @@ const nextConfig = {
   // Désactiver TypeScript et ESLint
   typescript: { 
     ignoreBuildErrors: true,
-    tsconfigPath: './tsconfig.json'
+    tsconfigPath: path.resolve('./tsconfig.json')
   },
   eslint: {
     ignoreDuringBuilds: true
@@ -112,9 +128,13 @@ EOL
 echo "🛠️ Installation des plugins Next.js nécessaires..."
 npm install --save-dev @next/eslint-plugin-next --no-audit
 
+# S'assurer que la résolution de modules TypeScript fonctionne
+echo "🛠️ Test de l'installation de TypeScript..."
+npx tsc --version
+
 # Exécuter le build Next.js avec les options qui désactivent les vérifications TypeScript
 echo "🚀 Exécution du build Next.js..."
-NEXT_MINIMAL_ERROR_HANDLING=true NEXT_TYPECHECK=false NODE_OPTIONS='--max_old_space_size=4096' next build
+NEXT_TELEMETRY_DISABLED=1 NEXT_MINIMAL_ERROR_HANDLING=true NEXT_TYPECHECK=false NODE_OPTIONS='--max_old_space_size=4096' next build
 
 # Vérifier le statut du build
 BUILD_STATUS=$?
