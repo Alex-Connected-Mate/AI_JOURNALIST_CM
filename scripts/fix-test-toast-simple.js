@@ -20,17 +20,18 @@ try {
   // Créer une sauvegarde
   fs.copyFileSync(filePath, `${filePath}.backup-${Date.now()}`);
   
-  // Créer un contenu minimal fonctionnel
+  // Créer un contenu minimal fonctionnel avec CommonJS
   const minimalContent = `
-import React, { useState } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+const React = require('react');
+const { useState } = require('react');
+const { useToast } = require('@/components/ui/use-toast');
 
 /**
  * Page de test pour les notifications toast
  * Cette page permet de tester différents types de notifications toast
  * et de simuler le comportement de sauvegarde d'une session.
  */
-export default function ToastTestPage() {
+module.exports = function ToastTestPage() {
   const [delay, setDelay] = useState(1000);
   const [success, setSuccess] = useState(true);
   const { toast } = useToast();

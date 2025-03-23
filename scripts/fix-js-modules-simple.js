@@ -13,12 +13,74 @@ console.log('🔧 Conversion minimaliste des modules ES vers CommonJS...');
 const problematicFiles = [
   'src/lib/logStore.js',
   'src/lib/services/agentService.js',
+  'src/hooks/useLogger.js',
+  'src/lib/eventTracker.js',
+  'src/lib/i18n.js',
+  'src/lib/logger.js',
   'src/pages/test-toast.jsx',
   'src/pages/_app.js',
   'src/pages/_document.js',
   'src/pages/api/ai/analyze-session.js',
   'src/pages/api/ai/get-analysis.js'
 ];
+
+// Fonction pour trouver tous les fichiers JS/JSX dans un répertoire
+function findJsFiles(directory) {
+  const files = [];
+  
+  try {
+    if (!fs.existsSync(directory)) {
+      return files;
+    }
+    
+    const items = fs.readdirSync(directory);
+    
+    for (const item of items) {
+      const fullPath = path.join(directory, item);
+      
+      if (fs.statSync(fullPath).isDirectory()) {
+        // Recursively search subdirectories
+        const subFiles = findJsFiles(fullPath);
+        files.push(...subFiles);
+      } else if (
+        item.endsWith('.js') || 
+        item.endsWith('.jsx') || 
+        item.endsWith('.mjs')
+      ) {
+        // Check if file contains ES modules syntax
+        const content = fs.readFileSync(fullPath, 'utf8');
+        if (
+          content.includes('import ') || 
+          content.includes('export ') || 
+          content.includes('export default')
+        ) {
+          files.push(fullPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Erreur lors de la recherche de fichiers JS: ${error.message}`);
+  }
+  
+  return files;
+}
+
+// Rechercher automatiquement les fichiers supplémentaires avec syntax ES modules
+const srcPath = path.join(process.cwd(), 'src');
+console.log('🔍 Recherche de fichiers JS avec syntax ES modules...');
+
+try {
+  const additionalFiles = findJsFiles(srcPath)
+    .map(file => path.relative(process.cwd(), file))
+    .filter(file => !problematicFiles.includes(file));
+  
+  console.log(`📋 ${additionalFiles.length} fichiers supplémentaires détectés avec syntax ES modules`);
+  
+  // Ajouter les fichiers supplémentaires à la liste
+  problematicFiles.push(...additionalFiles);
+} catch (error) {
+  console.error(`❌ Erreur lors de la recherche automatique: ${error.message}`);
+}
 
 function convertFileContent(content) {
   // Sauvegarde du contenu original
@@ -99,6 +161,9 @@ function convertFileContent(content) {
 }
 
 // Traitement de chaque fichier
+console.log(`📋 Traitement de ${problematicFiles.length} fichiers...`);
+let filesProcessed = 0;
+
 for (const filePath of problematicFiles) {
   const fullPath = path.join(process.cwd(), filePath);
   
@@ -121,9 +186,10 @@ for (const filePath of problematicFiles) {
     fs.writeFileSync(fullPath, convertedContent);
     
     console.log(`✅ Conversion terminée pour ${filePath}`);
+    filesProcessed++;
   } catch (error) {
     console.error(`❌ Erreur lors du traitement de ${filePath}: ${error.message}`);
   }
 }
 
-console.log('✅ Conversion des modules ES terminée.'); 
+console.log(`✅ Conversion des modules ES terminée. ${filesProcessed} fichiers traités avec succès.`); 

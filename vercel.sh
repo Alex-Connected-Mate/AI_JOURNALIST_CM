@@ -135,7 +135,7 @@ echo "🔍 Verification des fichiers middleware..."
 # Chercher les fichiers middleware dupliqués
 MIDDLEWARE_FILES=( $(find "$SCRIPT_DIR/src" -name "middleware.*" -type f) )
 if [ ${#MIDDLEWARE_FILES[@]} -gt 1 ]; then
-  echo "⚠️ Plusieurs fichiers middleware detectes, nettoyage necessaire!"
+  echo "⚠️ Plusieurs fichiers middleware detectes, nettoyage necessaire."
   
   # Garder uniquement le fichier middleware à la racine
   ROOT_MIDDLEWARE=""
@@ -157,7 +157,7 @@ if [ ${#MIDDLEWARE_FILES[@]} -gt 1 ]; then
       fi
     done
   else
-    echo "⚠️ Aucun middleware racine trouve, deplacement d'un fichier existant..."
+    echo "⚠️ Aucun middleware racine trouve, deplacement d'un fichier existant."
     
     # Déplacer le premier middleware trouvé à la racine
     FIRST_MIDDLEWARE="${MIDDLEWARE_FILES[0]}"
@@ -188,7 +188,7 @@ else
   echo "ℹ️ Verification des conflits Git avec grep..."
   CONFLICTS=$(grep -r "<<<<<" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" "$SCRIPT_DIR/src" || true)
   if [ -n "$CONFLICTS" ]; then
-    echo "⚠️ Des conflits Git non resolus ont ete detectes!"
+    echo "⚠️ Des conflits Git non resolus ont ete detectes."
     echo "$CONFLICTS"
   else
     echo "✅ Pas de conflits Git non resolus detectes."
@@ -202,9 +202,9 @@ echo "🔐 Validation des variables Supabase..."
 if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then
   echo "✅ Variables Supabase configurees"
 else
-  echo "⚠️ Variables Supabase manquantes!"
+  echo "⚠️ Variables Supabase manquantes."
   if [ "$IS_VERCEL" = "1" ]; then
-    echo "❌ ERREUR CRITIQUE: Les variables Supabase sont requises pour le deploiement!"
+    echo "❌ ERREUR CRITIQUE: Les variables Supabase sont requises pour le deploiement."
   fi
 fi
 
@@ -216,7 +216,7 @@ if [ -f "$SCRIPT_DIR/scripts/fix-test-toast-simple.js" ]; then
   echo "✅ Utilisation du script fix-test-toast-simple.js existant"
   node "$SCRIPT_DIR/scripts/fix-test-toast-simple.js"
 else
-  echo "⚠️ Script fix-test-toast-simple.js non trouve!"
+  echo "⚠️ Script fix-test-toast-simple.js non trouve."
 fi
 
 # 6. Correction des modules JS
@@ -227,7 +227,7 @@ if [ -f "$SCRIPT_DIR/scripts/fix-js-modules-simple.js" ]; then
   echo "✅ Utilisation du script fix-js-modules-simple.js existant"
   node "$SCRIPT_DIR/scripts/fix-js-modules-simple.js"
 else
-  echo "⚠️ Script fix-js-modules-simple.js non trouve!"
+  echo "⚠️ Script fix-js-modules-simple.js non trouve."
 fi
 
 # 7. Vérifier la présence du fichier next.config.mjs
@@ -236,7 +236,7 @@ echo "🔧 Verification de la configuration Next.js..."
 if [ ! -f "$SCRIPT_DIR/next.config.mjs" ]; then
   echo "⚠️ Fichier next.config.mjs non trouve, creation d'un fichier minimal..."
   
-  # Créer un fichier de configuration Next.js minimal
+  # Créer un fichier de configuration Next.js minimal avec les options correctes pour Next.js 15.2.1
   cat > "$SCRIPT_DIR/next.config.mjs" << 'EOL'
 /**
  * @type {import('next').NextConfig}
@@ -252,8 +252,10 @@ const nextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
     unoptimized: process.env.NODE_ENV === 'development',
   },
+  // Utiliser les options de configuration compatibles avec Next.js 15.2.1
   experimental: {
-    serverComponentsExternalPackages: ['sharp'],
+    serverActions: true,
+    serverActionsBodySizeLimit: '2mb',
   },
   webpack: (config) => {
     config.module.rules.push({
@@ -278,6 +280,22 @@ EOL
   echo "✅ Fichier next.config.mjs cree avec succes."
 fi
 
+# Vérifions si next.config.mjs existe déjà et contient des options incorrectes
+if [ -f "$SCRIPT_DIR/next.config.mjs" ]; then
+  # Vérifier si le fichier contient l'option incorrecte 'serverExternalPackages'
+  if grep -q "serverExternalPackages" "$SCRIPT_DIR/next.config.mjs"; then
+    echo "⚠️ Option incorrecte detectee dans next.config.mjs, correction..."
+    
+    # Créer une sauvegarde du fichier
+    cp "$SCRIPT_DIR/next.config.mjs" "$SCRIPT_DIR/next.config.mjs.backup"
+    
+    # Corriger l'option
+    sed -i.bak 's/serverExternalPackages/serverComponentsExternalPackages/g' "$SCRIPT_DIR/next.config.mjs"
+    
+    echo "✅ next.config.mjs corrige."
+  fi
+fi
+
 # 8. Suppression du fichier .babelrc s'il existe (pour éviter les conflits avec SWC)
 if [ -f "$SCRIPT_DIR/.babelrc" ]; then
   echo "⚠️ Fichier .babelrc detecte, sauvegarde et suppression..."
@@ -286,7 +304,7 @@ if [ -f "$SCRIPT_DIR/.babelrc" ]; then
 fi
 
 # 9. Finalisation et message de récapitulation
-echo "🏁 Preparation de deploiement terminee!"
+echo "🏁 Preparation de deploiement terminee."
 echo "==============================================="
 echo "✅ Conflits Git verifies et resolus"
 echo "✅ Middlewares dedupliques"
@@ -310,7 +328,7 @@ next build
 # Vérifier le statut du build
 BUILD_STATUS=$?
 if [ $BUILD_STATUS -eq 0 ]; then
-  echo "✅ Build Next.js termine avec succes!"
+  echo "✅ Build Next.js termine avec succes."
   
   # Créer un fichier d'information sur le build
   echo "{\"buildTime\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"nodeVersion\": \"$(node -v)\"}" > ./.next/BUILD_INFO.json
