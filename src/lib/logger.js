@@ -5,12 +5,21 @@
  * and an on-screen logging element if it exists.
  */
 
-const LOG_LEVELS = {
-  INFO: { label: 'INFO', color: '#3b82f6' },
-  WARNING: { label: 'WARN', color: '#f59e0b' },
-  ERROR: { label: 'ERROR', color: '#ef4444' },
-  DEBUG: { label: 'DEBUG', color: '#10b981' },
-  SESSION: { label: 'SESSION', color: '#8b5cf6' } // Purple for session logs
+
+// Définition explicite des constantes de niveau de log
+var INFO = { label: 'INFO', color: '#3b82f6' };
+var WARNING = { label: 'WARN', color: '#f59e0b' };
+var ERROR = { label: 'ERROR', color: '#ef4444' };
+var DEBUG = { label: 'DEBUG', color: '#10b981' };
+var SESSION = { label: 'SESSION', color: '#8b5cf6' };
+
+// Définir LOG_LEVELS
+var LOG_LEVELS = {
+  INFO: INFO,
+  WARNING: WARNING,
+  ERROR: ERROR,
+  DEBUG: DEBUG,
+  SESSION: SESSION
 };
 
 // Set this to true to enable verbose logging
@@ -19,7 +28,7 @@ const VERBOSE_LOGGING = true;
 /**
  * Add a log entry to the on-screen logger
  */
-const logToScreen = (message, level = LOG_LEVELS.INFO) => {
+const logToScreen = (message, level = INFO) => {
   if (typeof window === 'undefined') return;
   
   const loggerContent = document.getElementById('app-logger-content');
@@ -54,37 +63,37 @@ const safeStringify = (data) => {
 /**
  * Log information message
  */
-export const logInfo = (message, data = null) => {
+const logInfo = (message, data = null) => {
   const formattedMsg = data ? `${message}` : message;
   console.info(`%c[INFO] ${formattedMsg}`, 'color: #3b82f6');
   if (data) {
     console.info(data);
   }
-  logToScreen(formattedMsg, LOG_LEVELS.INFO);
+  logToScreen(formattedMsg, INFO);
 };
 
 /**
  * Log warning message
  */
-export const logWarning = (message, data = null) => {
+const logWarning = (message, data = null) => {
   const formattedMsg = data ? `${message}` : message;
   console.warn(`%c[WARN] ${formattedMsg}`, 'color: #f59e0b');
   if (data) {
     console.warn(data);
   }
-  logToScreen(formattedMsg, LOG_LEVELS.WARNING);
+  logToScreen(formattedMsg, WARNING);
 };
 
 /**
  * Log error message
  */
-export const logError = (message, error = null) => {
+const logError = (message, error = null) => {
   const errorDetails = error ? 
     (error instanceof Error ? error.message : safeStringify(error)) : '';
   const formattedMsg = errorDetails ? `${message}: ${errorDetails}` : message;
   
   console.error(`%c[ERROR] ${formattedMsg}`, 'color: #ef4444');
-  logToScreen(formattedMsg, LOG_LEVELS.ERROR);
+  logToScreen(formattedMsg, ERROR);
   
   if (error) {
     if (error instanceof Error && error.stack) {
@@ -98,7 +107,7 @@ export const logError = (message, error = null) => {
 /**
  * Log debug message
  */
-export const logDebug = (message, data = null) => {
+const logDebug = (message, data = null) => {
   // Only log in development or if verbose logging is enabled
   if (process.env.NODE_ENV !== 'development' && !VERBOSE_LOGGING) return;
   
@@ -107,26 +116,26 @@ export const logDebug = (message, data = null) => {
   if (data) {
     console.debug(data);
   }
-  logToScreen(formattedMsg, LOG_LEVELS.DEBUG);
+  logToScreen(formattedMsg, DEBUG);
 };
 
 /**
  * Log session-related activities (special handling for session creation)
  */
-export const logSession = (message, data = null) => {
+const logSession = (message, data = null) => {
   // Always log session events regardless of environment
   const formattedMsg = data ? `${message}` : message;
   console.log(`%c[SESSION] ${formattedMsg}`, 'color: #8b5cf6; font-weight: bold');
   if (data) {
     console.log(data);
   }
-  logToScreen(formattedMsg, LOG_LEVELS.SESSION);
+  logToScreen(formattedMsg, SESSION);
 };
 
 /**
  * Log component lifecycle events
  */
-export const logComponentEvent = (componentName, event, props = null) => {
+const logComponentEvent = (componentName, event, props = null) => {
   logDebug(`${componentName} ${event}`, props);
 };
 
@@ -140,4 +149,11 @@ const logger = {
   component: logComponentEvent
 };
 
-export default logger; 
+module.exports = logger; 
+
+module.exports.logInfo = logInfo;
+module.exports.logWarning = logWarning;
+module.exports.logError = logError;
+module.exports.logDebug = logDebug;
+module.exports.logSession = logSession;
+module.exports.logComponentEvent = logComponentEvent;

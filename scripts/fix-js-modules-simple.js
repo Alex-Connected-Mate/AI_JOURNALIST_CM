@@ -196,7 +196,8 @@ function convertFileContent(content) {
     
     // Vérifier si le fichier est un module de logging ou contient des constantes LOG_LEVELS
     // et s'assurer que ces constantes sont accessibles globalement
-    if (content.includes('LOG_LEVELS')) {
+    if (content.includes('LOG_LEVELS') && !content.includes('var INFO = {')) {
+      // Si le fichier ne définit pas déjà les constantes de niveau de log, les ajouter
       // Définir explicitement les constantes de niveau de log pour éviter les erreurs de référence
       // C'est nécessaire car les constantes peuvent être référencées directement sans utiliser LOG_LEVELS
       const logLevelDefines = `
@@ -224,24 +225,24 @@ var LOG_LEVELS = LOG_LEVELS || {
       } else {
         newContent = logLevelDefines + newContent;
       }
-      
-      // Remplacer les références à LOG_LEVELS.X par des références directes aux propriétés de LOG_LEVELS
-      // Dans certains fichiers, LOG_LEVELS peut ne pas être accessible après conversion
-      if (newContent.includes('LOG_LEVELS.INFO')) {
-        newContent = newContent.replace(/LOG_LEVELS\.INFO/g, "INFO");
-      }
-      if (newContent.includes('LOG_LEVELS.WARNING')) {
-        newContent = newContent.replace(/LOG_LEVELS\.WARNING/g, "WARNING");
-      }
-      if (newContent.includes('LOG_LEVELS.ERROR')) {
-        newContent = newContent.replace(/LOG_LEVELS\.ERROR/g, "ERROR");
-      }
-      if (newContent.includes('LOG_LEVELS.DEBUG')) {
-        newContent = newContent.replace(/LOG_LEVELS\.DEBUG/g, "DEBUG");
-      }
-      if (newContent.includes('LOG_LEVELS.SESSION')) {
-        newContent = newContent.replace(/LOG_LEVELS\.SESSION/g, "SESSION");
-      }
+    }
+    
+    // Remplacer les références à LOG_LEVELS.X par des références directes aux propriétés de LOG_LEVELS
+    // Dans certains fichiers, LOG_LEVELS peut ne pas être accessible après conversion
+    if (newContent.includes('LOG_LEVELS.INFO')) {
+      newContent = newContent.replace(/LOG_LEVELS\.INFO/g, "INFO");
+    }
+    if (newContent.includes('LOG_LEVELS.WARNING')) {
+      newContent = newContent.replace(/LOG_LEVELS\.WARNING/g, "WARNING");
+    }
+    if (newContent.includes('LOG_LEVELS.ERROR')) {
+      newContent = newContent.replace(/LOG_LEVELS\.ERROR/g, "ERROR");
+    }
+    if (newContent.includes('LOG_LEVELS.DEBUG')) {
+      newContent = newContent.replace(/LOG_LEVELS\.DEBUG/g, "DEBUG");
+    }
+    if (newContent.includes('LOG_LEVELS.SESSION')) {
+      newContent = newContent.replace(/LOG_LEVELS\.SESSION/g, "SESSION");
     }
     
     if (namedExports.length > 0) {
