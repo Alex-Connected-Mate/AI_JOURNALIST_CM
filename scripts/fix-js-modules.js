@@ -28,10 +28,16 @@ const problematicFiles = [
   'src/lib/logger.js',
   'src/lib/promptParser.js',
   'src/lib/supabase.js',
+  'src/lib/logStore.js',
+  'src/lib/services/agentService.js',
+  'src/lib/services/analysisService.js',
+  'src/lib/services/sessionService.js',
+  'src/lib/services/userService.js',
   'src/pages/_app.js',
   'src/pages/_document.js',
   'src/pages/api/ai/analyze-session.js',
-  'src/pages/api/ai/get-analysis.js'
+  'src/pages/api/ai/get-analysis.js',
+  'src/pages/test-toast.jsx'
 ];
 
 // Fonction pour convertir un fichier
@@ -168,6 +174,71 @@ function findAndConvertPagesFiles() {
   }
 }
 
+// Fonction pour vérifier récursivement les répertoires supplémentaires
+function scanAdditionalDirectories() {
+  console.log(`${colors.blue}🔍 Recherche des fichiers à convertir dans les sous-répertoires de src/lib/...[0m`);
+  
+  const directories = [
+    path.join(process.cwd(), 'src', 'lib', 'services'),
+    path.join(process.cwd(), 'src', 'lib', 'hooks'),
+    path.join(process.cwd(), 'src', 'lib', 'utils')
+  ];
+  
+  let convertedCount = 0;
+  
+  directories.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      console.log(`${colors.yellow}⚠️ Répertoire ${dir} non trouvé. Ignorer.[0m`);
+      return;
+    }
+    
+    console.log(`${colors.blue}🔍 Vérification du répertoire: ${dir}[0m`);
+    
+    // Fonction récursive pour parcourir les répertoires
+    const processDir = (directory) => {
+      if (!fs.existsSync(directory)) return;
+      
+      const files = fs.readdirSync(directory);
+      
+      for (const file of files) {
+        const filePath = path.join(directory, file);
+        const stat = fs.statSync(filePath);
+        
+        if (stat.isDirectory()) {
+          // Ignorer node_modules et .next
+          if (file !== 'node_modules' && file !== '.next') {
+            processDir(filePath);
+          }
+        } else if ((file.endsWith('.js') || file.endsWith('.jsx')) && !file.endsWith('.backup.js') && !file.includes('.backup.')) {
+          // Ne pas traiter les fichiers déjà dans la liste
+          const relativePath = path.relative(process.cwd(), filePath);
+          if (problematicFiles.some(f => path.join(process.cwd(), f) === filePath)) {
+            continue;
+          }
+          
+          // Vérifier si le fichier contient des imports/exports ES
+          const content = fs.readFileSync(filePath, 'utf8');
+          if (content.includes('import ') || content.includes('export ')) {
+            console.log(`${colors.blue}🔍 Fichier ES Module détecté: ${relativePath}[0m`);
+            if (convertFile(filePath)) {
+              convertedCount++;
+            }
+          }
+        }
+      }
+    };
+    
+    try {
+      processDir(dir);
+    } catch (error) {
+      console.error(`${colors.red}❌ Erreur lors de la conversion des fichiers dans ${dir}: ${error.message}[0m`);
+    }
+  });
+  
+  console.log(`${colors.green}✅ ${convertedCount} fichiers supplémentaires convertis dans les sous-répertoires[0m`);
+  return convertedCount;
+}
+
 // Convertir tous les fichiers problématiques spécifiques
 let successCount = 0;
 for (const file of problematicFiles) {
@@ -180,8 +251,12 @@ for (const file of problematicFiles) {
 // Trouver et convertir les autres fichiers dans src/pages/
 const additionalFilesConverted = findAndConvertPagesFiles();
 
-console.log(`${colors.cyan}📊 Résumé: ${successCount}/${problematicFiles.length} fichiers spécifiques convertis avec succès${colors.reset}`);
-console.log(`${colors.cyan}📊 ${additionalFilesConverted} fichiers supplémentaires convertis automatiquement${colors.reset}`);
+// Vérifier les sous-répertoires supplémentaires
+const additionalDirFilesConverted = scanAdditionalDirectories();
+
+console.log(`${colors.cyan}📊 Résumé: ${successCount}/${problematicFiles.length} fichiers spécifiques convertis avec succès[0m`);
+console.log(`${colors.cyan}📊 ${additionalFilesConverted} fichiers supplémentaires convertis dans src/pages/[0m`);
+console.log(`${colors.cyan}📊 ${additionalDirFilesConverted} fichiers supplémentaires convertis dans les sous-répertoires[0m`);
 
 // Retourner un code d'erreur si au moins un fichier spécifique n'a pas été converti
 process.exit(successCount === problematicFiles.length ? 0 : 1); 
