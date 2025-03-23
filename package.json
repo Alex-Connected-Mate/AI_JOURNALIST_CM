@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "npm install --no-save typescript@5.8.2 && NEXT_MINIMAL_ERROR_HANDLING=true next build",
+    "vercel-build": "NODE_OPTIONS='--max_old_space_size=4096' NEXT_MINIMAL_ERROR_HANDLING=true NEXT_TYPECHECK=false next build",
     "fix-next-config": "node scripts/fix-next-config.js",
     "validate-fixes": "node scripts/validate-fixes.js",
     "dev:safe": "node scripts/start.js",

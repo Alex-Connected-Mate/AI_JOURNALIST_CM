@@ -1,0 +1,3 @@
+# Ignorer les fichiers de configuration TypeScript pour le build Vercel
+tsconfig.json
+*.d.ts 

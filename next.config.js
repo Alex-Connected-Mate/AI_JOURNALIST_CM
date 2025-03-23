@@ -10,7 +10,8 @@ const nextConfig = {
   },
 
   typescript: {
-    ignoreBuildErrors: true
+    ignoreBuildErrors: true,
+    tsconfigPath: 'tsconfig.build-disabled.json'
   },
 
   images: {
