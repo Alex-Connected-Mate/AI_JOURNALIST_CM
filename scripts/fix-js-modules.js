@@ -21,11 +21,17 @@ console.log(`${colors.cyan}🔧 Correction des fichiers JS avec ES modules...${c
 
 // Liste des fichiers problématiques identifiés dans les logs
 const problematicFiles = [
+  // Fichiers spécifiques
   'src/hooks/useLogger.js',
   'src/lib/eventTracker.js',
   'src/lib/i18n.js',
   'src/lib/logger.js',
-  'src/lib/promptParser.js'
+  'src/lib/promptParser.js',
+  'src/lib/supabase.js',
+  'src/pages/_app.js',
+  'src/pages/_document.js',
+  'src/pages/api/ai/analyze-session.js',
+  'src/pages/api/ai/get-analysis.js'
 ];
 
 // Fonction pour convertir un fichier
@@ -86,6 +92,24 @@ function convertFile(filePath) {
       return `module.exports = { ${exportList.join(', ')} };`;
     });
     
+    // Cas spécial pour export default function(...
+    content = content.replace(/export\s+default\s+function\s+(\w+)/g, 'function $1');
+    if (content.includes('function handler(') || content.includes('function Document(') || content.includes('function MyApp(')) {
+      if (!content.includes('module.exports =')) {
+        // Si on a une fonction nommée mais pas d'export, ajouter un export à la fin
+        const funcNames = [];
+        // Rechercher les déclarations de fonction standard
+        const funcRegex = /function\s+(\w+)\s*\(/g;
+        while ((match = funcRegex.exec(content)) !== null) {
+          funcNames.push(match[1]);
+        }
+        
+        // Ajouter l'export pour la première fonction trouvée ou pour 'handler' par défaut
+        const exportName = funcNames.length > 0 ? funcNames[0] : 'handler';
+        content += `\nmodule.exports = ${exportName};\n`;
+      }
+    }
+    
     // Écrire le fichier converti
     fs.writeFileSync(filePath, content);
     console.log(`${colors.green}✅ Fichier converti avec succès: ${filePath}${colors.reset}`);
@@ -97,7 +121,54 @@ function convertFile(filePath) {
   }
 }
 
-// Convertir tous les fichiers problématiques
+// Trouver et convertir tous les fichiers dans src/pages/
+function findAndConvertPagesFiles() {
+  console.log(`${colors.blue}🔍 Recherche des fichiers à convertir dans src/pages/...${colors.reset}`);
+  
+  const pagesDir = path.join(process.cwd(), 'src', 'pages');
+  if (!fs.existsSync(pagesDir)) {
+    console.log(`${colors.yellow}⚠️ Répertoire src/pages/ non trouvé. Ignorer.${colors.reset}`);
+    return 0;
+  }
+  
+  let convertedCount = 0;
+  
+  // Fonction récursive pour parcourir les répertoires
+  const processDir = (dir) => {
+    const files = fs.readdirSync(dir);
+    
+    for (const file of files) {
+      const filePath = path.join(dir, file);
+      const stat = fs.statSync(filePath);
+      
+      if (stat.isDirectory()) {
+        // Ignorer node_modules et .next
+        if (file !== 'node_modules' && file !== '.next') {
+          processDir(filePath);
+        }
+      } else if ((file.endsWith('.js') || file.endsWith('.jsx')) && !file.endsWith('.backup.js')) {
+        // Vérifier si le fichier contient des imports/exports ES
+        const content = fs.readFileSync(filePath, 'utf8');
+        if (content.includes('import ') || content.includes('export ')) {
+          if (convertFile(filePath)) {
+            convertedCount++;
+          }
+        }
+      }
+    }
+  };
+  
+  try {
+    processDir(pagesDir);
+    console.log(`${colors.green}✅ ${convertedCount} fichiers supplémentaires convertis dans src/pages/${colors.reset}`);
+    return convertedCount;
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la conversion des fichiers dans src/pages/: ${error.message}${colors.reset}`);
+    return 0;
+  }
+}
+
+// Convertir tous les fichiers problématiques spécifiques
 let successCount = 0;
 for (const file of problematicFiles) {
   const fullPath = path.join(process.cwd(), file);
@@ -106,7 +177,11 @@ for (const file of problematicFiles) {
   }
 }
 
-console.log(`${colors.cyan}📊 Résumé: ${successCount}/${problematicFiles.length} fichiers convertis avec succès${colors.reset}`);
+// Trouver et convertir les autres fichiers dans src/pages/
+const additionalFilesConverted = findAndConvertPagesFiles();
 
-// Retourner un code d'erreur si au moins un fichier n'a pas été converti
+console.log(`${colors.cyan}📊 Résumé: ${successCount}/${problematicFiles.length} fichiers spécifiques convertis avec succès${colors.reset}`);
+console.log(`${colors.cyan}📊 ${additionalFilesConverted} fichiers supplémentaires convertis automatiquement${colors.reset}`);
+
+// Retourner un code d'erreur si au moins un fichier spécifique n'a pas été converti
 process.exit(successCount === problematicFiles.length ? 0 : 1); 

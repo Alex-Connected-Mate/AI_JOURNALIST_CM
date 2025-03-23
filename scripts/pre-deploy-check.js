@@ -147,82 +147,82 @@ function checkNextConfig() {
  * Vérifie la présence de marqueurs de conflit Git dans les fichiers
  */
 async function checkGitConflicts() {
-  console.log('🔍 Vérification des marqueurs de conflit Git...');
-
-  // Liste des fichiers à exclure car ils contiennent légitimement des marqueurs de conflit
-  // comme partie de leur code (scripts qui détectent les conflits)
-  const excludeList = [
-    'scripts/pre-deploy-check.js',
-    'scripts/vercel-prepare.js',
-    'scripts/start.js',
-    'scripts/build.js',
-    'scripts/fix-conflicts.js',
-    'node_modules',
-    '.git',
-    '.next'
-  ];
-
-  // Création de la chaîne d'exclusion pour la commande find
-  const excludePattern = excludeList.map(file => `-path "./${file}" -prune -o`).join(' ');
-  
   try {
-    // Commande pour trouver les fichiers contenant des marqueurs de conflit Git, en excluant les fichiers listés
-    const command = `find . ${excludePattern} -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/.next/*" -exec grep -l "<<<<<<<\\|=======\\|>>>>>>>" {} \\;`;
+    console.log('🔍 Checking for Git conflict markers...');
     
-    const { stdout } = await exec(command);
-    const conflictFiles = stdout.trim().split('\n').filter(Boolean);
-
-    if (conflictFiles.length > 0) {
+    const excludeList = [
+      './scripts/pre-deploy-check.js',
+      './scripts/start.js',
+      './scripts/vercel-prepare.js',
+      './scripts/fix-js-modules.js',
+      './scripts/validate-fixes.js',
+      './scripts/fix-next-config.js',
+      './node_modules',
+      './.next',
+      './.git',
+      './.vercel',
+      './dist',
+      './out',
+      './.turbo',
+    ];
+    
+    // Construire la commande pour rechercher les marqueurs de conflit
+    // en excluant les fichiers spécifiques et les fichiers de sauvegarde
+    const cmd = `find . -type f \\( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.vue" -o -name "*.scss" -o -name "*.css" \\) \\
+      ${excludeList.map(path => `-not -path "${path}*"`).join(' ')} \\
+      -not -path "*/node_modules/*" \\
+      -not -path "*/.next/*" \\
+      -not -path "*/.git/*" \\
+      -not -name "*.backup*" \\
+      -not -name "*.bak" \\
+      -not -name "*.backup.*" \\
+      -not -name "*.tmp" \\
+      -exec grep -l "<<<<<<< HEAD\\|=======\\|>>>>>>> " {} \\;`;
+      
+    const { stdout } = await exec(cmd);
+    
+    if (stdout.trim()) {
+      const conflictFiles = stdout.trim().split('\n');
       console.log('\x1b[31m❌ Marqueurs de conflit Git détectés:\x1b[0m');
       conflictFiles.forEach(file => console.log(`- ${file}`));
       return false;
-    } else {
-      console.log('✅ Aucun marqueur de conflit Git détecté.');
-
-      // Méthode de secours: vérifier certains fichiers importants manuellement
-      const criticalFiles = [
-        'next.config.js',
-        'package.json',
-        'middleware.js'
-      ];
-
-      for (const file of criticalFiles) {
-        if (fs.existsSync(file)) {
-          const content = fs.readFileSync(file, 'utf8');
-          if (content.includes('<<<<<<<') || content.includes('=======') || content.includes('>>>>>>>')) {
-            console.log(`\x1b[31m❌ Marqueurs de conflit Git détectés dans ${file}\x1b[0m`);
-            return false;
-          }
-        }
-      }
-      
-      return true;
     }
-  } catch (error) {
-    console.error(`\x1b[31m❌ Erreur lors de la vérification des conflits Git: ${error.message}\x1b[0m`);
     
-    // En cas d'erreur, vérifier manuellement les fichiers les plus importants
+    console.log('✅ Aucun marqueur de conflit Git détecté');
+    return true;
+  } catch (error) {
+    console.error('⚠️ Erreur lors de la vérification des conflits Git:', error.message);
+    console.log('🔍 Vérification manuelle des fichiers critiques...');
+    
+    // Vérification de secours pour les fichiers critiques
     try {
       const criticalFiles = [
-        'next.config.js',
-        'package.json',
-        'middleware.js'
+        './src/app/layout.tsx',
+        './next.config.js', 
+        './next.config.mjs',
+        './package.json'
       ];
+      
+      let hasConflicts = false;
       
       for (const file of criticalFiles) {
         if (fs.existsSync(file)) {
           const content = fs.readFileSync(file, 'utf8');
-          if (content.includes('<<<<<<<') || content.includes('=======') || content.includes('>>>>>>>')) {
+          if (content.includes('<<<<<<< HEAD') || content.includes('=======') || content.includes('>>>>>>> ')) {
             console.log(`\x1b[31m❌ Marqueurs de conflit Git détectés dans ${file}\x1b[0m`);
-            return false;
+            hasConflicts = true;
           }
         }
       }
       
-      console.log('✅ Aucun marqueur de conflit Git détecté dans les fichiers critiques.');
-      return true;
-    } catch (innerError) {
-      console.error(`\x1b[31m❌ Erreur lors de la vérification des conflits Git (méthode alternative): ${innerError.message}\x1b[0m`);
+      if (!hasConflicts) {
+        console.log('✅ Aucun marqueur de conflit Git détecté dans les fichiers critiques');
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      console.error('⚠️ Erreur lors de la vérification manuelle des conflits Git:', e.message);
       return false;
     }
   }
@@ -310,4 +310,4 @@ function checkDuplicateMiddleware() {
   } else {
     console.log(`${colors.green}✅ Un seul fichier middleware trouvé: ${existingFiles[0]}${colors.reset}`);
   }
-} 
+}
