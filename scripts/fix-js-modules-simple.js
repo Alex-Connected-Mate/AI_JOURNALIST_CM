@@ -90,6 +90,13 @@ function convertFileContent(content) {
     // Conversion basique des imports
     let newContent = content;
     
+    // Première étape : Correction des exports default de composants React
+    // Cela remplace "export default function ComponentName" par "module.exports = function ComponentName"
+    newContent = newContent.replace(
+      /export\s+default\s+function\s+(\w+)\s*\(/g,
+      'module.exports = function $1('
+    );
+    
     // Convertir les imports nommés: import { x, y } from 'module';
     newContent = newContent.replace(/import\s*\{\s*([^}]+)\s*\}\s*from\s*['"]([^'"]+)['"]/g, 
       (match, importNames, moduleName) => {
@@ -116,7 +123,7 @@ function convertFileContent(content) {
     // Convertir les exports par défaut: export default x;
     newContent = newContent.replace(/export\s+default\s+(\w+)/g, 
       (match, exportName) => {
-        return `module.exports = ${exportName};`;
+        return `module.exports = ${exportName}`;
       }
     );
     
@@ -126,6 +133,19 @@ function convertFileContent(content) {
         return `module.exports = ${keyword}`;
       }
     );
+    
+    // Corriger le problème de point-virgule après "function"
+    newContent = newContent.replace(/module\.exports = function;(\s+)(\w+)/g, 
+      (match, space, funcName) => {
+        return `module.exports = function${space}${funcName}`;
+      }
+    );
+    
+    // Corriger tous les doubles points-virgules qui auraient pu être introduits
+    newContent = newContent.replace(/;;/g, ';');
+    
+    // Corriger les problèmes avec les "require" suivis d'un point-virgule supplémentaire
+    newContent = newContent.replace(/require\('([^']+)'\);;/g, "require('$1');");
     
     // Convertir les exports nommés: export const x = y;
     newContent = newContent.replace(/export\s+(const|let|var|function|class)\s+(\w+)/g, 
