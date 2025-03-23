@@ -23,73 +23,69 @@ if (supabaseHostname) {
 }
 
 const nextConfig = {
+  // Configuration optimisée pour Vercel
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
-
+  
+  // Ignorer les erreurs pour permettre le build
   eslint: {
-    ignoreDuringBuilds: true
+    ignoreDuringBuilds: true,
   },
-
   typescript: {
-    // Necessary for deployment but we should fix type errors in development
     ignoreBuildErrors: true,
-    tsconfigPath: "./tsconfig.json"
   },
-
+  
+  // Configuration des images
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**'
-      }
+        hostname: '**',
+      },
     ],
     unoptimized: process.env.NODE_ENV === 'development',
-    domains: imageDomains,
   },
-
+  
+  // Options expérimentales
   experimental: {
-    // These options are compatible with Next.js 15.2.0
+    // Compatibles avec Next.js 15.2.0
     ppr: false,
     optimizePackageImports: ['next/navigation'],
-    serverComponentsExternalPackages: ['pdf-lib'],
+    serverExternalPackages: ['pdf-lib'],
   },
-
-  swcMinify: true,
-  compress: true,
-
-  // Ensure environment variables are resolved at runtime when possible
+  
+  // Variables d'environnement
   env: {
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || 'development',
-    BUILD_TIME: new Date().toISOString(),
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'),
+    BUILD_TIME: new Date().toISOString()
   },
-
-  webpack: (config) => {
-    config.resolve.fallback = {
+  
+  // Configuration webpack pour résoudre les problèmes courants
+  webpack: (config, { isServer }) => {
+    // Résoudre les problèmes de fallback
+    config.resolve.fallback = { 
       fs: false,
       path: false,
       crypto: false,
       os: false
     };
     
-    // Add a custom plugin to perform runtime checks
-    config.plugins.push({
-      apply: (compiler) => {
-        compiler.hooks.afterEmit.tap('CheckEnvVars', (compilation) => {
-          const requiredVars = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'];
-          const missingVars = requiredVars.filter(varName => !process.env[varName]);
-          
-          if (missingVars.length > 0) {
-            console.warn('\x1b[33m%s\x1b[0m', `⚠️  Warning: The following environment variables are missing: ${missingVars.join(', ')}`);
-            console.warn('\x1b[33m%s\x1b[0m', '⚠️  Some functionality may not work correctly.');
-          }
-        });
+    // Résoudre les problèmes d'import ES dans les fichiers .js
+    config.module.rules.push({
+      test: /\.(js|mjs|jsx)$/,
+      exclude: /node_modules/,
+      use: {
+        loader: 'babel-loader',
+        options: {
+          presets: ['next/babel'],
+          sourceType: 'unambiguous'
+        }
       }
     });
     
     return config;
-  }
-}
+  },
+};
 
-module.exports = nextConfig 
+module.exports = nextConfig; 

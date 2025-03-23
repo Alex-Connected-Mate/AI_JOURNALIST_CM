@@ -8,6 +8,8 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 // Couleurs pour les logs
 const colors = {

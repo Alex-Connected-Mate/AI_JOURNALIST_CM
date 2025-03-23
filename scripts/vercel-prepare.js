@@ -754,6 +754,242 @@ function fixHeadlessUIReact() {
   }
 }
 
+// Fonction pour vérifier la compatibilité des dépendances
+function checkDependencyCompatibility() {
+  console.log(`${colors.blue}🔍 Vérification de la compatibilité des dépendances...${colors.reset}`);
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    // Vérifier les incompatibilités connues
+    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    
+    // Vérifier la compatibilité de Next.js avec React
+    const nextVersion = dependencies['next'] || '';
+    const reactVersion = dependencies['react'] || '';
+    
+    // Si Next.js 15+ et React n'est pas en 18+, avertir
+    if (nextVersion.includes('15.') && !reactVersion.startsWith('^18') && !reactVersion.startsWith('18')) {
+      console.warn(`${colors.yellow}⚠️ Next.js 15 nécessite React 18.2 ou plus. Veuillez mettre à jour React.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Next.js et React sont compatibles.${colors.reset}`);
+    }
+    
+    // Vérifier d'autres incompatibilités connues
+    if (dependencies['framer-motion'] && dependencies['framer-motion'].includes('11') && reactVersion.includes('18.2')) {
+      console.warn(`${colors.yellow}⚠️ framer-motion 11+ peut avoir des problèmes avec React 18.2. Considérez utiliser framer-motion 10.x.${colors.reset}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification de compatibilité: ${error.message}${colors.reset}`);
+    return false;
+  }
+}
+
+// Fonction pour vérifier et corriger les options obsolètes dans next.config.js
+function fixNextConfigOptions() {
+  console.log(`${colors.blue}🔍 Vérification des options obsolètes dans next.config.js...${colors.reset}`);
+  
+  const nextConfigPath = path.join(process.cwd(), 'next.config.js');
+  
+  if (!fs.existsSync(nextConfigPath)) {
+    console.warn(`${colors.yellow}⚠️ next.config.js introuvable. Aucune correction nécessaire.${colors.reset}`);
+    return true;
+  }
+  
+  try {
+    let content = fs.readFileSync(nextConfigPath, 'utf8');
+    let modified = false;
+    
+    // Corriger serverComponentsExternalPackages -> serverExternalPackages
+    if (content.includes('serverComponentsExternalPackages')) {
+      content = content.replace(/serverComponentsExternalPackages/g, 'serverExternalPackages');
+      modified = true;
+    }
+    
+    // Supprimer swcMinify (par défaut à true dans Next.js 15)
+    if (content.includes('swcMinify')) {
+      content = content.replace(/swcMinify:\s*true,?\s*/g, '');
+      modified = true;
+    }
+    
+    if (modified) {
+      // Créer une sauvegarde
+      const backupPath = nextConfigPath + '.backup.' + Date.now();
+      fs.writeFileSync(backupPath, fs.readFileSync(nextConfigPath, 'utf8'));
+      console.log(`${colors.blue}📦 Sauvegarde créée: ${backupPath}${colors.reset}`);
+      
+      // Écrire le fichier modifié
+      fs.writeFileSync(nextConfigPath, content);
+      console.log(`${colors.green}✅ next.config.js mis à jour avec les options actuelles.${colors.reset}`);
+    } else {
+      console.log(`${colors.green}✅ Aucune option obsolète détectée dans next.config.js.${colors.reset}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la correction des options de next.config.js: ${error.message}${colors.reset}`);
+    return false;
+  }
+}
+
+// Fonction pour détecter les imports manquants
+function detectMissingImports() {
+  console.log(`${colors.blue}🔍 Détection des imports manquants...${colors.reset}`);
+  
+  // Cette fonction est une simplification pour la détection
+  // En production, une analyse plus complexe serait nécessaire
+  
+  try {
+    // Vérifier les imports courants dans quelques fichiers clés
+    const filesToCheck = [
+      path.join(process.cwd(), 'src', 'app', 'layout.jsx'),
+      path.join(process.cwd(), 'src', 'app', 'layout.tsx'),
+      path.join(process.cwd(), 'src', 'app', 'page.jsx'),
+      path.join(process.cwd(), 'src', 'app', 'page.tsx')
+    ];
+    
+    for (const filePath of filesToCheck) {
+      if (fs.existsSync(filePath)) {
+        console.log(`${colors.blue}🔍 Vérification des imports dans ${filePath}${colors.reset}`);
+        const content = fs.readFileSync(filePath, 'utf8');
+        
+        // Vérifier les imports courants
+        if (content.includes('next/font') && !content.includes('from \'next/font\'')) {
+          console.warn(`${colors.yellow}⚠️ Import potentiellement incorrect de next/font dans ${filePath}${colors.reset}`);
+        }
+        
+        if (content.includes('import styles') && !fs.existsSync(filePath.replace(/\.[jt]sx?$/, '.module.css'))) {
+          console.warn(`${colors.yellow}⚠️ Import de CSS modules mais le fichier correspondant est introuvable pour ${filePath}${colors.reset}`);
+        }
+      }
+    }
+    
+    console.log(`${colors.green}✅ Vérification des imports terminée.${colors.reset}`);
+    return true;
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la détection des imports manquants: ${error.message}${colors.reset}`);
+    return false;
+  }
+}
+
+// Fonction pour s'assurer que TypeScript est installé
+function ensureTypescript() {
+  console.log(`${colors.blue}🔍 Vérification de l'installation de TypeScript...${colors.reset}`);
+  
+  try {
+    const packageJsonPath = path.join(process.cwd(), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    
+    // Vérifier si TypeScript est déjà installé
+    if (packageJson.devDependencies && packageJson.devDependencies.typescript) {
+      console.log(`${colors.green}✅ TypeScript est déjà installé.${colors.reset}`);
+      return true;
+    }
+    
+    // Si nous avons des fichiers .ts/.tsx mais pas TypeScript, il faut l'installer
+    const hasTsFiles = checkForTypeScriptFiles();
+    
+    if (hasTsFiles) {
+      console.log(`${colors.yellow}⚠️ Des fichiers TypeScript ont été détectés mais TypeScript n'est pas installé.${colors.reset}`);
+      
+      // Ajouter TypeScript aux devDependencies
+      if (!packageJson.devDependencies) {
+        packageJson.devDependencies = {};
+      }
+      
+      packageJson.devDependencies.typescript = '^5.3.2'; // Version stable compatible avec Next.js 15
+      
+      // Créer une sauvegarde
+      const backupPath = packageJsonPath + '.backup.' + Date.now();
+      fs.writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
+      
+      // Mettre à jour package.json
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      console.log(`${colors.green}✅ TypeScript ajouté aux devDependencies.${colors.reset}`);
+      
+      // Créer tsconfig.json s'il n'existe pas
+      const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
+      if (!fs.existsSync(tsconfigPath)) {
+        const tsconfig = {
+          "compilerOptions": {
+            "target": "es5",
+            "lib": ["dom", "dom.iterable", "esnext"],
+            "allowJs": true,
+            "skipLibCheck": true,
+            "strict": true,
+            "forceConsistentCasingInFileNames": true,
+            "noEmit": true,
+            "esModuleInterop": true,
+            "module": "esnext",
+            "moduleResolution": "bundler",
+            "resolveJsonModule": true,
+            "isolatedModules": true,
+            "jsx": "preserve",
+            "incremental": true,
+            "plugins": [
+              {
+                "name": "next"
+              }
+            ],
+            "paths": {
+              "@/*": ["./src/*"]
+            }
+          },
+          "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+          "exclude": ["node_modules"]
+        };
+        
+        fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2));
+        console.log(`${colors.green}✅ Fichier tsconfig.json créé.${colors.reset}`);
+      }
+    } else {
+      console.log(`${colors.green}✅ Aucun fichier TypeScript détecté, TypeScript n'est pas nécessaire.${colors.reset}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la vérification de TypeScript: ${error.message}${colors.reset}`);
+    return false;
+  }
+}
+
+// Fonction auxiliaire pour vérifier s'il y a des fichiers TypeScript
+function checkForTypeScriptFiles() {
+  try {
+    const srcDir = path.join(process.cwd(), 'src');
+    
+    if (!fs.existsSync(srcDir)) {
+      return false;
+    }
+    
+    const checkDirForTsFiles = (dir) => {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        
+        if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '.next') {
+          if (checkDirForTsFiles(fullPath)) {
+            return true;
+          }
+        } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {
+          return true;
+        }
+      }
+      
+      return false;
+    };
+    
+    return checkDirForTsFiles(srcDir);
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la recherche de fichiers TypeScript: ${error.message}${colors.reset}`);
+    return false;
+  }
+}
+
 // Fonction principale async
 async function main() {
   try {
