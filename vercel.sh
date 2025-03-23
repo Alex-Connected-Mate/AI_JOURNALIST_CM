@@ -13,7 +13,7 @@ npm install -g typescript
 
 # Assurez-vous que Next.js ignore TypeScript
 echo "🛠️ Création d'une configuration minimaliste..."
-cat > tsconfig.json << EOL
+cat > tsconfig.build-disabled.json << EOL
 {
   "compilerOptions": {
     "target": "es5",
@@ -44,7 +44,7 @@ const nextConfig = {
   reactStrictMode: true,
   typescript: { 
     ignoreBuildErrors: true,
-    tsconfigPath: false
+    tsconfigPath: "./tsconfig.build-disabled.json"
   },
   eslint: {
     ignoreDuringBuilds: true
