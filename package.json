@@ -14,7 +14,10 @@
     "validate-fixes": "node scripts/validate-fixes.js",
     "dev:safe": "node scripts/start.js",
     "predev:safe": "node scripts/fix-next-config.js",
-    "prevercel-build": "node scripts/vercel-prepare.js"
+    "prevercel-build": "node scripts/vercel-prepare.js",
+    "pre-deploy-check": "node scripts/pre-deploy-check.js",
+    "check-env": "node -e \"['NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY'].forEach(v => { if (!process.env[v]) console.error('Missing env var:', v) })\"",
+    "prepare-deployment": "npm run pre-deploy-check && npm run check-env"
   },
   "keywords": [],
   "author": "",
@@ -76,5 +79,8 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^15.2.1",
     "typescript": "5.8.2"
+  },
+  "engines": {
+    "node": ">=18.17.0"
   }
 }
