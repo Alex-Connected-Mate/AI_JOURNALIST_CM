@@ -26,8 +26,28 @@ const specificFiles = [
   'src/lib/supabase.ts'
 ];
 
+// Extensions et motifs à ignorer
+const ignorePatterns = [
+  '.backup',
+  '.bak',
+  '.conflict',
+  '.tmp',
+  '.old',
+  '~'
+];
+
+// Fonction pour vérifier si un fichier doit être ignoré
+function shouldIgnoreFile(filePath) {
+  return ignorePatterns.some(pattern => filePath.includes(pattern));
+}
+
 // Fonction pour résoudre les conflits dans un fichier
 function resolveConflictsInFile(filePath) {
+  if (shouldIgnoreFile(filePath)) {
+    console.log(`${colors.yellow}⚠️ Fichier ignoré (sauvegarde): ${filePath}${colors.reset}`);
+    return false;
+  }
+  
   console.log(`${colors.blue}🔍 Vérification des conflits dans: ${filePath}${colors.reset}`);
   
   if (!fs.existsSync(filePath)) {
@@ -46,7 +66,8 @@ function resolveConflictsInFile(filePath) {
     }
     
     // Créer une sauvegarde
-    const backupPath = `${filePath}.conflict.backup`;
+    const timestamp = new Date().getTime();
+    const backupPath = `${filePath}.conflict-backup-${timestamp}`;
     fs.copyFileSync(filePath, backupPath);
     console.log(`${colors.blue}📄 Sauvegarde créée: ${backupPath}${colors.reset}`);
     
@@ -55,6 +76,7 @@ function resolveConflictsInFile(filePath) {
     let inConflict = false;
     let keepCurrentVersion = false;
     let conflictCount = 0;
+    let conflictBlocks = [];
     
     const lines = content.split('\n');
     
@@ -65,6 +87,11 @@ function resolveConflictsInFile(filePath) {
         inConflict = true;
         keepCurrentVersion = false;
         conflictCount++;
+        conflictBlocks.push({
+          start: i,
+          current: [],
+          incoming: []
+        });
         continue;
       }
       
@@ -81,6 +108,15 @@ function resolveConflictsInFile(filePath) {
       
       if (!inConflict || keepCurrentVersion) {
         newContent += line + '\n';
+      }
+      
+      // Collecter les lignes pour analyse
+      if (inConflict) {
+        if (!keepCurrentVersion && conflictBlocks.length > 0) {
+          conflictBlocks[conflictBlocks.length - 1].current.push(line);
+        } else if (keepCurrentVersion && conflictBlocks.length > 0) {
+          conflictBlocks[conflictBlocks.length - 1].incoming.push(line);
+        }
       }
     }
     
@@ -109,7 +145,9 @@ console.log(`${colors.blue}🔍 Recherche d'autres fichiers avec des conflits...
 
 try {
   // Utiliser find et grep pour trouver les fichiers avec des marqueurs de conflit
-  const command = `find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/.next/*" -not -path "*/scripts/fix-git-conflicts.js" -exec grep -l "<<<<<<< HEAD\\|=======\\|>>>>>>>" {} \\;`;
+  // Exclure les fichiers de sauvegarde et autres fichiers temporaires
+  const command = `find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/.next/*" -not -path "*/scripts/fix-git-conflicts.js" -not -name "*.backup*" -not -name "*.bak" -not -name "*.tmp" -not -name "*.conflict*" -not -name "*~" -exec grep -l "<<<<<<< HEAD\\|=======\\|>>>>>>>" {} \\;`;
+  
   const output = execSync(command).toString();
   
   if (output.trim()) {
@@ -118,7 +156,7 @@ try {
     
     for (const file of conflictFiles) {
       // Ignorer les fichiers déjà traités
-      if (specificFiles.some(specificFile => file.endsWith(specificFile))) {
+      if (specificFiles.some(specificFile => file.endsWith(specificFile)) || shouldIgnoreFile(file)) {
         continue;
       }
       
