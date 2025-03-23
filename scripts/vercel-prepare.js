@@ -704,58 +704,66 @@ export default supabase;
   }
 }
 
-// Exécuter les fonctions
-try {
-  console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
-  
-  // Vérifier et corriger la version de React
-  checkReactVersion();
-  
-  // Vérifier spécifiquement @headlessui/react
-  fixHeadlessUIReact();
-  
-  // Vérifier la compatibilité des dépendances
-  checkDependencyCompatibility();
-  
-  // Correction de next.config.js
-  fixNextConfig();
-  
-  // Vérifier et corriger les options obsolètes dans next.config.js
-  fixNextConfigOptions();
-  
-  // Vérification des variables d'environnement
-  checkEnvironmentVariables();
-  
-  // Configuration des variables d'environnement supplémentaires
-  setAdditionalEnvVars();
-  
-  // Vérification des composants Input
-  checkInputComponents();
-  
-  // Installation des dépendances manquantes
-  installMissingDependencies();
-  
-  // Vérification des dépendances essentielles
-  checkEssentialDependencies();
-  
-  // Vérification des API routes
-  checkApiRoutes();
-  
-  // Vérification et correction des apostrophes françaises
-  checkAndFixFrenchApostrophes();
-  
-  // Détection des imports manquants
-  detectMissingImports();
-  
-  // S'assurer que TypeScript est installé
-  ensureTypescript();
-  
-  // Correction des fichiers JavaScript problématiques après conversion
-  await fixJavaScriptFiles();
-  
-  console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
-} catch (error) {
-  console.error(`${colors.red}❌ Erreur lors de la préparation: ${error.message}${colors.reset}`);
+// Fonction principale async
+async function main() {
+  try {
+    console.log(`${colors.cyan}🚀 Démarrage des vérifications préalables au build...${colors.reset}`);
+    
+    // Vérifier et corriger la version de React
+    checkReactVersion();
+    
+    // Vérifier spécifiquement @headlessui/react
+    fixHeadlessUIReact();
+    
+    // Vérifier la compatibilité des dépendances
+    checkDependencyCompatibility();
+    
+    // Correction de next.config.js
+    fixNextConfig();
+    
+    // Vérifier et corriger les options obsolètes dans next.config.js
+    fixNextConfigOptions();
+    
+    // Vérification des variables d'environnement
+    checkEnvironmentVariables();
+    
+    // Configuration des variables d'environnement supplémentaires
+    setAdditionalEnvVars();
+    
+    // Vérification des composants Input
+    checkInputComponents();
+    
+    // Installation des dépendances manquantes
+    installMissingDependencies();
+    
+    // Vérification des dépendances essentielles
+    checkEssentialDependencies();
+    
+    // Vérification des API routes
+    checkApiRoutes();
+    
+    // Vérification et correction des apostrophes françaises
+    checkAndFixFrenchApostrophes();
+    
+    // Détection des imports manquants
+    detectMissingImports();
+    
+    // S'assurer que TypeScript est installé
+    ensureTypescript();
+    
+    // Correction des fichiers JavaScript problématiques après conversion
+    await fixJavaScriptFiles();
+    
+    console.log(`${colors.green}✅ Préparation terminée. Prêt pour le build.${colors.reset}`);
+  } catch (error) {
+    console.error(`${colors.red}❌ Erreur lors de la préparation: ${error.message}${colors.reset}`);
+    // Ne pas quitter avec un code d'erreur pour permettre au build de continuer
+    // Le script a tenté de corriger les problèmes connus
+  }
+}
+
+// Exécuter la fonction principale
+main().catch(error => {
+  console.error(`${colors.red}❌ Erreur fatale: ${error.message}${colors.reset}`);
   // Ne pas quitter avec un code d'erreur pour permettre au build de continuer
-  // Le script a tenté de corriger les problèmes connus
-} 
+}); 
