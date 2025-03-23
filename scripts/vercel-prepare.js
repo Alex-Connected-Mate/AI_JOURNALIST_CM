@@ -888,7 +888,7 @@ function ensureTypescript() {
         // Ajouter la configuration TypeScript pour désactiver complètement
         nextConfig = nextConfig.replace(
           /const nextConfig = {/,
-          `const nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true,\n    tsconfigPath: false\n  },`
+          `const nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true\n  },`
         );
         
         fs.writeFileSync(nextConfigPath, nextConfig);

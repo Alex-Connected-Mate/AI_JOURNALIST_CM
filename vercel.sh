@@ -47,8 +47,7 @@ const nextConfig = {
   
   // Complètement désactiver TypeScript
   typescript: { 
-    ignoreBuildErrors: true,
-    tsconfigPath: false
+    ignoreBuildErrors: true
   },
   
   // Désactiver ESLint
