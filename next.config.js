@@ -11,7 +11,7 @@ const nextConfig = {
 
   typescript: {
     ignoreBuildErrors: true,
-    tsconfigPath: 'tsconfig.build-disabled.json'
+    tsconfigPath: "./tsconfig.json"
   },
 
   images: {
@@ -28,10 +28,11 @@ const nextConfig = {
   experimental: {
     ppr: false,
     optimizePackageImports: ['next/navigation'],
-    serverActions: {
-      allowedOrigins: [process.env.NEXT_PUBLIC_APP_URL || 'localhost:3000'],
-    },
+    serverComponentsExternalPackages: ['pdf-lib'],
   },
+
+  swcMinify: true,
+  compress: true,
 
   env: {
     NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV || 'development',
