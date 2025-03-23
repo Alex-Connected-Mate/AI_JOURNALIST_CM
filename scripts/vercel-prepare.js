@@ -826,14 +826,14 @@ function detectMissingImports() {
 
 // Fonction pour s'assurer que TypeScript est correctement installé
 function ensureTypescript() {
-  console.log(`${colors.blue}🔍 Préparation pour un build sans TypeScript...${colors.reset}`);
+  console.log(`${colors.blue}🔍 Préparation de la configuration TypeScript pour le build...${colors.reset}`);
   
   // Suppression de tsconfig.json s'il existe
   const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
   if (fs.existsSync(tsconfigPath)) {
     try {
       fs.unlinkSync(tsconfigPath);
-      console.log(`${colors.green}✅ Fichier tsconfig.json supprimé.${colors.reset}`);
+      console.log(`${colors.green}✅ Ancien fichier tsconfig.json supprimé.${colors.reset}`);
     } catch (error) {
       console.warn(`${colors.yellow}⚠️ Impossible de supprimer tsconfig.json: ${error.message}${colors.reset}`);
     }
@@ -850,28 +850,47 @@ function ensureTypescript() {
     }
   }
   
-  // Création d'un jsconfig.json à la place
-  const jsconfigPath = path.join(process.cwd(), 'jsconfig.json');
-  const jsconfig = {
+  // Création d'un tsconfig.json minimal qui désactive TypeScript
+  const tsconfig = {
     compilerOptions: {
+      target: "es5",
+      lib: ["dom", "dom.iterable", "esnext"],
+      allowJs: true,
+      skipLibCheck: true,
+      strict: false,
+      noEmit: true,
+      esModuleInterop: true,
+      module: "esnext",
+      moduleResolution: "bundler",
+      resolveJsonModule: true,
+      isolatedModules: true,
+      jsx: "preserve",
+      incremental: true,
+      plugins: [
+        {
+          name: "next"
+        }
+      ],
       baseUrl: ".",
       paths: {
         "@/*": ["./src/*"]
       }
-    }
+    },
+    include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+    exclude: ["node_modules"]
   };
   
   try {
-    fs.writeFileSync(jsconfigPath, JSON.stringify(jsconfig, null, 2));
-    console.log(`${colors.green}✅ Fichier jsconfig.json créé avec succès.${colors.reset}`);
+    fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2));
+    console.log(`${colors.green}✅ Fichier tsconfig.json créé avec succès.${colors.reset}`);
   } catch (error) {
-    console.warn(`${colors.yellow}⚠️ Impossible de créer jsconfig.json: ${error.message}${colors.reset}`);
+    console.warn(`${colors.yellow}⚠️ Impossible de créer tsconfig.json: ${error.message}${colors.reset}`);
   }
   
   // Installation de TypeScript comme dépendance pour satisfaire Vercel
   console.warn(`${colors.yellow}⚠️ Installation de TypeScript uniquement comme dépendance de développement...${colors.reset}`);
   try {
-    execSync('npm install --save-dev typescript@5.8.2', { stdio: 'pipe' });
+    execSync('npm install --save-dev typescript@latest --no-audit', { stdio: 'pipe' });
     console.log(`${colors.green}✅ TypeScript installé comme dépendance de développement.${colors.reset}`);
   } catch (error) {
     console.error(`${colors.red}❌ Erreur lors de l'installation de TypeScript: ${error.message}${colors.reset}`);
@@ -888,7 +907,7 @@ function ensureTypescript() {
         // Ajouter la configuration TypeScript pour désactiver complètement
         nextConfig = nextConfig.replace(
           /const nextConfig = {/,
-          `const nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true\n  },`
+          `const nextConfig = {\n  // Désactiver complètement TypeScript\n  typescript: {\n    ignoreBuildErrors: true,\n    tsconfigPath: './tsconfig.json'\n  },`
         );
         
         fs.writeFileSync(nextConfigPath, nextConfig);
@@ -899,17 +918,7 @@ function ensureTypescript() {
     console.warn(`${colors.yellow}⚠️ Impossible de mettre à jour next.config.js: ${error.message}${colors.reset}`);
   }
   
-  // Renommer les fichiers TypeScript pour éviter leur détection
-  try {
-    console.log(`${colors.blue}🔍 Tentative de renommage des fichiers TypeScript...${colors.reset}`);
-    execSync('find . -name "*.ts" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -path "./src/components/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \\; 2>/dev/null || true', { stdio: 'pipe' });
-    execSync('find . -name "*.tsx" -not -path "./node_modules/*" -not -path "./src/lib/*" -not -path "./src/components/*" -not -name "layout.tsx" -not -name "page.tsx" -not -name "not-found.tsx" -exec mv {} {}.disabled \\; 2>/dev/null || true', { stdio: 'pipe' });
-    console.log(`${colors.green}✅ Fichiers TypeScript non essentiels renommés.${colors.reset}`);
-  } catch (error) {
-    console.warn(`${colors.yellow}⚠️ Impossible de renommer les fichiers TypeScript: ${error.message}${colors.reset}`);
-  }
-  
-  console.log(`${colors.green}✅ Préparation pour un build sans TypeScript terminée.${colors.reset}`);
+  console.log(`${colors.green}✅ Préparation de la configuration TypeScript terminée.${colors.reset}`);
 }
 
 // Exécuter les fonctions
