@@ -295,24 +295,32 @@ export default function SessionRunPage({ params }) {
             { id: '3', display_name: 'Participant Demo 3', votes: 2 }
           ];
           setTopParticipants(mockParticipants);
+          
+          // Passer à la phase d'interaction
+          setCurrentPhase(PHASES.INTERACTION);
+          
+          // Diffuser les IDs des participants sélectionnés
+          const selectedParticipantsIds = mockParticipants.map(p => p.id).filter(Boolean);
+          broadcastPhaseChange(PHASES.INTERACTION, { 
+            selected_participants: selectedParticipantsIds
+          });
+          
         } else {
           throw error;
         }
       } else {
         const selectedParticipants = data || [];
         setTopParticipants(selectedParticipants);
+        
+        // Passer à la phase d'interaction
+        setCurrentPhase(PHASES.INTERACTION);
+        
+        // Diffuser les IDs des participants sélectionnés
+        const selectedParticipantsIds = selectedParticipants.map(p => p?.id).filter(Boolean);
+        broadcastPhaseChange(PHASES.INTERACTION, { 
+          selected_participants: selectedParticipantsIds
+        });
       }
-      
-      setCurrentPhase(PHASES.INTERACTION);
-      
-      // S'assurer que topParticipants est bien un tableau avant de diffuser
-      const selectedParticipantsForBroadcast = Array.isArray(topParticipants) ? 
-        topParticipants.map(p => p.id).filter(Boolean) : [];
-      
-      // Diffuser la liste des participants sélectionnés
-      broadcastPhaseChange(PHASES.INTERACTION, { 
-        selected_participants: selectedParticipantsForBroadcast
-      });
     } catch (err) {
       console.error('Erreur lors de la récupération des participants avec le plus de votes:', err);
       // Continuer avec une liste vide en cas d'erreur
@@ -786,7 +794,7 @@ export default function SessionRunPage({ params }) {
                   {Array.isArray(topParticipants) && topParticipants.length > 0 ? (
                     topParticipants.map((participant, index) => (
                       <motion.div 
-                        key={participant.id || `participant-${index}`}
+                        key={participant?.id || `participant-${index}`}
                         className="bg-white p-4 rounded-lg border-2 shadow-md"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -794,12 +802,12 @@ export default function SessionRunPage({ params }) {
                       >
                         <div className="flex flex-col items-center">
                           <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl mb-3">
-                            {(participant.display_name && participant.display_name.charAt(0).toUpperCase()) || 'A'}
+                            {(participant?.display_name && participant.display_name.charAt(0).toUpperCase()) || 'A'}
                           </div>
-                          <p className="text-xl font-semibold mb-1">{participant.display_name || 'Anonyme'}</p>
-                          <p className="text-gray-500 text-sm mb-2">ID: {participant.id ? participant.id.substring(0, 8) : 'Unknown'}</p>
+                          <p className="text-xl font-semibold mb-1">{participant?.display_name || 'Anonyme'}</p>
+                          <p className="text-gray-500 text-sm mb-2">ID: {participant?.id ? participant.id.substring(0, 8) : 'Unknown'}</p>
                           <div className="bg-primary/10 px-3 py-1 rounded-full text-primary font-medium">
-                            {(participant.votes !== undefined ? participant.votes : 0)} votes
+                            {(participant?.votes !== undefined ? participant.votes : 0)} votes
                           </div>
                         </div>
                       </motion.div>
@@ -848,7 +856,7 @@ export default function SessionRunPage({ params }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {Array.isArray(topParticipants) && topParticipants.slice(0, 4).map((participant, index) => (
                   <motion.div 
-                    key={participant.id || `analysis-${index}`} 
+                    key={participant?.id || `analysis-${index}`} 
                     className="bg-white p-6 rounded-lg border shadow-md h-full"
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -856,11 +864,11 @@ export default function SessionRunPage({ params }) {
                   >
                     <div className="flex items-center mb-4">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center text-white bg-primary mr-3">
-                        {(participant.display_name && participant.display_name.charAt(0)) || 'A'}
+                        {(participant?.display_name && participant.display_name.charAt(0)) || 'A'}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-lg">{participant.display_name || 'Anonyme'}</h3>
-                        <p className="text-sm text-gray-600">ID: {participant.id ? participant.id.substring(0, 8) : 'Unknown'}</p>
+                        <h3 className="font-semibold text-lg">{participant?.display_name || 'Anonyme'}</h3>
+                        <p className="text-sm text-gray-600">ID: {participant?.id ? participant.id.substring(0, 8) : 'Unknown'}</p>
                       </div>
                     </div>
                     
@@ -954,7 +962,7 @@ export default function SessionRunPage({ params }) {
                     <p className="text-gray-600 mb-2">Votes totaux</p>
                     <p className="text-4xl font-bold text-primary">
                       {Array.isArray(participants) ? 
-                        participants.reduce((sum, p) => sum + (p.votes ? Number(p.votes) : 0), 0) : 0}
+                        participants.reduce((sum, p) => sum + (p?.votes ? Number(p.votes) : 0), 0) : 0}
                     </p>
                   </div>
                   <div className="text-center">
