@@ -19,7 +19,7 @@ import AnalysisConfigPanel from './AnalysisConfigPanel';
 import { useTranslation } from './LocaleProvider';
 import AIPromptEditor from './AIPromptEditor';
 import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from 'next/navigation';
 import { AgentService } from '@/lib/services/agentService';
 import { supabase } from '@/lib/supabase';
@@ -229,6 +229,9 @@ const AIInteractionConfig = ({
   onAnalysisOrderChange = null
 }) => {
   const router = useRouter();
+  
+  // Get toast function from useToast hook
+  const { toast } = useToast();
   
   // Check for client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -571,23 +574,21 @@ const AIInteractionConfig = ({
 
   // Function to copy the full prompt to clipboard
   const copyPromptToClipboard = () => {
-    if (!isClient) return;
-    
-    const prompt = generateFullPrompt();
-    
-    navigator.clipboard.writeText(prompt)
+    const fullPrompt = generateFullPrompt();
+    navigator.clipboard.writeText(fullPrompt)
       .then(() => {
         toast({
-          title: "Prompt copied to clipboard!",
-          description: "The full prompt has been copied to your clipboard.",
-          variant: "default",
+          title: "Copié !",
+          description: "Le prompt complet a été copié dans le presse-papier.",
+          duration: 3000
         });
       })
-      .catch(err => {
+      .catch(() => {
         toast({
-          title: "Failed to copy prompt",
-          description: err.message,
+          title: "Erreur",
+          description: "Impossible de copier le prompt.",
           variant: "destructive",
+          duration: 3000
         });
       });
   };
