@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A platform for professors to create and manage interactive sessions",
   "private": true,
+  "type": "commonjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
