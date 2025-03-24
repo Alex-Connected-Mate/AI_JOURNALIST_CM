@@ -17,7 +17,10 @@
     "prevercel-build": "node scripts/vercel-prepare.js",
     "pre-deploy-check": "node scripts/pre-deploy-check.js",
     "check-env": "node -e \"['NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY'].forEach(v => { if (!process.env[v]) console.error('Missing env var:', v) })\"",
-    "prepare-deployment": "npm run pre-deploy-check && npm run check-env"
+    "prepare-deployment": "npm run pre-deploy-check && npm run check-env",
+    "security-check": "npm audit && npm run check-env",
+    "predev": "npm run security-check",
+    "prebuild": "npm run security-check"
   },
   "keywords": [],
   "author": "",

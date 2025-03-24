@@ -28,23 +28,56 @@ const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   
-  // Ignorer les erreurs pour permettre le build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // Sécurité renforcée
+  headers: async () => [
+    {
+      source: '/:path*',
+      headers: [
+        {
+          key: 'X-Content-Type-Options',
+          value: 'nosniff',
+        },
+        {
+          key: 'X-Frame-Options',
+          value: 'DENY',
+        },
+        {
+          key: 'X-XSS-Protection',
+          value: '1; mode=block',
+        },
+        {
+          key: 'Referrer-Policy',
+          value: 'strict-origin-when-cross-origin',
+        },
+        {
+          key: 'Content-Security-Policy',
+          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;",
+        },
+      ],
+    },
+  ],
   
-  // Configuration des images
+  // Configuration des images sécurisée
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: supabaseHostname || '',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
       },
     ],
     unoptimized: process.env.NODE_ENV === 'development',
+  },
+  
+  // Activation des vérifications de sécurité
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
   },
   
   // Options expérimentales
