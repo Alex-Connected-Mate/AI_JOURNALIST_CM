@@ -6,13 +6,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TabGroup, TabList, Tab, TabPanels, TabPanel, classNames } from '@/components/Tabs';
-import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
-import { ANALYSIS_TYPES } from '@/lib/services/analysisService';
-import AnalysisProgress from './AnalysisProgress';
-import AnalysisResults from './AnalysisResults';
-import logger from '@/lib/logger';
+const { TabGroup, TabList, Tab, TabPanels, TabPanel, classNames } = require('@/components/Tabs');
+const { motion } = require('framer-motion');
+const { supabase } = require('@/lib/supabase');
+const { ANALYSIS_TYPES } = require('@/lib/services/analysisService');
+const AnalysisProgress = require('./AnalysisProgress');
+const AnalysisResults = require('./AnalysisResults');
+const logger = require('@/lib/logger');
 
 /**
  * Carte statistique
@@ -561,7 +561,7 @@ function AnalysisControls({ sessionId, sessionConfig }) {
 /**
  * Tableau de bord du professeur
  */
-export default function ProfessorDashboard({ sessionId, sessionConfig }) {
+module.exports = function ProfessorDashboard({ sessionId, sessionConfig }) {
   const [activeTab, setActiveTab] = useState(0);
   const [analysisData, setAnalysisData] = useState({});
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);

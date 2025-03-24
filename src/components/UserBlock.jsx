@@ -1,5 +1,5 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+const React = require('react');
+const PropTypes = require('prop-types');
 
 /**
  * UserBlock Component
@@ -153,4 +153,4 @@ UserBlock.propTypes = {
   onClick: PropTypes.func
 };
 
-export default UserBlock; 
+module.exports = UserBlock; 

@@ -1,6 +1,6 @@
-import React from 'react';
-import Checkbox from './Checkbox';
-import NumberInput from './NumberInput';
+const React = require('react');
+const Checkbox = require('./Checkbox');
+const NumberInput = require('./NumberInput');
 
 // Simplified Analysis Item component without drag & drop
 const AnalysisItem = ({ item, toggleItem, moveUp, moveDown, isFirst, isLast }) => {
@@ -199,4 +199,4 @@ const FinalAnalysisConfig = ({
   );
 };
 
-export default FinalAnalysisConfig; 
+module.exports = FinalAnalysisConfig; 

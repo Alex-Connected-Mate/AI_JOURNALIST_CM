@@ -1,5 +1,5 @@
-import React from 'react';
-import Link from 'next/link';
+const React = require('react');
+const Link = require('next/link');
 
 // This custom error page overrides Next.js's built-in error handling
 // It avoids using any client-side only hooks like useSearchParams
@@ -36,4 +36,4 @@ CustomError.getInitialProps = ({ res, err }) => {
   return { statusCode };
 };
 
-export default CustomError; 
+module.exports = CustomError; 

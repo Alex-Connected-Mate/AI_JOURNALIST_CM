@@ -1,12 +1,12 @@
-import '../app/globals.css'
-import Header from '@/components/Header'
-import AuthChecker from '@/components/AuthChecker'
-import ProtectedRoute from '@/components/ProtectedRoute'
-import LogViewer from '@/components/LogViewer'
-import { useStore } from '@/lib/store'
-import { useRouter } from 'next/router'
+require('../app/globals.css');
+const Header = require('@/components/Header');
+const AuthChecker = require('@/components/AuthChecker');
+const ProtectedRoute = require('@/components/ProtectedRoute');
+const LogViewer = require('@/components/LogViewer');
+const { useStore } = require('@/lib/store');
+const { useRouter } = require('next/router');
 
-export default function MyApp({ Component, pageProps }) {
+module.exports = function MyApp({ Component, pageProps }) {
   const { user, logout } = useStore()
   const router = useRouter()
   

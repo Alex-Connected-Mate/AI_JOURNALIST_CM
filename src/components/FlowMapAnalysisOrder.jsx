@@ -1,5 +1,5 @@
-import React from 'react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+const React = require('react');
+const { DragDropContext, Droppable, Draggable } = require('react-beautiful-dnd');
 
 /**
  * FlowMapAnalysisOrder Component
@@ -170,4 +170,4 @@ const FlowMapAnalysisOrder = ({
   );
 };
 
-export default FlowMapAnalysisOrder; 
+module.exports = FlowMapAnalysisOrder; 

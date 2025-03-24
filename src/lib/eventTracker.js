@@ -11,7 +11,7 @@ let events = [];
 const MAX_EVENTS = 100;
 
 // Types d'événements
-export const EVENT_TYPES = {
+const EVENT_TYPES = {
   CLICK: 'click',
   CHANGE: 'change',
   SUBMIT: 'submit',
@@ -36,7 +36,7 @@ const IGNORED_ERROR_PATTERNS = ['onValidate', 'Unknown event handler'];
  * @param {object} details - Détails supplémentaires sur l'événement
  * @param {object} target - Élément cible de l'événement (optionnel)
  */
-export const trackEvent = (type, action, details = {}, target = null) => {
+const trackEvent = (type, action, details = {}, target = null) => {
   // Ne pas enregistrer les événements liés aux propriétés ignorées
   if (action && IGNORED_PROPS.some(prop => action.includes(prop))) {
     return null;
@@ -102,14 +102,14 @@ export const trackEvent = (type, action, details = {}, target = null) => {
  * 
  * @returns {Array} Liste des événements
  */
-export const getEvents = () => {
+const getEvents = () => {
   return [...events];
 };
 
 /**
  * Efface tous les événements
  */
-export const clearEvents = () => {
+const clearEvents = () => {
   events = [];
 };
 
@@ -118,7 +118,7 @@ export const clearEvents = () => {
  * 
  * @returns {string} JSON des événements
  */
-export const exportEvents = () => {
+const exportEvents = () => {
   return JSON.stringify(events, null, 2);
 };
 
@@ -126,7 +126,7 @@ export const exportEvents = () => {
  * Capture les erreurs globales et les enregistre
  * Version sécurisée qui évite les interférences avec les composants React
  */
-export const setupGlobalErrorTracking = () => {
+const setupGlobalErrorTracking = () => {
   if (typeof window === 'undefined') return;
 
   // Capture des erreurs non gérées
@@ -173,7 +173,7 @@ export const setupGlobalErrorTracking = () => {
  * Attache des écouteurs d'événements spécifiques qui n'interfèrent pas
  * avec les comportements natifs des composants
  */
-export const setupGlobalEventTracking = () => {
+const setupGlobalEventTracking = () => {
   if (typeof window === 'undefined') return;
 
   // Ne pas suivre les événements en production
@@ -196,7 +196,7 @@ export const setupGlobalEventTracking = () => {
 };
 
 // Export par défaut
-export default {
+module.exports = {
   trackEvent,
   getEvents,
   clearEvents,
@@ -205,3 +205,11 @@ export default {
   setupGlobalEventTracking,
   EVENT_TYPES
 }; 
+
+module.exports.EVENT_TYPES = EVENT_TYPES;
+module.exports.trackEvent = trackEvent;
+module.exports.getEvents = getEvents;
+module.exports.clearEvents = clearEvents;
+module.exports.exportEvents = exportEvents;
+module.exports.setupGlobalErrorTracking = setupGlobalErrorTracking;
+module.exports.setupGlobalEventTracking = setupGlobalEventTracking;

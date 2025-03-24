@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import fs from 'fs';
-import path from 'path';
+const { NextResponse } = require('next/server');
+const { supabase } = require('@/lib/supabase');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * API route pour les diagnostics système
  * Compatible avec Vercel
  */
-export async function GET() {
+module.exports.GET = async function() {
   try {
     const results = [];
     

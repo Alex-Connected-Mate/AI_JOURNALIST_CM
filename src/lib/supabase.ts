@@ -674,7 +674,6 @@ export async function getSessionById(sessionId: string) {
   return { data, error };
 }
 
-// ======== Fonctions pour le système de vote ========
 
 // Récupérer tous les participants d'une session
 export async function getSessionParticipants(sessionId: string) {

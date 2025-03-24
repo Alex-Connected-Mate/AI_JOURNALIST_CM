@@ -1,5 +1,5 @@
-import React from 'react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+const React = require('react');
+const { DragDropContext, Droppable, Draggable } = require('react-beautiful-dnd');
 
 /**
  * AnalysisOrderList Component
@@ -137,4 +137,4 @@ const AnalysisOrderList = ({
   );
 };
 
-export default AnalysisOrderList; 
+module.exports = AnalysisOrderList; 

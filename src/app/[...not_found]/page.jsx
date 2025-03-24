@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
-import { notFound } from 'next/navigation';
+const { useEffect } = require('react');
+const { notFound } = require('next/navigation');
 
 // This component will catch all unmatched routes and trigger the not-found page
-export default function CatchAllNotFound() {
+module.exports = function CatchAllNotFound() {
   useEffect(() => {
     // Trigger Next.js built-in not-found functionality
     notFound();

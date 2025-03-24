@@ -1,5 +1,5 @@
-import React from 'react';
-import UserBlock from './UserBlock';
+const React = require('react');
+const UserBlock = require('./UserBlock');
 
 /**
  * UserBlockExamples Component
@@ -219,4 +219,4 @@ const UserBlockExamples = () => {
   );
 };
 
-export default UserBlockExamples; 
+module.exports = UserBlockExamples; 

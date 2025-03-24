@@ -1,8 +1,8 @@
-import React from 'react';
-import RadioGroup from './RadioGroup';
-import Checkbox from './Checkbox';
-import NumberInput from './NumberInput';
-import { QRCodeSVG } from 'qrcode.react';
+const React = require('react');
+const RadioGroup = require('./RadioGroup');
+const Checkbox = require('./Checkbox');
+const NumberInput = require('./NumberInput');
+const { QRCodeSVG } = require('qrcode.react');
 
 /**
  * ConnectionPhaseConfig Component
@@ -218,4 +218,4 @@ const ConnectionPhaseConfig = ({ sessionConfig, updateSessionConfig }) => {
   );
 };
 
-export default ConnectionPhaseConfig; 
+module.exports = ConnectionPhaseConfig; 

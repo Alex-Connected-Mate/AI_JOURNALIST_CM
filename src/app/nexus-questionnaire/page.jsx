@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import AIInteractionConfig from '@/components/AIInteractionConfig';
-import LogViewer from '@/components/LogViewer';
+const Link = require('next/link');
+const { useRouter } = require('next/navigation');
+const AIInteractionConfig = require('@/components/AIInteractionConfig');
+const LogViewer = require('@/components/LogViewer');
 
 /**
  * Nexus X Insead Questionnaire Page
@@ -13,7 +13,7 @@ import LogViewer from '@/components/LogViewer';
  * This page provides direct access to the AI Journalist specifically designed for
  * the Nexus X Insead questionnaire workflow.
  */
-export default function NexusQuestionnairePage() {
+module.exports = function NexusQuestionnairePage() {
   const router = useRouter();
   const [sessionConfig, setSessionConfig] = useState({
     // Default settings for the questionnaire

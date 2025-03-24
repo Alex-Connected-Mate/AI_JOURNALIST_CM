@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AIPromptEditor from '@/components/AIPromptEditor';
-import { supabase } from '@/lib/supabase';
+const { useToast } = require('@/components/ui/use-toast');
+const { Card, CardContent } = require('@/components/ui/card');
+const { Button } = require('@/components/ui/button');
+const { Tabs, TabsContent, TabsList, TabsTrigger } = require('@/components/ui/tabs');
+const AIPromptEditor = require('@/components/AIPromptEditor');
+const { supabase } = require('@/lib/supabase');
 
 /**
  * AI Prompt Manager Component
@@ -298,4 +298,4 @@ const AIPromptManager = ({
   );
 };
 
-export default AIPromptManager; 
+module.exports = AIPromptManager; 

@@ -1,26 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger 
-} from '@/components/ui/tooltip';
-import { parsePrompt, generatePrompt } from '@/lib/promptParser';
+const { Card, CardContent } = require('@/components/ui/card');
+const { Button } = require('@/components/ui/button');
+const { Input } = require('@/components/ui/input');
+const { Textarea } = require('@/components/ui/textarea');
+const { Tabs, TabsContent, TabsList, TabsTrigger } = require('@/components/ui/tabs');
+const { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,  } = require('@/components/ui/dialog');
+const { Switch } = require('@/components/ui/switch');
+const { Label } = require('@/components/ui/label');
+const { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } = require('@/components/ui/tooltip');
+const { parsePrompt, generatePrompt } = require('@/lib/promptParser');
 
 /**
  * Nuggets Agent Default Prompt Template
@@ -466,4 +454,4 @@ const AIPromptEditor = ({
   return showFullPrompt ? renderFullPromptView() : renderSimplifiedPromptView();
 };
 
-export default AIPromptEditor; 
+module.exports = AIPromptEditor; 

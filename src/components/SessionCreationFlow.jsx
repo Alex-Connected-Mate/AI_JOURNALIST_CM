@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import SessionFlowMap from './SessionFlowMap';
-import BasicInfoStep from './BasicInfoStep';
-import ConnectionPhaseConfig from './ConnectionPhaseConfig';
-import DiscussionPhaseConfig from './DiscussionPhaseConfig';
-import AIInteractionConfig from './AIInteractionConfig';
-import AnalysisPhaseConfig from './AnalysisPhaseConfig';
-import ReadingPhaseConfig from './ReadingPhaseConfig';
-import logger from '@/lib/logger';
-import ConnectionSettings from './ConnectionSettings';
-import { useStore } from '@/lib/store';
-import ImageSelector from './ImageSelector';
+const { useRouter } = require('next/navigation');
+const SessionFlowMap = require('./SessionFlowMap');
+const BasicInfoStep = require('./BasicInfoStep');
+const ConnectionPhaseConfig = require('./ConnectionPhaseConfig');
+const DiscussionPhaseConfig = require('./DiscussionPhaseConfig');
+const AIInteractionConfig = require('./AIInteractionConfig');
+const AnalysisPhaseConfig = require('./AnalysisPhaseConfig');
+const ReadingPhaseConfig = require('./ReadingPhaseConfig');
+const logger = require('@/lib/logger');
+const ConnectionSettings = require('./ConnectionSettings');
+const { useStore } = require('@/lib/store');
+const ImageSelector = require('./ImageSelector');
 
 /**
  * SessionCreationFlow Component
@@ -1570,4 +1570,4 @@ const SessionCreationFlow = ({ initialConfig = {}, onSubmit, isSubmitting }) => 
   );
 };
 
-export default SessionCreationFlow; 
+module.exports = SessionCreationFlow; 

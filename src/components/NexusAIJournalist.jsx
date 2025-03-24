@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Input from './Input';
-import Checkbox from './Checkbox';
+const Input = require('./Input');
+const Checkbox = require('./Checkbox');
 
 /**
  * NexusAIJournalist Component
@@ -224,4 +224,4 @@ Rules for the Closing Message:
   );
 };
 
-export default NexusAIJournalist; 
+module.exports = NexusAIJournalist; 

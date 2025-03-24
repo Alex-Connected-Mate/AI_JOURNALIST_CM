@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+const { supabase } = require('@/lib/supabase');
 
 // Mock OpenAI API key - in production, this would be loaded from environment variables
 const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || 'sk-mock-key';
@@ -327,4 +327,4 @@ class AIAgentService {
   }
 }
 
-export default AIAgentService; 
+module.exports = AIAgentService; 

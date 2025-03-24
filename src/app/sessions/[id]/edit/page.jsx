@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useStore } from '@/lib/store';
-import SessionCreationFlow from '@/components/SessionCreationFlow';
-import { getSessionById, updateSession } from '@/lib/supabase';
-import { toast } from 'react-hot-toast';
+const { useRouter } = require('next/navigation');
+const Link = require('next/link');
+const { useStore } = require('@/lib/store');
+const SessionCreationFlow = require('@/components/SessionCreationFlow');
+const { getSessionById, updateSession } = require('@/lib/supabase');
+const { toast } = require('react-hot-toast');
 
-export default function EditSessionPage({ params }) {
+module.exports = function EditSessionPage({ params }) {
   const sessionId = params.id;
   const router = useRouter();
   const { user, userProfile } = useStore();

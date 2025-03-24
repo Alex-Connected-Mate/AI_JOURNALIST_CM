@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+const { Html5Qrcode } = require('html5-qrcode');
 
-export default function QrScanner({ onScan }) {
+module.exports = function QrScanner({ onScan }) {
   const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(false);
   const scannerRef = useRef(null);

@@ -6,10 +6,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TabGroup, TabList, Tab, TabPanels, TabPanel, classNames } from '@/components/Tabs';
-import { motion } from 'framer-motion';
-import { ANALYSIS_TYPES } from '@/lib/services/analysisService';
-import logger from '@/lib/logger';
+const { TabGroup, TabList, Tab, TabPanels, TabPanel, classNames } = require('@/components/Tabs');
+const { motion } = require('framer-motion');
+const { ANALYSIS_TYPES } = require('@/lib/services/analysisService');
+const logger = require('@/lib/logger');
 
 /**
  * Card générique pour afficher les informations d'analyse
@@ -318,7 +318,7 @@ function OverallAnalysis({ data }) {
 /**
  * Composant principal pour afficher les résultats d'analyse
  */
-export default function AnalysisResults({ sessionId, analysisData = {} }) {
+module.exports = function AnalysisResults({ sessionId, analysisData = {} }) {
   const [selectedTab, setSelectedTab] = useState(0);
   const tabCategories = [
     { name: 'Nuggets', type: ANALYSIS_TYPES.NUGGETS },

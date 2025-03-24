@@ -12,7 +12,7 @@
  * @param {string} rawPrompt - The raw prompt text to parse
  * @returns {Object} Structured data extracted from the prompt
  */
-export function parsePrompt(rawPrompt) {
+function parsePrompt(rawPrompt) {
   if (!rawPrompt) {
     return {
       agentName: '',
@@ -104,7 +104,7 @@ export function parsePrompt(rawPrompt) {
  * @param {'nuggets'|'lightbulbs'} agentType - The type of agent
  * @returns {string} Formatted prompt text
  */
-export function generatePrompt(data, agentType = 'nuggets') {
+function generatePrompt(data, agentType = 'nuggets') {
   const {
     agentName = 'AI Assistant',
     programName = 'Connected Mate',
@@ -157,7 +157,7 @@ export function generatePrompt(data, agentType = 'nuggets') {
  * @param {'nuggets'|'lightbulbs'} agentType - The type of agent
  * @returns {string} Default prompt for the specified agent type
  */
-export function getDefaultPrompt(agentType) {
+function getDefaultPrompt(agentType) {
   if (agentType === 'lightbulbs') {
     return `# Role
 
@@ -218,3 +218,5 @@ Be professional, friendly, and helpful. Use clear language and be concise. Your 
 3. **Potential Impact**:  
    "What impact do you think this will have?"`;
 } 
+
+module.exports = { parsePrompt, generatePrompt, getDefaultPrompt };

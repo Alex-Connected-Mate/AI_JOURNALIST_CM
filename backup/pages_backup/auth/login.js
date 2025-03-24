@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import useLogger from '@/hooks/useLogger';
+import useLogger from '@/hooks/useLoggerNew';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 

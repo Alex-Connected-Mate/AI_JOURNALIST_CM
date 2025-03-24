@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from './LocaleProvider';
-import FlowMapAnalysisOrder from './FlowMapAnalysisOrder';
+const { useTranslation } = require('./LocaleProvider');
+const FlowMapAnalysisOrder = require('./FlowMapAnalysisOrder');
 
 /**
  * SessionFlowMap Component
@@ -800,4 +800,4 @@ const SessionFlowMap = ({
   );
 };
 
-export default SessionFlowMap; 
+module.exports = SessionFlowMap; 

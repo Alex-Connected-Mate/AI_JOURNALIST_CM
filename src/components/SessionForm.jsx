@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import VoteSettings from './VoteSettings';
+const { useState, useEffect } = require('react');
+const Image = require('next/image');
+const VoteSettings = require('./VoteSettings');
 
 // Options de démonstration
 const demoImages = [
@@ -38,7 +38,7 @@ const COLOR_OPTIONS = [
   { id: 'gray', value: '#6B7280', label: 'Gris' },
 ];
 
-export default function SessionForm({ onChange }) {
+module.exports = function SessionForm({ onChange }) {
   const [formData, setFormData] = useState({
     name: '',
     institution: '',

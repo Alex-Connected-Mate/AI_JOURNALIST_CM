@@ -7,9 +7,9 @@
  * 2. Analyse globale des insights générés
  */
 
-import { supabase } from './supabase';
-import { openai } from './openai';
-import logger from './logger';
+const { supabase } = require('./supabase');
+const { openai } = require('./openai');
+const logger = require('./logger');
 
 /**
  * Construit le prompt pour l'analyse d'une discussion individuelle
@@ -144,7 +144,7 @@ function buildGlobalAnalysisPrompt(individualAnalyses, analysisType, rules) {
  * @param {string} analysisType - Type d'analyse ('nuggets', 'lightbulbs', etc.)
  * @param {object} rules - Règles d'analyse
  */
-export async function analyzeDiscussion(discussionId, analysisType, rules) {
+module.exports.analyzeDiscussion = async function(discussionId, analysisType, rules) {
   try {
     logger.session(`Début d'analyse de discussion: ${discussionId} (type: ${analysisType})`);
     
@@ -220,7 +220,7 @@ export async function analyzeDiscussion(discussionId, analysisType, rules) {
  * @param {string} analysisType - Type d'analyse ('nuggets', 'lightbulbs', etc.)
  * @param {object} rules - Règles d'analyse globale
  */
-export async function createGlobalAnalysis(sessionId, analysisType, rules) {
+module.exports.createGlobalAnalysis = async function(sessionId, analysisType, rules) {
   try {
     logger.session(`Début d'analyse globale pour la session: ${sessionId} (type: ${analysisType})`);
     
@@ -297,7 +297,7 @@ export async function createGlobalAnalysis(sessionId, analysisType, rules) {
  * @param {object} config - Configuration d'analyse
  * @param {function} progressCallback - Fonction de callback pour suivre la progression
  */
-export async function runSessionAnalysis(sessionId, analysisType, config, progressCallback) {
+module.exports.runSessionAnalysis = async function(sessionId, analysisType, config, progressCallback) {
   try {
     logger.session(`Démarrage de l'analyse complète pour la session: ${sessionId}`);
     
@@ -443,7 +443,7 @@ export async function runSessionAnalysis(sessionId, analysisType, config, progre
  * Vérifie l'état d'avancement de l'analyse d'une session
  * @param {string} sessionId - ID de la session
  */
-export async function getAnalysisStatus(sessionId) {
+module.exports.getAnalysisStatus = async function(sessionId) {
   try {
     const { data, error } = await supabase
       .from('sessions')
@@ -466,7 +466,7 @@ export async function getAnalysisStatus(sessionId) {
   }
 }
 
-export default {
+module.exports = {
   analyzeDiscussion,
   createGlobalAnalysis,
   runSessionAnalysis,

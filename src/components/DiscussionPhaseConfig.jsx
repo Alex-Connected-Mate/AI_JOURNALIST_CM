@@ -1,7 +1,7 @@
-import React from 'react';
-import NumberInput from './NumberInput';
-import Input from './Input';
-import Checkbox from './Checkbox';
+const React = require('react');
+const NumberInput = require('./NumberInput');
+const Input = require('./Input');
+const Checkbox = require('./Checkbox');
 
 /**
  * DiscussionPhaseConfig Component
@@ -201,4 +201,4 @@ const DiscussionPhaseConfig = ({ sessionConfig, updateSessionConfig }) => {
   );
 };
 
-export default DiscussionPhaseConfig; 
+module.exports = DiscussionPhaseConfig; 

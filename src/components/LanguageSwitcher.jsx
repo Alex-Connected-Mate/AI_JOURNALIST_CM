@@ -1,12 +1,12 @@
-import React from 'react';
-import { useTranslation } from './LocaleProvider';
+const React = require('react');
+const { useTranslation } = require('./LocaleProvider');
 
 /**
  * LanguageSwitcher Component
  * 
  * A dropdown component to allow users to manually switch between available languages.
  */
-export default function LanguageSwitcher() {
+module.exports = function LanguageSwitcher() {
   const { locale, locales, changeLocale } = useTranslation();
   
   // Map of locales to their display names

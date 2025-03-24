@@ -1052,4 +1052,4 @@ const AIBookPreview = ({
   );
 };
 
-export default AIBookPreview; 
+module.exports = AIBookPreview; 

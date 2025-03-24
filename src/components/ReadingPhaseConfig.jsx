@@ -1,6 +1,6 @@
-import React from 'react';
-import Checkbox from './Checkbox';
-import NumberInput from './NumberInput';
+const React = require('react');
+const Checkbox = require('./Checkbox');
+const NumberInput = require('./NumberInput');
 
 /**
  * ReadingPhaseConfig Component
@@ -216,4 +216,4 @@ const ReadingPhaseConfig = ({ sessionConfig, updateSessionConfig }) => {
   );
 };
 
-export default ReadingPhaseConfig; 
+module.exports = ReadingPhaseConfig; 

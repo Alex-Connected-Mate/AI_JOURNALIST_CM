@@ -9,7 +9,15 @@ const path = require('path');
 
 console.log('🔧 Conversion minimaliste des modules ES vers CommonJS...');
 
-// Liste des fichiers problématiques connus
+// Constantes de log qui pourraient être définies dans des fichiers problématiques
+// Ces constantes seront ré-injectées dans les fichiers qui les utilisent
+const INFO = 'INFO';
+const WARNING = 'WARNING';
+const ERROR = 'ERROR';
+const DEBUG = 'DEBUG';
+const SESSION = 'SESSION';
+
+// Liste des fichiers connus pour être problématiques
 const problematicFiles = [
   'src/lib/logStore.js',
   'src/lib/services/agentService.js',
@@ -24,48 +32,41 @@ const problematicFiles = [
   'src/pages/api/ai/get-analysis.js'
 ];
 
-// Fonction pour trouver tous les fichiers JS/JSX dans un répertoire
+// Fonction pour trouver des fichiers JS dans un répertoire et vérifier s'ils utilisent la syntaxe ES module
 function findJsFiles(directory) {
-  const files = [];
+  const jsFiles = [];
   
-  try {
-    if (!fs.existsSync(directory)) {
-      return files;
-    }
+  function scanDir(dir) {
+    const files = fs.readdirSync(dir, { withFileTypes: true });
     
-    const items = fs.readdirSync(directory);
-    
-    for (const item of items) {
-      const fullPath = path.join(directory, item);
+    for (const file of files) {
+      const fullPath = path.join(dir, file.name);
       
-      if (fs.statSync(fullPath).isDirectory()) {
-        // Recursively search subdirectories
-        const subFiles = findJsFiles(fullPath);
-        files.push(...subFiles);
-      } else if (
-        item.endsWith('.js') || 
-        item.endsWith('.jsx') || 
-        item.endsWith('.mjs')
-      ) {
-        // Check if file contains ES modules syntax
-        const content = fs.readFileSync(fullPath, 'utf8');
-        if (
-          content.includes('import ') || 
-          content.includes('export ') || 
-          content.includes('export default')
-        ) {
-          files.push(fullPath);
+      if (file.isDirectory()) {
+        scanDir(fullPath); // Recursively scan subdirectories
+      } else if (file.name.endsWith('.js') || file.name.endsWith('.jsx')) {
+        // Lire le contenu et vérifier si ce fichier utilise import/export
+        try {
+          const content = fs.readFileSync(fullPath, 'utf8');
+          if (
+            (content.includes('import ') || content.includes('export ') || 
+             content.includes('import.meta') || content.includes('export default')) && 
+            !problematicFiles.includes(fullPath)
+          ) {
+            jsFiles.push(fullPath);
+          }
+        } catch (err) {
+          console.error(`Erreur lors de la lecture du fichier ${fullPath}:`, err);
         }
       }
     }
-  } catch (error) {
-    console.error(`Erreur lors de la recherche de fichiers JS: ${error.message}`);
   }
   
-  return files;
+  scanDir(directory);
+  return jsFiles;
 }
 
-// Rechercher automatiquement les fichiers supplémentaires avec syntax ES modules
+// Trouver d'autres fichiers avec la syntaxe ES module
 const srcPath = path.join(process.cwd(), 'src');
 console.log('🔍 Recherche de fichiers JS avec syntax ES modules...');
 
@@ -82,190 +83,7 @@ try {
   console.error(`❌ Erreur lors de la recherche automatique: ${error.message}`);
 }
 
-function convertFileContent(content) {
-  // Sauvegarde du contenu original
-  const originalContent = content;
-  
-  try {
-    // Conversion basique des imports
-    let newContent = content;
-    
-    // Supprimer ou remplacer les références à import.meta.webpackHot qui causent des problèmes
-    newContent = newContent.replace(/\/\/ @ts-ignore importMeta is replaced in the loader[\s\S]*?import\.meta\.webpackHot\.accept\(\);/g, 
-      '// Hot Module Replacement disabled in CommonJS conversion');
-    
-    // Première étape : Correction des exports default de composants React
-    // Cela remplace "export default function ComponentName" par "module.exports = function ComponentName"
-    newContent = newContent.replace(
-      /export\s+default\s+function\s+(\w+)\s*\(/g,
-      'module.exports = function $1('
-    );
-    
-    // Convertir les imports nommés: import { x, y } from 'module';
-    newContent = newContent.replace(/import\s*\{\s*([^}]+)\s*\}\s*from\s*['"]([^'"]+)['"]/g, 
-      (match, importNames, moduleName) => {
-        // Prétraitement pour gérer les renommages avec "as"
-        const processedNames = importNames.split(',').map(item => {
-          const trimmed = item.trim();
-          // Si c'est un renommage avec "as", le convertir en format CommonJS
-          if (trimmed.includes(' as ')) {
-            const [original, renamed] = trimmed.split(' as ').map(x => x.trim());
-            return `${original}: ${renamed}`;
-          }
-          return trimmed;
-        });
-        
-        const destructuring = processedNames.join(', ');
-        return `const { ${destructuring} } = require('${moduleName}');`;
-      }
-    );
-    
-    // Convertir les imports par défaut: import x from 'module';
-    newContent = newContent.replace(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/g, 
-      (match, importName, moduleName) => {
-        return `const ${importName} = require('${moduleName}');`;
-      }
-    );
-    
-    // Convertir les imports simples: import 'module';
-    newContent = newContent.replace(/import\s+['"]([^'"]+)['"]/g, 
-      (match, moduleName) => {
-        return `require('${moduleName}');`;
-      }
-    );
-    
-    // Convertir les exports par défaut: export default x;
-    newContent = newContent.replace(/export\s+default\s+(\w+)/g, 
-      (match, exportName) => {
-        return `module.exports = ${exportName}`;
-      }
-    );
-    
-    // Convertir les exports par défaut avec fonction/classe/objet: export default function/class/{ ... }
-    newContent = newContent.replace(/export\s+default\s+(function|class|{)/g, 
-      (match, keyword) => {
-        return `module.exports = ${keyword}`;
-      }
-    );
-    
-    // Corriger le problème de point-virgule après "function"
-    newContent = newContent.replace(/module\.exports = function;(\s+)(\w+)/g, 
-      (match, space, funcName) => {
-        return `module.exports = function${space}${funcName}`;
-      }
-    );
-    
-    // Corriger tous les doubles points-virgules qui auraient pu être introduits
-    newContent = newContent.replace(/;;/g, ';');
-    
-    // Corriger les problèmes avec les "require" suivis d'un point-virgule supplémentaire
-    newContent = newContent.replace(/require\('([^']+)'\);;/g, "require('$1');");
-    
-    // Supprimer les exports ES modules si un module.exports est déjà présent
-    if (newContent.includes('module.exports =')) {
-      newContent = newContent.replace(/export\s+\{\s*([^}]+)\s*\};?/g, '');
-    } else {
-      // Convertir les exports nommés sous forme d'objet: export { x, y };
-      newContent = newContent.replace(/export\s+\{\s*([^}]+)\s*\};?/g, 
-        (match, exportNames) => {
-          const names = exportNames.split(',').map(name => name.trim());
-          return `module.exports = { ${names.join(', ')} };`;
-        }
-      );
-    }
-    
-    // Convertir les exports nommés: export const x = y;
-    newContent = newContent.replace(/export\s+(const|let|var|function|class)\s+(\w+)/g, 
-      (match, type, name) => {
-        return `${type} ${name}`;
-      }
-    );
-    
-    // Gérer les API routes de Next.js App Router
-    // Convertir "export async function GET()" en "module.exports.GET = async function()"
-    newContent = newContent.replace(/export\s+(async\s+)?function\s+(\w+)\s*\(/g, 
-      (match, asyncKeyword, functionName) => {
-        const async = asyncKeyword || '';
-        return `module.exports.${functionName} = ${async}function(`;
-      }
-    );
-    
-    // Ajouter les exports nommés à la fin du fichier
-    // Cette étape est approximative et pourrait nécessiter des ajustements manuels
-    const namedExports = [];
-    const namedExportMatches = content.matchAll(/export\s+(const|let|var|function|class)\s+(\w+)/g);
-    for (const match of namedExportMatches) {
-      namedExports.push(match[2]);
-    }
-    
-    // Vérifier si le fichier est un module de logging ou contient des constantes LOG_LEVELS
-    // et s'assurer que ces constantes sont accessibles globalement
-    if (content.includes('LOG_LEVELS') && !content.includes('var INFO = {')) {
-      // Si le fichier ne définit pas déjà les constantes de niveau de log, les ajouter
-      // Définir explicitement les constantes de niveau de log pour éviter les erreurs de référence
-      // C'est nécessaire car les constantes peuvent être référencées directement sans utiliser LOG_LEVELS
-      const logLevelDefines = `
-// Définition explicite des constantes de niveau de log
-var INFO = { label: 'INFO', color: '#3b82f6' };
-var WARNING = { label: 'WARN', color: '#f59e0b' };
-var ERROR = { label: 'ERROR', color: '#ef4444' };
-var DEBUG = { label: 'DEBUG', color: '#10b981' };
-var SESSION = { label: 'SESSION', color: '#8b5cf6' };
-
-// Définir LOG_LEVELS s'il n'existe pas déjà
-var LOG_LEVELS = LOG_LEVELS || {
-  INFO: INFO,
-  WARNING: WARNING,
-  ERROR: ERROR,
-  DEBUG: DEBUG,
-  SESSION: SESSION
-};
-`;
-      
-      // Ajouter ces définitions au début du fichier, après les imports/requires
-      const firstLineBreakIndex = newContent.indexOf('\n\n');
-      if (firstLineBreakIndex > 0) {
-        newContent = newContent.slice(0, firstLineBreakIndex + 2) + logLevelDefines + newContent.slice(firstLineBreakIndex + 2);
-      } else {
-        newContent = logLevelDefines + newContent;
-      }
-    }
-    
-    // Remplacer les références à LOG_LEVELS.X par des références directes aux propriétés de LOG_LEVELS
-    // Dans certains fichiers, LOG_LEVELS peut ne pas être accessible après conversion
-    if (newContent.includes('LOG_LEVELS.INFO')) {
-      newContent = newContent.replace(/LOG_LEVELS\.INFO/g, "INFO");
-    }
-    if (newContent.includes('LOG_LEVELS.WARNING')) {
-      newContent = newContent.replace(/LOG_LEVELS\.WARNING/g, "WARNING");
-    }
-    if (newContent.includes('LOG_LEVELS.ERROR')) {
-      newContent = newContent.replace(/LOG_LEVELS\.ERROR/g, "ERROR");
-    }
-    if (newContent.includes('LOG_LEVELS.DEBUG')) {
-      newContent = newContent.replace(/LOG_LEVELS\.DEBUG/g, "DEBUG");
-    }
-    if (newContent.includes('LOG_LEVELS.SESSION')) {
-      newContent = newContent.replace(/LOG_LEVELS\.SESSION/g, "SESSION");
-    }
-    
-    if (namedExports.length > 0) {
-      // Ajouter l'export à la fin seulement s'il n'y a pas déjà d'export par défaut
-      if (!content.includes('export default')) {
-        newContent += `\n\nmodule.exports = { ${namedExports.join(', ')} };\n`;
-      } else {
-        // S'il y a un export par défaut, ajouter les exports nommés comme propriétés
-        const exportLines = namedExports.map(name => `module.exports.${name} = ${name};`);
-        newContent += `\n\n${exportLines.join('\n')}\n`;
-      }
-    }
-    
-    return newContent;
-  } catch (error) {
-    console.error(`Erreur de conversion, utilisation du contenu original: ${error.message}`);
-    return originalContent;
-  }
-}
+console.log(`Fichiers à traiter: ${problematicFiles.length}`);
 
 // Traitement de chaque fichier
 console.log(`📋 Traitement de ${problematicFiles.length} fichiers...`);
@@ -280,19 +98,80 @@ for (const filePath of problematicFiles) {
       continue;
     }
     
-    // Lire le contenu
-    const content = fs.readFileSync(fullPath, 'utf8');
+    console.log(`Traitement de ${filePath}`);
     
     // Créer une sauvegarde
-    fs.writeFileSync(`${fullPath}.backup-${Date.now()}`, content);
+    const backupPath = `${fullPath}.esm-backup`;
+    fs.copyFileSync(fullPath, backupPath);
     
-    // Convertir le contenu
-    const convertedContent = convertFileContent(content);
+    // Lire le contenu
+    let content = fs.readFileSync(fullPath, 'utf8');
     
-    // Écrire le nouveau contenu
-    fs.writeFileSync(fullPath, convertedContent);
+    // Convertir les importations ES module en require CommonJS
+    content = content.replace(/import\s+(\{[^}]+\})\s+from\s+['"]([^'"]+)['"]/g, (match, imports, source) => {
+      const cleanImports = imports.replace(/\s+as\s+/g, ': ').trim();
+      return `const ${cleanImports} = require('${source}')`;
+    });
     
-    console.log(`✅ Conversion terminée pour ${filePath}`);
+    // Convertir les imports par défaut
+    content = content.replace(/import\s+([^{}\s,]+)\s+from\s+['"]([^'"]+)['"]/g, (match, name, source) => {
+      return `const ${name} = require('${source}')`;
+    });
+    
+    // Convertir les exports nommés
+    content = content.replace(/export\s+const\s+([^=\s]+)\s*=/g, 'const $1 =');
+    
+    // Convertir export default en module.exports
+    content = content.replace(/export\s+default\s+([^;]+)/g, 'module.exports = $1');
+    
+    // Supprimer ou remplacer les références à import.meta.webpackHot qui causent des problèmes
+    content = content.replace(/if\s*\(\s*import\.meta\.webpackHot\s*\)\s*\{\s*[^}]*import\.meta\.webpackHot\.accept\(\)[^}]*\}/g, 
+      '// HMR disabled - removed problematic import.meta.webpackHot\n/* if (typeof window !== "undefined" && module && module.hot) { module.hot.accept() } */');
+    
+    // Remplacer toutes les occurrences restantes de import.meta.webpackHot
+    content = content.replace(/import\.meta\.webpackHot/g, '(false && {})');
+    
+    // Supprimer les imports de react-refresh
+    content = content.replace(/import\s+.*from\s+['"]@next\/react-refresh-utils.*['"]/g, '// Removed react-refresh import');
+    content = content.replace(/import\s+.*from\s+['"]react-refresh.*['"]/g, '// Removed react-refresh import');
+    
+    // Supprimer toute fonction ou code lié à HMR
+    content = content.replace(/const\s+getRefreshModuleRuntime\s*=.*?;/g, '// Removed HMR runtime function');
+    content = content.replace(/function\s+registerExportsForReactRefresh.*?\}/gs, '// Removed React Refresh function');
+    content = content.replace(/function\s+isReactRefreshBoundary.*?\}/gs, '// Removed React Refresh function');
+    
+    // Supprimer les blocs complets liés à HMR
+    content = content.replace(/\/\/ Handle HMR.*?}\)\(\);/gs, '// Removed HMR block');
+    
+    // Remplacer toutes les références à import.meta (pas seulement webpackHot)
+    content = content.replace(/import\.meta\./g, '/* import.meta disabled */ ({}).');
+    
+    // Remplacer les références à LOG_LEVELS.X par les constantes directes
+    content = content.replace(/LOG_LEVELS\.INFO/g, 'INFO');
+    content = content.replace(/LOG_LEVELS\.WARNING/g, 'WARNING');
+    content = content.replace(/LOG_LEVELS\.ERROR/g, 'ERROR');
+    content = content.replace(/LOG_LEVELS\.DEBUG/g, 'DEBUG');
+    content = content.replace(/LOG_LEVELS\.SESSION/g, 'SESSION');
+    
+    // Ajouter les exports nommés à la fin du fichier si nécessaire
+    const namedExports = [];
+    const exportMatches = content.match(/export\s+const\s+([^=\s]+)\s*=/g);
+    if (exportMatches) {
+      exportMatches.forEach(match => {
+        const name = match.replace(/export\s+const\s+/, '').replace(/\s*=/, '');
+        namedExports.push(name);
+      });
+    }
+    
+    if (namedExports.length > 0) {
+      namedExports.forEach(name => {
+        content += `\nmodule.exports.${name} = ${name};`;
+      });
+    }
+    
+    // Écrire le contenu modifié
+    fs.writeFileSync(fullPath, content);
+    console.log(`Le fichier ${filePath} a été converti avec succès.`);
     filesProcessed++;
   } catch (error) {
     console.error(`❌ Erreur lors du traitement de ${filePath}: ${error.message}`);

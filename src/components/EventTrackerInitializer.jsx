@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import eventTracker from '@/lib/eventTracker';
+const { useEffect } = require('react');
+const eventTracker = require('@/lib/eventTracker');
 
 /**
  * Composant invisible qui initialise le système de suivi d'événements
@@ -40,4 +40,4 @@ const EventTrackerInitializer = () => {
   return null;
 };
 
-export default EventTrackerInitializer; 
+module.exports = EventTrackerInitializer; 

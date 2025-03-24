@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
-import pkg from '../../../../../package.json';
+const { NextResponse } = require('next/server');
+const pkg = require('../../../../../package.json');
 
 /**
  * API route pour récupérer les informations système
  * Compatible avec l'environnement Vercel
  */
-export async function GET() {
+module.exports.GET = async function() {
   try {
     // Récupérer les informations système
     const systemInfo = {

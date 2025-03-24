@@ -5,10 +5,10 @@
  * Les analyses sont générées pour chaque discussion, puis une analyse globale est créée
  */
 
-import { supabase } from '@/lib/supabase';
-import { runSessionAnalysis } from '@/lib/analysisService';
+const { supabase } = require('@/lib/supabase');
+const { runSessionAnalysis } = require('@/lib/analysisService');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Cette API n'accepte que les méthodes POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Méthode non autorisée' });

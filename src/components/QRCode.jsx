@@ -1,5 +1,5 @@
-import React from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+const React = require('react');
+const { QRCodeSVG } = require('qrcode.react');
 
 /**
  * QRCode Component
@@ -60,4 +60,4 @@ const QRCode = ({
   );
 };
 
-export default QRCode; 
+module.exports = QRCode; 

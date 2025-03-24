@@ -1,4 +1,4 @@
-import React from 'react';
+const React = require('react');
 
 /**
  * Input Component - Simplified Version
@@ -71,4 +71,4 @@ const Input = ({
   );
 };
 
-export default Input; 
+module.exports = Input; 

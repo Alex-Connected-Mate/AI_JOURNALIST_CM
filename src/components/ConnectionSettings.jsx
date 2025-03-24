@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useTranslation } from './LocaleProvider';
-import UserBlock from './UserBlock';
+const { useTranslation } = require('./LocaleProvider');
+const UserBlock = require('./UserBlock');
 
 /**
  * ConnectionSettings Component
@@ -369,4 +369,4 @@ const ConnectionSettings = ({
   );
 };
 
-export default ConnectionSettings; 
+module.exports = ConnectionSettings; 

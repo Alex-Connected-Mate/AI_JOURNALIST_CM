@@ -6,7 +6,7 @@
  */
 
 import eventTracker, { EVENT_TYPES } from '@/lib/eventTracker';
-import logger from '@/lib/logger';
+const logger = require('@/lib/logger');
 
 /**
  * Enregistre un événement lié à la création de session
@@ -15,7 +15,7 @@ import logger from '@/lib/logger';
  * @param {any} data - Données de la session
  * @param {any} error - Erreur éventuelle
  */
-export const trackSessionEvent = (action, data = {}, error = null) => {
+const trackSessionEvent = (action, data = {}, error = null) => {
   // Filtrer les données sensibles ou volumineuses
   const safeData = { ...data };
   
@@ -58,7 +58,7 @@ export const trackSessionEvent = (action, data = {}, error = null) => {
 /**
  * Suit le processus de création de session
  */
-export const trackSessionCreation = {
+const trackSessionCreation = {
   // Début de création
   start: (sessionConfig) => {
     logger.session('Starting session creation', sessionConfig);
@@ -118,7 +118,7 @@ export const trackSessionCreation = {
 /**
  * Fonctions utilitaires pour suivre les erreurs de chargement de session
  */
-export const trackSessionLoading = {
+const trackSessionLoading = {
   start: (sessionId) => {
     logger.session('Loading session', { sessionId });
     return trackSessionEvent('session_load_start', { sessionId });
@@ -141,8 +141,12 @@ export const trackSessionLoading = {
   }
 };
 
-export default {
+module.exports = {
   trackSessionEvent,
   trackSessionCreation,
   trackSessionLoading
 }; 
+
+module.exports.trackSessionEvent = trackSessionEvent;
+module.exports.trackSessionCreation = trackSessionCreation;
+module.exports.trackSessionLoading = trackSessionLoading;

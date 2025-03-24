@@ -1,28 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card } from '@/components/ui/card';
-import TimerSettings from './TimerSettings';
-import Image from 'next/image';
-import ImageUploader from './ImageUploader';
-import { AIPromptConfig } from './AIPromptConfig';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { 
-  DEFAULT_AGENT_IMAGES, 
-  DEFAULT_NUGGETS_AGENT, 
-  DEFAULT_LIGHTBULBS_AGENT,
-  DEFAULT_AI_CONFIGURATION,
-  AnalysisItem,
-  FinalAnalysisConfig
-} from '@/config/ai-agents';
-import AnalysisOrderList from './AnalysisOrderList';
-import AnalysisConfigPanel from './AnalysisConfigPanel';
-import { useTranslation } from './LocaleProvider';
-import AIPromptEditor from './AIPromptEditor';
-import { getDefaultPrompt, parsePrompt, generatePrompt } from '@/lib/promptParser';
-import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from 'next/navigation';
-import { AgentService } from '@/lib/services/agentService';
-import { supabase } from '@/lib/supabase';
+const { Tabs, TabsContent, TabsList, TabsTrigger } = require('@/components/ui/tabs');
+const { Card } = require('@/components/ui/card');
+const TimerSettings = require('./TimerSettings');
+const Image = require('next/image');
+const ImageUploader = require('./ImageUploader');
+const { AIPromptConfig } = require('./AIPromptConfig');
+const { DragDropContext, Droppable, Draggable } = require('react-beautiful-dnd');
+const { DEFAULT_AGENT_IMAGES, DEFAULT_NUGGETS_AGENT, DEFAULT_LIGHTBULBS_AGENT, DEFAULT_AI_CONFIGURATION, AnalysisItem, FinalAnalysisConfig } = require('@/config/ai-agents');
+const AnalysisOrderList = require('./AnalysisOrderList');
+const AnalysisConfigPanel = require('./AnalysisConfigPanel');
+const { useTranslation } = require('./LocaleProvider');
+const AIPromptEditor = require('./AIPromptEditor');
+const { getDefaultPrompt, parsePrompt, generatePrompt } = require('@/lib/promptParser');
+const { useToast } = require('@/components/ui/use-toast');
+const { useRouter } = require('next/navigation');
+const { AgentService } = require('@/lib/services/agentService');
+const { supabase } = require('@/lib/supabase');
 
 // Nuggets prompt template
 const NUGGETS_PROMPT_TEMPLATE = `# Objective
@@ -1445,4 +1438,4 @@ const AIInteractionConfig = ({
   );
 };
 
-export default AIInteractionConfig;
+module.exports = AIInteractionConfig;

@@ -167,4 +167,4 @@ const NumberInput = ({
   );
 };
 
-export default NumberInput; 
+module.exports = NumberInput; 

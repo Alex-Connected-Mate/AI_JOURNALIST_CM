@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import ParticipantCard from './ParticipantCard';
+const { useState, useEffect } = require('react');
+const { supabase } = require('../lib/supabase');
+const ParticipantCard = require('./ParticipantCard');
 
 const ParticipantVoting = ({ 
   sessionId, 
@@ -239,4 +239,4 @@ const ParticipantVoting = ({
   );
 };
 
-export default ParticipantVoting; 
+module.exports = ParticipantVoting; 

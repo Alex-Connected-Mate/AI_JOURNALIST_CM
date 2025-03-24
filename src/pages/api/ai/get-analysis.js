@@ -6,10 +6,10 @@
  * le droit (quand la session est terminée) peuvent accéder aux analyses.
  */
 
-import { supabase } from '@/lib/supabase';
-import { getAnalysisStatus } from '@/lib/analysisService';
+const { supabase } = require('@/lib/supabase');
+const { getAnalysisStatus } = require('@/lib/analysisService');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Cette API n'accepte que les méthodes GET
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Méthode non autorisée' });

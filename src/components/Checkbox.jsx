@@ -48,4 +48,4 @@ const Checkbox = ({
   );
 };
 
-export default Checkbox; 
+module.exports = Checkbox; 

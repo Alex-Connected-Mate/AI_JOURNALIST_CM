@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+const { useState, useEffect } = require('react');
 
 const VoteSettings = ({ initialSettings, onChange }) => {
   const [settings, setSettings] = useState({
@@ -152,4 +152,4 @@ const VoteSettings = ({ initialSettings, onChange }) => {
   );
 };
 
-export default VoteSettings; 
+module.exports = VoteSettings; 

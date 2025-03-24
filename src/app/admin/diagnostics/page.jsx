@@ -1,8 +1,8 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+const { useState, useEffect } = require('react');
+const { useRouter } = require('next/navigation');
 
 /**
  * Page de diagnostics et d'administration système
@@ -647,7 +647,7 @@ function DiagnosticsContent() {
   );
 }
 
-export default function DiagnosticsPage() {
+module.exports = function DiagnosticsPage() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <DiagnosticsContent />

@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+const { NextResponse } = require('next/server');
 
 /**
  * API route pour télécharger les logs au format JSON
  */
-export async function GET() {
+module.exports.GET = async function() {
   try {
     // Récupérer les logs depuis l'API logs
     const response = await fetch(new URL('/api/admin/logs', process.env.VERCEL_URL || 'http://localhost:3000'));

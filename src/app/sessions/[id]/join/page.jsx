@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useStore } from '@/lib/store';
+const { useState, useEffect } = require('react');
+const { useRouter } = require('next/navigation');
+const Link = require('next/link');
+const { useStore } = require('@/lib/store');
 
-export default function JoinSessionPage({ params }) {
+module.exports = function JoinSessionPage({ params }) {
   const sessionId = params.id;
   const router = useRouter();
   const { user } = useStore();

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+const Link = require('next/link');
 
-export default function SessionStartedNotification({ session }) {
+module.exports = function SessionStartedNotification({ session }) {
   const [show, setShow] = useState(true);
   
   // Masquer la notification après 10 secondes

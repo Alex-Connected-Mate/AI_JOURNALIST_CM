@@ -11,14 +11,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useStore } from '@/lib/store';
-import { supabase } from '@/lib/supabase';
-import ProfessorDashboard from '@/components/analysis/ProfessorDashboard';
-import logger from '@/lib/logger';
+const { useRouter } = require('next/navigation');
+const Link = require('next/link');
+const { useStore } = require('@/lib/store');
+const { supabase } = require('@/lib/supabase');
+const ProfessorDashboard = require('@/components/analysis/ProfessorDashboard');
+const logger = require('@/lib/logger');
 
-export default function RunSessionPage({ params }) {
+module.exports = function RunSessionPage({ params }) {
   const sessionId = params.id;
   const router = useRouter();
   const { user } = useStore();

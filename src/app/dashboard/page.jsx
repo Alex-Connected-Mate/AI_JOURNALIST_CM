@@ -1,13 +1,13 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { useState, useEffect } from 'react';
-import { useTranslation } from '@/components/LocaleProvider';
-import Link from 'next/link';
-import { useStore } from '@/lib/store';
-import { useSearchParams } from 'next/navigation';
-import { getSessions } from '@/lib/supabase';
-import logger from '@/lib/logger';
+const { useState, useEffect } = require('react');
+const { useTranslation } = require('@/components/LocaleProvider');
+const Link = require('next/link');
+const { useStore } = require('@/lib/store');
+const { useSearchParams } = require('next/navigation');
+const { getSessions } = require('@/lib/supabase');
+const logger = require('@/lib/logger');
 
 function LoadingFallback() {
   return (
@@ -247,7 +247,7 @@ function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
+module.exports = function DashboardPage() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <DashboardContent />

@@ -1,9 +1,9 @@
-import React from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import LanguageSwitcher from './LanguageSwitcher';
-import { useTranslation } from './LocaleProvider';
-import { useRouter } from 'next/navigation';
+const React = require('react');
+const Link = require('next/link');
+const Image = require('next/image');
+const LanguageSwitcher = require('./LanguageSwitcher');
+const { useTranslation } = require('./LocaleProvider');
+const { useRouter } = require('next/navigation');
 
 /**
  * Header Component
@@ -102,4 +102,4 @@ const Header = ({ user, logout }) => {
   );
 };
 
-export default Header; 
+module.exports = Header; 

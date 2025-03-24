@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import SessionCreationFlow from '@/components/SessionCreationFlow';
-import { useStore } from '@/lib/store';
-import { createSession } from '@/lib/supabase';
-import logger from '@/lib/logger';
+const { useRouter } = require('next/navigation');
+const Link = require('next/link');
+const SessionCreationFlow = require('@/components/SessionCreationFlow');
+const { useStore } = require('@/lib/store');
+const { createSession } = require('@/lib/supabase');
+const logger = require('@/lib/logger');
 
-export default function NewSessionPage() {
+module.exports = function NewSessionPage() {
   const router = useRouter();
   const { userProfile } = useStore();
   const [loading, setLoading] = useState(false);

@@ -1,7 +1,7 @@
 // Import all messages statically to avoid dynamic imports which can cause issues
-import enMessages from '../messages/en/index.json';
-import frMessages from '../messages/fr/index.json';
-import jaMessages from '../messages/ja/index.json';
+const enMessages = require('../messages/en/index.json');
+const frMessages = require('../messages/fr/index.json');
+const jaMessages = require('../messages/ja/index.json');
 
 // Message cache
 const messageCache = {
@@ -15,7 +15,7 @@ const messageCache = {
  * @param {string} locale - The locale code (e.g., 'en', 'fr', 'ja')
  * @returns {Object} The messages for the locale, or English messages as fallback
  */
-export function getMessages(locale) {
+function getMessages(locale) {
   // Return from cache if available
   if (messageCache[locale]) {
     return messageCache[locale];
@@ -33,7 +33,7 @@ export function getMessages(locale) {
  * @param {Object} options - Intl.DateTimeFormat options
  * @returns {string} The formatted date
  */
-export function formatDate(date, locale, options = {}) {
+function formatDate(date, locale, options = {}) {
   const defaultOptions = { 
     year: 'numeric', 
     month: 'long', 
@@ -56,7 +56,7 @@ export function formatDate(date, locale, options = {}) {
  * @param {Object} options - Intl.DateTimeFormat options
  * @returns {string} The formatted time
  */
-export function formatTime(date, locale, options = {}) {
+function formatTime(date, locale, options = {}) {
   const defaultOptions = { 
     hour: 'numeric', 
     minute: 'numeric',
@@ -79,7 +79,7 @@ export function formatTime(date, locale, options = {}) {
  * @param {Object} options - Intl.DateTimeFormat options
  * @returns {string} The formatted date and time
  */
-export function formatDateTime(date, locale, options = {}) {
+function formatDateTime(date, locale, options = {}) {
   const defaultOptions = { 
     year: 'numeric', 
     month: 'long', 
@@ -97,3 +97,5 @@ export function formatDateTime(date, locale, options = {}) {
     return String(date);
   }
 } 
+
+module.exports = { getMessages, formatDate, formatTime, formatDateTime };

@@ -2,7 +2,6 @@
 
 # Bannière d'introduction
 echo "🚀 Demarrage des operations de pre-deploiement..."
-echo "==============================================="
 
 # Variables d'environnement nécessaires pour le build
 export NEXT_TELEMETRY_DISABLED=1
@@ -47,8 +46,6 @@ function checkForConflicts(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
     return content.includes('<<<<<<<') && 
-           content.includes('=======') && 
-           content.includes('>>>>>>>');
   } catch (error) {
     return false;
   }
@@ -63,7 +60,6 @@ function resolveConflict(filePath) {
     // Créer une sauvegarde
     fs.writeFileSync(`${filePath}.conflict-backup`, content);
     
-    // Résoudre les conflits en gardant la version la plus récente (après =======)
     let newContent = '';
     let inConflict = false;
     let keepCurrentLine = false;
@@ -76,12 +72,10 @@ function resolveConflict(filePath) {
         continue;
       }
       
-      if (line.startsWith('=======')) {
         keepCurrentLine = true;
         continue;
       }
       
-      if (line.startsWith('>>>>>>>')) {
         inConflict = false;
         keepCurrentLine = false;
         continue;
@@ -305,7 +299,6 @@ fi
 
 # 9. Finalisation et message de récapitulation
 echo "🏁 Preparation de deploiement terminee."
-echo "==============================================="
 echo "✅ Conflits Git verifies et resolus"
 echo "✅ Middlewares dedupliques"
 echo "✅ Variables d'environnement validees"
@@ -314,9 +307,7 @@ echo "✅ Configuration Next.js verifiee"
 echo "🚀 Lancement du build Next.js..."
 
 # 10. Lancement du build Next.js
-echo "==============================================="
 echo "🏗️ EXECUTION DU BUILD NEXT.JS"
-echo "==============================================="
 
 # Définir les options optimisées pour le build
 export NEXT_TELEMETRY_DISABLED=1

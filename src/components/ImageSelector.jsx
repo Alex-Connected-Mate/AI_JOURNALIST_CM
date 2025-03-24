@@ -1,4 +1,4 @@
-import React from 'react';
+const React = require('react');
 
 /**
  * ImageSelector Component
@@ -102,4 +102,4 @@ const ImageSelector = ({
   );
 };
 
-export default ImageSelector; 
+module.exports = ImageSelector; 

@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+const { NextResponse } = require('next/server');
+const { createRouteHandlerClient } = require('@supabase/auth-helpers-nextjs');
+const { cookies } = require('next/headers');
 
 /**
  * API pour vérifier l'état de l'application et diagnostiquer les problèmes
  * Route: /api/diagnostics
  */
-export async function GET() {
+module.exports.GET = async function() {
   const diagnostics = {
     timestamp: new Date().toISOString(),
     status: 'running',

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { fixAllSessionCodes, fixSessionCodes } from '@/lib/sessionUtils';
-import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+const { NextResponse } = require('next/server');
+const { fixAllSessionCodes, fixSessionCodes } = require('@/lib/sessionUtils');
+const { supabase } = require('@/lib/supabase');
+const { logger } = require('@/lib/logger');
 
 /**
  * API endpoint to fix missing session codes
@@ -21,7 +21,7 @@ import { logger } from '@/lib/logger';
  *   sessionDetails?: object
  * }
  */
-export async function POST(request) {
+module.exports.POST = async function(request) {
   try {
     const { sessionId } = await request.json();
     
@@ -86,7 +86,7 @@ export async function POST(request) {
   }
 }
 
-export async function GET() {
+module.exports.GET = async function() {
   // For GET requests, return instructions
   return NextResponse.json({
     success: false,

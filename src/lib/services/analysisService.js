@@ -7,19 +7,19 @@
  * - Récupération des résultats d'analyse
  */
 
-import { supabase } from '@/lib/supabase';
-import logger from '@/lib/logger';
-import { v4 as uuidv4 } from 'uuid';
+const { supabase } = require('@/lib/supabase');
+const logger = require('@/lib/logger');
+const { v4: uuidv4 } = require('uuid');
 
 // Types d'analyse disponibles
-export const ANALYSIS_TYPES = {
+const ANALYSIS_TYPES = {
   NUGGETS: 'nuggets',
   LIGHTBULBS: 'lightbulbs',
   OVERALL: 'overall'
 };
 
 // Statuts possibles pour une analyse
-export const ANALYSIS_STATUS = {
+const ANALYSIS_STATUS = {
   QUEUED: 'queued',
   PROCESSING: 'processing',
   COMPLETED: 'completed',
@@ -35,7 +35,7 @@ export const ANALYSIS_STATUS = {
  * @param {string} userId - ID de l'utilisateur demandant l'analyse
  * @returns {Promise<object>} - Résultat de l'opération
  */
-export async function runSessionAnalysis(sessionId, analysisType, config, userId) {
+module.exports.runSessionAnalysis = async function(sessionId, analysisType, config, userId) {
   try {
     // Vérifier que le type d'analyse est valide
     if (!Object.values(ANALYSIS_TYPES).includes(analysisType)) {
@@ -295,7 +295,7 @@ async function processOverallAnalysis(sessionId, discussions, config) {
  * @param {string} sessionId - ID de la session
  * @returns {Promise<object>} - Statut de l'analyse
  */
-export async function getAnalysisStatus(sessionId) {
+module.exports.getAnalysisStatus = async function(sessionId) {
   try {
     const { data: session, error } = await supabase
       .from('sessions')
@@ -474,3 +474,5 @@ function generateMockOverallAnalysis(existingAnalyses, discussionCount) {
     }
   };
 } 
+
+module.exports = { ANALYSIS_TYPES, ANALYSIS_STATUS };

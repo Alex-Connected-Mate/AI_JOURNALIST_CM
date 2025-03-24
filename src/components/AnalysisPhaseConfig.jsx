@@ -1,8 +1,8 @@
-import React from 'react';
-import Checkbox from './Checkbox';
-import Input from './Input';
-import Select from './Select';
-import NumberInput from './NumberInput';
+const React = require('react');
+const Checkbox = require('./Checkbox');
+const Input = require('./Input');
+const Select = require('./Select');
+const NumberInput = require('./NumberInput');
 
 /**
  * AnalysisPhaseConfig Component
@@ -280,4 +280,4 @@ const AnalysisPhaseConfig = ({ sessionConfig, updateSessionConfig }) => {
   );
 };
 
-export default AnalysisPhaseConfig; 
+module.exports = AnalysisPhaseConfig; 

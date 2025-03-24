@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import DotPattern from '@/components/DotPattern';
+import DotPattern from '@/components/ui/DotPattern';
 
 interface AuthClientLayoutProps {
   children: React.ReactNode;

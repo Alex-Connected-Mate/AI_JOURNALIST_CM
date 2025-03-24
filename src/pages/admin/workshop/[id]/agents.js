@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import Head from 'next/head';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import AIPromptManager from '@/components/AIPromptManager';
+const { useRouter } = require('next/router');
+const Head = require('next/head');
+const { supabase } = require('@/lib/supabase');
+const { useToast } = require('@/components/ui/use-toast');
+const { Card, CardContent } = require('@/components/ui/card');
+const { Button } = require('@/components/ui/button');
+const { Spinner } = require('@/components/ui/spinner');
+const AIPromptManager = require('@/components/AIPromptManager');
 
 /**
  * Workshop Agents Page
@@ -127,4 +127,4 @@ const WorkshopAgentsPage = () => {
   );
 };
 
-export default WorkshopAgentsPage; 
+module.exports = WorkshopAgentsPage; 

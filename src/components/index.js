@@ -1,6 +1,6 @@
 // User Display Components
-export { default as UserBlock } from './UserBlock';
-export { default as UserBlockExamples } from './UserBlockExamples';
+module.exports = { default as UserBlock }; from './UserBlock';
+module.exports = { default as UserBlockExamples }; from './UserBlockExamples';
 
 // Image Components
-export { default as ImageUploader } from './ImageUploader'; 
+module.exports = { default as ImageUploader }; from './ImageUploader'; 

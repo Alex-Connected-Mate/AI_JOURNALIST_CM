@@ -1,4 +1,4 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+const { createClientComponentClient } = require('@supabase/auth-helpers-nextjs');
 
 // Create a singleton instance to prevent multiple GoTrueClient instances
 let supabaseInstance = null;
@@ -21,7 +21,7 @@ function validateSupabaseEnv() {
   return { isValid, supabaseUrl, supabaseKey };
 }
 
-export function getSupabaseClient() {
+function getSupabaseClient() {
   // Check environment variables on every call
   const { isValid, supabaseUrl, supabaseKey } = validateSupabaseEnv();
   
@@ -92,10 +92,10 @@ export function getSupabaseClient() {
 }
 
 // For backward compatibility with existing code
-export const supabase = getSupabaseClient();
+const supabase = getSupabaseClient();
 
 // Helper for listening to auth changes
-export const subscribeToAuthChanges = (callback) => {
+const subscribeToAuthChanges = (callback) => {
   try {
     const client = getSupabaseClient();
     const { data } = client.auth.onAuthStateChange((event, session) => {
@@ -110,7 +110,7 @@ export const subscribeToAuthChanges = (callback) => {
 };
 
 // Helper to get the current user
-export const getCurrentUser = async () => {
+const getCurrentUser = async () => {
   try {
     const client = getSupabaseClient();
     const { data: { user }, error } = await client.auth.getUser();
@@ -123,7 +123,7 @@ export const getCurrentUser = async () => {
 };
 
 // Helper to get the current session
-export const getCurrentSession = async () => {
+const getCurrentSession = async () => {
   try {
     const client = getSupabaseClient();
     const { data: { session }, error } = await client.auth.getSession();
@@ -136,7 +136,7 @@ export const getCurrentSession = async () => {
 };
 
 // Helper to sign out
-export const signOut = async () => {
+const signOut = async () => {
   try {
     const client = getSupabaseClient();
     const { error } = await client.auth.signOut();
@@ -147,3 +147,5 @@ export const signOut = async () => {
     return { error };
   }
 }; 
+
+module.exports = { getSupabaseClient, supabase, subscribeToAuthChanges, getCurrentUser, getCurrentSession, signOut };

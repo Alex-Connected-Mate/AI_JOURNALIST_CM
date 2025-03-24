@@ -1,4 +1,4 @@
-import React from 'react';
+const React = require('react');
 
 const ParticipantCard = ({ 
   name,
@@ -161,4 +161,4 @@ const ParticipantCard = ({
   );
 };
 
-export default ParticipantCard; 
+module.exports = ParticipantCard; 

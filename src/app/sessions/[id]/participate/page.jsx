@@ -31,13 +31,13 @@
  * @module ParticipationPage
  */
 
-import { useEffect, useState, useRef, useCallback, Suspense } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import DotPattern from "@/components/ui/DotPattern";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import AIAgentSelector from "@/components/AIAgentSelector";
+const { useEffect, useState, useRef, useCallback, Suspense } = require('react');
+const { useParams, useRouter, useSearchParams } = require('next/navigation');
+const { getSupabaseClient } = require('@/lib/supabase/client');
+const DotPattern = require('@/components/ui/DotPattern');
+const Image = require('next/image');
+const { motion } = require('framer-motion');
+const AIAgentSelector = require('@/components/AIAgentSelector');
 
 // Phases alignées avec celles de la page run
 const PHASES = {
@@ -1930,7 +1930,7 @@ function ParticipationContent() {
 }
 
 // Main exported component wrapped in Suspense
-export default function ParticipationPage() {
+module.exports = function ParticipationPage() {
   return (
     <Suspense fallback={<ParticipationLoading />}>
       <ParticipationContent />

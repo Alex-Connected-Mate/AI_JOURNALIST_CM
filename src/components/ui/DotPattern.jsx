@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+const React = require('react');
 
 /**
  * Composant DotPattern - Motif de points pour les arrière-plans
@@ -11,23 +11,30 @@ import React from 'react';
  * @param {number} [props.spacing] - Espacement entre les points en pixels
  * @returns {JSX.Element} Le composant DotPattern
  */
-export default function DotPattern({
-  className = '',
-  dotColor = 'rgba(0, 0, 0, 0.1)',
-  dotSize = 1,
-  spacing = 20,
-}) {
+const DotPattern = ({ className = '', ...props }) => {
   return (
-    <div
-      className={`absolute inset-0 pointer-events-none ${className}`}
-      style={{
-        backgroundImage: `radial-gradient(${dotColor} ${dotSize}px, transparent 0)`,
-        backgroundSize: `${spacing}px ${spacing}px`,
-        backgroundPosition: '0 0',
-        opacity: 0.8,
-        zIndex: 0,
-      }}
-      aria-hidden="true"
-    />
+    <svg
+      className={className}
+      width="100%"
+      height="100%"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <defs>
+        <pattern
+          id="dotPattern"
+          x="0"
+          y="0"
+          width="20"
+          height="20"
+          patternUnits="userSpaceOnUse"
+        >
+          <circle cx="2" cy="2" r="1" fill="currentColor" opacity="0.3" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dotPattern)" />
+    </svg>
   );
-} 
+};
+
+export default DotPattern; 

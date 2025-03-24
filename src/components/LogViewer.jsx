@@ -352,4 +352,4 @@ ${event.details ? JSON.stringify(event.details, null, 2) : ''}`;
   );
 };
 
-export default LogViewer; 
+module.exports = LogViewer; 

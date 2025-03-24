@@ -5,15 +5,15 @@
  * Gère les appels à OpenAI pour les analyses et la génération de contenu
  */
 
-import OpenAI from 'openai';
-import { supabase } from './supabase';
-import logger from './logger';
+const OpenAI = require('openai');
+const { supabase } = require('./supabase');
+const logger = require('./logger');
 
 // Créer une instance OpenAI
 let openai = null;
 
 // Fonction pour initialiser OpenAI avec une clé API fournie
-export async function initializeOpenAI(apiKey = null) {
+module.exports.initializeOpenAI = async function(apiKey = null) {
   try {
     // Si une clé API est fournie, l'utiliser directement
     if (apiKey) {
@@ -80,7 +80,7 @@ export async function initializeOpenAI(apiKey = null) {
 }
 
 // Fonction pour tester la validité d'une clé API
-export async function testApiKey(apiKey) {
+module.exports.testApiKey = async function(apiKey) {
   try {
     const testOpenAI = new OpenAI({
       apiKey: apiKey,
@@ -118,9 +118,9 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export { openai };
 
-export default {
+
+module.exports = {
   openai,
   initializeOpenAI,
   testApiKey

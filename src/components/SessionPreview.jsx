@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import Image from 'next/image';
+const { useMemo } = require('react');
+const Image = require('next/image');
 
 // Fonction pour générer un identifiant anonyme de manière stable
 const generateAnonymousId = (professorName) => {
@@ -165,4 +165,4 @@ const SessionPreview = ({ session = {} }) => {
   );
 };
 
-export default SessionPreview; 
+module.exports = SessionPreview; 

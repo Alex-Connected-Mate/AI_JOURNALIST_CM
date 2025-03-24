@@ -1,14 +1,7 @@
 import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import RootClientLayout from './RootClientLayout';
+import RootClientLayout from '@/components/RootClientLayout';
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter'
-});
-
-export const metadata: Metadata = {
+export const metadata = {
   title: 'Interactive Sessions Platform',
   description: 'A platform for professors to create and manage interactive sessions',
 };
@@ -16,21 +9,21 @@ export const metadata: Metadata = {
 // Default language
 export const DEFAULT_LANGUAGE = 'en';
 
-export default function RootLayout({
-  children,
+export default function RootLayout({ 
+  children 
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
     <html lang={DEFAULT_LANGUAGE}>
-      <body className={`${inter.className} ${inter.variable} antialiased`}>
-        <main className="min-h-screen relative">
-          <div className="relative z-10">
-            <RootClientLayout>
+      <body className="antialiased">
+        <RootClientLayout>
+          <main className="min-h-screen relative">
+            <div className="relative z-10">
               {children}
-            </RootClientLayout>
-          </div>
-        </main>
+            </div>
+          </main>
+        </RootClientLayout>
       </body>
     </html>
   );

@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { logToBuffer } from '../logs/route';
+const { NextResponse } = require('next/server');
+const { logToBuffer } = require('../logs/route');
 
 /**
  * API route pour vider les logs du système
  */
-export async function POST() {
+module.exports.POST = async function() {
   try {
     // Appeler l'API de gestion des logs pour vider le buffer
     const response = await fetch(new URL('/api/admin/logs', process.env.VERCEL_URL || 'http://localhost:3000'), {

@@ -36,7 +36,6 @@ function fixNextConfig() {
     const content = fs.readFileSync(nextConfigPath, 'utf8');
     
     // Vérifier s'il y a des marqueurs de conflit Git
-    if (content.includes('<<<<<<<') || content.includes('>>>>>>>') || content.includes('=======')) {
       console.log(`${colors.yellow}⚠️ Conflit Git détecté dans next.config.js, création d'une sauvegarde...${colors.reset}`);
       
       // Créer une sauvegarde

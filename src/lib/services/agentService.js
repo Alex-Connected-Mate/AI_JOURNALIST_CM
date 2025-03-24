@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase';
+const { supabase } = require('@/lib/supabase');
 
-export class AgentService {
+class AgentService {
   /**
    * Create a new agent with all its configurations
    */
@@ -157,3 +157,5 @@ export class AgentService {
     }
   }
 } 
+
+module.exports = { AgentService };

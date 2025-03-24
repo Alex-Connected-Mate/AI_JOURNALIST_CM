@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import Input from './Input';
-import Checkbox from './Checkbox';
-import NumberInput from './NumberInput';
-import ImageSelector from './ImageSelector';
-import { useStore } from '@/lib/store';
+const Input = require('./Input');
+const Checkbox = require('./Checkbox');
+const NumberInput = require('./NumberInput');
+const ImageSelector = require('./ImageSelector');
+const { useStore } = require('@/lib/store');
 
 /**
  * BasicInfoStep Component
@@ -274,4 +274,4 @@ const BasicInfoStep = ({ sessionConfig, updateSessionConfig, errors = {} }) => {
   );
 };
 
-export default BasicInfoStep; 
+module.exports = BasicInfoStep; 

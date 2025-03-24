@@ -1,8 +1,8 @@
-import React from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+const React = require('react');
+const Image = require('next/image');
+const Link = require('next/link');
 
-export default function AuthLayout({ children }) {
+module.exports = function AuthLayout({ children }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 fade-in">
       {/* Motif de points en arrière-plan déjà appliqué via CSS global */}

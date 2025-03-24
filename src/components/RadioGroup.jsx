@@ -87,4 +87,4 @@ const RadioGroup = ({
   );
 };
 
-export default RadioGroup; 
+module.exports = RadioGroup; 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getMessages, formatDate, formatTime, formatDateTime } from '@/lib/i18n';
-import Cookies from 'js-cookie';
+const { getMessages, formatDate, formatTime, formatDateTime } = require('@/lib/i18n');
+const Cookies = require('js-cookie');
 
 // Create the context
 const LocaleContext = createContext();
@@ -14,7 +14,7 @@ const LOCALE_COOKIE = 'NEXT_LOCALE';
  * This provider makes translations and locale functions available throughout the app.
  * It has been modified to ALWAYS use English, regardless of browser settings or cookies.
  */
-export function LocaleProvider({ children }) {
+function LocaleProvider({ children }) {
   // Supported locales - only English is used now
   const supportedLocales = ['en'];
   const defaultLocale = 'en';
@@ -90,7 +90,7 @@ export function LocaleProvider({ children }) {
 }
 
 // Hook to use the locale context
-export function useTranslation() {
+function useTranslation() {
   const context = useContext(LocaleContext);
   
   if (!context) {
@@ -99,3 +99,5 @@ export function useTranslation() {
   
   return context;
 } 
+
+module.exports = { LocaleProvider, useTranslation };

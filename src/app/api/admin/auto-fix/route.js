@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { fixAllSessionCodes } from '@/lib/sessionUtils'; // Import the session utility
+const { NextResponse } = require('next/server');
+const fs = require('fs');
+const path = require('path');
+const { fixAllSessionCodes } = require('@/lib/sessionUtils'); // Import the session utility
 
 /**
  * API route pour appliquer des corrections automatiques
@@ -11,7 +11,7 @@ import { fixAllSessionCodes } from '@/lib/sessionUtils'; // Import the session u
  * car l'accès au système de fichiers est limité. Cette API simule les corrections
  * et informe l'utilisateur qu'un nouveau déploiement peut être nécessaire.
  */
-export async function POST(request) {
+module.exports.POST = async function(request) {
   try {
     const body = await request.json();
     const { fixNextConfig, fixInputComponents, fixJsonErrors, fixSessionCodes } = body;

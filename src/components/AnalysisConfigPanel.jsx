@@ -1,6 +1,6 @@
-import React from 'react';
-import Checkbox from './Checkbox';
-import NumberInput from './NumberInput';
+const React = require('react');
+const Checkbox = require('./Checkbox');
+const NumberInput = require('./NumberInput');
 
 /**
  * AnalysisConfigPanel Component
@@ -247,4 +247,4 @@ const AnalysisConfigPanel = ({
   );
 };
 
-export default AnalysisConfigPanel; 
+module.exports = AnalysisConfigPanel; 

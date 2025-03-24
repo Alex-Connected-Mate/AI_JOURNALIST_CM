@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+const { NextResponse } = require('next/server');
 
 /**
  * API route pour déclencher un nouveau déploiement sur Vercel
@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
  * un webhook de déploiement dans les paramètres du projet Vercel, et stocker
  * l'URL de ce webhook dans une variable d'environnement.
  */
-export async function POST() {
+module.exports.POST = async function() {
   try {
     // Vérifier si nous sommes sur Vercel et si le webhook est configuré
     if (!process.env.VERCEL_DEPLOY_WEBHOOK_URL) {

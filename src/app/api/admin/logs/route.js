@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+const { NextResponse } = require('next/server');
 
 let logBuffer = [];
 
@@ -6,7 +6,7 @@ let logBuffer = [];
  * Stocke un log dans le buffer temporaire
  * En production, ces logs seraient plutôt stockés dans une base de données ou un service comme Supabase
  */
-export function logToBuffer(level, message, meta = {}) {
+function logToBuffer(level, message, meta = {}) {
   const logEntry = {
     timestamp: new Date().toISOString(),
     level,
@@ -27,7 +27,7 @@ export function logToBuffer(level, message, meta = {}) {
 /**
  * API route pour récupérer les logs du système
  */
-export async function GET() {
+module.exports.GET = async function() {
   try {
     // En environnement de production réel, on récupérerait les logs depuis une base de données
     // Pour cette démonstration, nous utilisons un buffer en mémoire
@@ -57,7 +57,7 @@ export async function GET() {
 /**
  * API route pour télécharger les logs au format JSON
  */
-export async function POST(request) {
+module.exports.POST = async function(request) {
   try {
     const body = await request.json();
     
@@ -98,3 +98,5 @@ export async function POST(request) {
     );
   }
 } 
+
+module.exports = { logToBuffer };

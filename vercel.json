@@ -21,6 +21,7 @@
   "env": {
     "NEXT_TYPECHECK": "false",
     "NEXT_WEBPACK_TYPECHECK": "false",
-    "NEXT_MINIMAL_ERROR_HANDLING": "true"
+    "NEXT_MINIMAL_ERROR_HANDLING": "true",
+    "NODE_OPTIONS": "--max-old-space-size=4096"
   }
 } 

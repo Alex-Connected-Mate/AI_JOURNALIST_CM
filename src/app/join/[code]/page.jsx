@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
+const { useRouter } = require('next/navigation');
+const { supabase } = require('@/lib/supabase');
+const Link = require('next/link');
 
-export default function JoinWithCodePage({ params }) {
+module.exports = function JoinWithCodePage({ params }) {
   const { code } = params;
   const router = useRouter();
   

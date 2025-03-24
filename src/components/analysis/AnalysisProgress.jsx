@@ -6,12 +6,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
-import { ANALYSIS_STATUS } from '@/lib/services/analysisService';
-import logger from '@/lib/logger';
+const { motion, AnimatePresence } = require('framer-motion');
+const { supabase } = require('@/lib/supabase');
+const { ANALYSIS_STATUS } = require('@/lib/services/analysisService');
+const logger = require('@/lib/logger');
 
-export default function AnalysisProgress({ sessionId, analysisType }) {
+module.exports = function AnalysisProgress({ sessionId, analysisType }) {
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState(ANALYSIS_STATUS.QUEUED);
   const [error, setError] = useState(null);

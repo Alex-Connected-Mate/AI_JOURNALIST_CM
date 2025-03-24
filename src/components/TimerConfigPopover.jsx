@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { X } from 'lucide-react';
+const { Popover, PopoverContent, PopoverTrigger } = require('@/components/ui/popover');
+const { Button } = require('@/components/ui/button');
+const { Card } = require('@/components/ui/card');
+const { Switch } = require('@/components/ui/switch');
+const { Slider } = require('@/components/ui/slider');
+const { X } = require('lucide-react');
 
 /**
  * TimerConfigPopover Component
@@ -153,4 +153,4 @@ const TimerConfigPopover = ({
   );
 };
 
-export default TimerConfigPopover; 
+module.exports = TimerConfigPopover; 

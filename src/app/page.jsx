@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import DotPattern from '@/components/DotPattern';
+import DotPattern from '@/components/ui/DotPattern';
 import { useStore } from '@/lib/store';
 
 export default function HomePage() {

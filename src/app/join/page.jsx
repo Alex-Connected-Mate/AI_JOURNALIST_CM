@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import DotPattern from "@/components/ui/DotPattern";
+const { useRouter, useSearchParams } = require('next/navigation');
+const { getSupabaseClient } = require('@/lib/supabase/client');
+const DotPattern = require('@/components/ui/DotPattern');
 
 // Simple inline logo component
 const SimpleLogo = ({ light = false }) => (
@@ -1009,7 +1009,7 @@ function JoinContent() {
 }
 
 // Main page component with Suspense
-export default function JoinPage() {
+module.exports = function JoinPage() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <JoinContent />

@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+const { NextResponse } = require('next/server');
 
 /**
  * API route pour récupérer les informations de déploiement Vercel
  */
-export async function GET() {
+module.exports.GET = async function() {
   try {
     // Sur Vercel, nous pouvons récupérer certaines informations de déploiement via les variables d'environnement
     // Pour un accès complet à l'API Vercel, il faudrait utiliser un token d'API Vercel
