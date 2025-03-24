@@ -1,73 +1,32 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/router';
-import { useStore } from '@/lib/store';
-import useLogger from '@/hooks/useLogger';
+import { useUser } from '@supabase/auth-helpers-react';
+import Loader from './ui/Loader';
+import { useLoggerNew } from '../hooks/useLoggerNew';
 
 /**
- * ProtectedRoute Component
- * 
- * Ce composant vérifie si l'utilisateur est authentifié.
- * Si ce n'est pas le cas, il redirige vers la page de connexion.
- * Il peut être utilisé pour protéger n'importe quelle page ou composant.
+ * Composant qui protège les routes contre les accès non authentifiés
  */
-const ProtectedRoute = ({ children, excludedPaths = [] }) => {
+const ProtectedRoute = ({ children }) => {
   const router = useRouter();
-  const { user, authChecked } = useStore();
-  const [isReady, setIsReady] = useState(false);
-  const logger = useLogger('ProtectedRoute');
+  const user = useUser();
+  const log = useLoggerNew('ProtectedRoute');
   
-  useEffect(() => {
-    // Si le routeur n'est pas prêt ou si la vérification d'authentification n'est pas terminée, attendre
-    if (!router.isReady || !authChecked) return;
-    
-    // Vérifier si le chemin actuel est exclu de la protection
-    const isExcluded = excludedPaths.some(path => 
-      router.pathname === path || 
-      router.pathname.startsWith(`${path}/`)
-    );
-    
-    if (isExcluded) {
-      logger.auth('Path is excluded from protection', { path: router.pathname });
-      setIsReady(true);
-      return;
+  // Si nous sommes côté client et que l'utilisateur n'est pas authentifié
+  React.useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      log.warn('Tentative d\'accès à une route protégée sans authentification');
+      router.push('/auth/login');
     }
-    
-    // Vérifier l'authentification
-    if (!user) {
-      const currentPath = router.asPath;
-      const redirectUrl = `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
-      
-      logger.auth('User not authenticated, redirecting', { 
-        from: currentPath,
-        to: redirectUrl
-      });
-      
-      router.push(redirectUrl);
-    } else {
-      logger.auth('User is authenticated, allowing access', { 
-        path: router.pathname,
-        userId: user.id 
-      });
-      setIsReady(true);
-    }
-  }, [router.isReady, router.pathname, router.asPath, user, excludedPaths, logger, router, authChecked]);
-  
-  // Si le chemin est exclu ou si l'utilisateur est authentifié et que nous sommes prêts
-  const isExcluded = excludedPaths.some(path => 
-    router.pathname === path || 
-    router.pathname.startsWith(`${path}/`)
-  );
-  
-  if (!isReady && !isExcluded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  }, [user, router, log]);
+
+  // Afficher un loader pendant la vérification
+  if (!user) {
+    return <Loader fullScreen={true} />;
   }
-  
-  // Afficher les enfants
-  return children;
+
+  // Si l'utilisateur est authentifié, afficher le contenu protégé
+  return <>{children}</>;
 };
 
 export default ProtectedRoute; 

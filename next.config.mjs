@@ -1,12 +1,10 @@
-/**
- * @type {import('next').NextConfig}
- */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  
   experimental: {
-    serverActions: true,
-    serverActionsBodySizeLimit: '10mb'
+    // Uniquement les options reconnues et nécessaires
+    appDir: true
   }
 };
 

@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
-import { useStore } from '@/lib/store';
-import { supabase } from '@/lib/supabase';
-import useLogger from '@/hooks/useLogger';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useUser, useSupabaseClient } from '@supabase/auth-helpers-react';
+import { Box, CircularProgress } from '@mui/material';
+import { useLoggerNew } from '../hooks/useLoggerNew';
 
 /**
  * AuthChecker Component
@@ -15,129 +15,56 @@ import { useRouter } from 'next/router';
  * 2. Comme wrapper pour protéger du contenu (<AuthChecker>{children}</AuthChecker>)
  */
 const AuthChecker = ({ children }) => {
-  const { user, setUser, setAuthChecked } = useStore();
-  const logger = useLogger('AuthChecker');
   const router = useRouter();
-  
-  // Référence pour suivre les changements de route
-  const previousPathRef = useRef('');
-  const setupDoneRef = useRef(false);
-  
-  // Enregistrer uniquement les changements de route significatifs
+  const supabaseClient = useSupabaseClient();
+  const user = useUser();
+  const [isLoading, setIsLoading] = useState(true);
+  const log = useLoggerNew('AuthChecker');
+
   useEffect(() => {
-    if (router.asPath !== previousPathRef.current) {
-      previousPathRef.current = router.asPath;
-      logger.navigation(`Route changed: ${router.asPath}`);
+    // Skip auth check for public pages
+    const publicPaths = ['/auth/login', '/auth/register', '/auth/reset-password'];
+    
+    if (publicPaths.includes(router.pathname)) {
+      setIsLoading(false);
+      return;
     }
-  }, [router.asPath, logger]);
 
-  // Configurer l'authentification une seule fois au chargement initial
-  useEffect(() => {
-    // Éviter de configurer plusieurs fois
-    if (setupDoneRef.current) return;
-    setupDoneRef.current = true;
-    
-    logger.auth('Setting up authentication checker');
-    
-    // Récupérer les informations de session de Supabase
-    const getSessionFromSupabase = async () => {
+    const checkUser = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        log.info('Vérification de l\'authentification utilisateur');
         
-        if (error) {
-          logger.error('Error checking session', { error: error.message });
-          setUser(null);
-          setAuthChecked(true);
-          return;
-        }
-        
-        if (data?.session?.user) {
-          logger.auth('User found in Supabase session', { userId: data.session.user.id });
-          
-          // Définir l'utilisateur dans le store
-          setUser({
-            id: data.session.user.id,
-            email: data.session.user.email || '',
-          });
-          
-          // Vérifier si nous sommes sur une page d'authentification qui nécessite une redirection
-          const isAuthPage = router.pathname.startsWith('/auth/');
-          const hasRedirect = router.query.redirect;
-          
-          if (isAuthPage && hasRedirect) {
-            const redirectTo = router.query.redirect || '/dashboard';
-            logger.navigation(`Redirecting authenticated user from auth page to: ${redirectTo}`);
-            router.push(redirectTo);
-          }
+        if (!user) {
+          log.warn('Utilisateur non authentifié, redirection vers login');
+          router.push('/auth/login');
         } else {
-          logger.auth('No authenticated user found in Supabase session');
-          setUser(null);
+          log.info('Utilisateur authentifié', { userId: user.id });
         }
-        
-        // Indiquer que la vérification d'authentification est terminée
-        setAuthChecked(true);
-      } catch (err) {
-        logger.error('Unexpected error checking session', err);
-        setUser(null);
-        setAuthChecked(true);
+      } catch (error) {
+        log.error('Erreur lors de la vérification de l\'authentification', { error });
+        router.push('/auth/login');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Configurer le listener d'authentification Supabase
-    const setupAuthListener = () => {
-      logger.auth('Setting up Supabase auth listener');
-      
-      const { data: authListener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
-          logger.auth(`Auth state changed: ${event}`);
-          
-          if (event === 'SIGNED_IN' && session?.user) {
-            logger.auth('User signed in via listener', { userId: session.user.id });
-            
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-            });
-            
-            // Si on est sur une page d'authentification, rediriger vers le tableau de bord
-            if (router.pathname.startsWith('/auth/')) {
-              const redirectTo = router.query.redirect || '/dashboard';
-              logger.navigation(`Redirecting from auth page after sign in: ${redirectTo}`);
-              router.push(redirectTo);
-            }
-          } else if (event === 'SIGNED_OUT') {
-            logger.auth('User signed out via listener');
-            setUser(null);
-            
-            // Rediriger vers la page de connexion si nécessaire
-            if (!router.pathname.startsWith('/auth/') && router.pathname !== '/') {
-              logger.navigation('Redirecting to login after sign out');
-              router.push('/auth/login');
-            }
-          }
-          
-          // Indiquer que la vérification d'authentification est terminée
-          setAuthChecked(true);
-        }
-      );
-      
-      return authListener;
-    };
+    checkUser();
+  }, [user, router, supabaseClient, log]);
 
-    // Exécuter les vérifications
-    getSessionFromSupabase();
-    const authListener = setupAuthListener();
-    
-    // Nettoyer le listener
-    return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, [setUser, setAuthChecked, router, logger]);
+  if (isLoading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-  // Si des enfants sont fournis, les rendre
-  return children || null;
+  return <>{children}</>;
 };
 
 export default AuthChecker; 
