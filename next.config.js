@@ -104,17 +104,12 @@ const nextConfig = {
       os: false
     };
     
-    // Résoudre les problèmes d'import ES dans les fichiers .js
-    config.module.rules.push({
-      test: /\.(js|mjs|jsx)$/,
-      exclude: /node_modules/,
-      use: {
-        loader: 'babel-loader',
-        options: {
-          presets: ['next/babel'],
-          sourceType: 'unambiguous'
-        }
+    // Remove the problematic babel-loader rule and let Next.js handle it
+    config.module.rules = config.module.rules.filter(rule => {
+      if (rule.use && rule.use.loader === 'babel-loader') {
+        return false;
       }
+      return true;
     });
     
     return config;
