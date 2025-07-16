@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-const { useRouter } = require('next/navigation');
-const { supabase } = require('@/lib/supabase/client');
-const Link = require('next/link');
-const DotPattern = require('@/components/ui/DotPattern');
-const QRCode = require('@/components/QRCode');
-const { motion, AnimatePresence } = require('framer-motion');
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import Link from 'next/link';
+import DotPattern from '@/components/ui/DotPattern';
+import QRCode from '@/components/QRCode';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Constantes pour les phases de la session
 const PHASES = {

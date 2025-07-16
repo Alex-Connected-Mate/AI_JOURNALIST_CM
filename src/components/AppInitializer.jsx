@@ -8,15 +8,15 @@ import { useStore } from '@/lib/store';
  * Handles application initialization logic when the app starts
  */
 export default function AppInitializer({ children }) {
-  const { initializeApp } = useStore();
+  const { initApp } = useStore();
 
   useEffect(() => {
     // Initialize the application
     const initialize = async () => {
       try {
         // Call store initialization if it exists
-        if (initializeApp && typeof initializeApp === 'function') {
-          await initializeApp();
+        if (initApp && typeof initApp === 'function') {
+          await initApp();
         }
         
         console.log('Application initialized successfully');
@@ -26,7 +26,7 @@ export default function AppInitializer({ children }) {
     };
 
     initialize();
-  }, [initializeApp]);
+  }, [initApp]);
 
   return children;
 }

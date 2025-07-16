@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-const { useRouter, useSearchParams } = require('next/navigation');
-const { getSupabaseClient } = require('@/lib/supabase/client');
-const DotPattern = require('@/components/ui/DotPattern');
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import DotPattern from '@/components/ui/DotPattern';
 
 // Simple inline logo component
 const SimpleLogo = ({ light = false }) => (
@@ -31,7 +31,7 @@ function LoadingFallback() {
 function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = getSupabaseClient();
+  // supabase is imported above
   
   // State variables
   const [sessionCode, setSessionCode] = useState(searchParams.get("code") || "");
