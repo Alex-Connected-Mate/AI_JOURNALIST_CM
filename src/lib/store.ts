@@ -34,6 +34,7 @@ interface AppState {
   error: string | null;
   authChecked: boolean;
   appInitialized: boolean;
+  isAuthenticated: boolean;
   
   // Session creation logging
   sessionCreationLogs: SessionCreationLog[];
@@ -46,6 +47,8 @@ interface AppState {
   
   // Auth actions
   initApp: () => Promise<void>;
+  setUser: (user: SupabaseUser | null) => void;
+  setIsAuthenticated: (isAuth: boolean) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; error: AuthError | null }>;
   register: (email: string, password: string, username?: string) => Promise<{ success: boolean; error: AuthError | null }>;
   logout: () => Promise<void>;
@@ -113,6 +116,7 @@ export const useStore = create<AppState>()(
       error: null,
       authChecked: false,
       appInitialized: false,
+      isAuthenticated: false,
       
       // Session creation logs initial state
       sessionCreationLogs: [],
@@ -428,6 +432,20 @@ export const useStore = create<AppState>()(
             appInitialized: true // Marquer comme initialisé même en cas d'erreur pour éviter les boucles infinies
           });
         }
+      },
+      
+      setUser: (user: SupabaseUser | null) => {
+        logAction('setUser', { userId: user?.id });
+        set({ 
+          user,
+          isAuthenticated: !!user,
+          authChecked: true
+        });
+      },
+      
+      setIsAuthenticated: (isAuth: boolean) => {
+        logAction('setIsAuthenticated', { isAuth });
+        set({ isAuthenticated: isAuth });
       },
       
       login: async (email: string, password: string): Promise<{ success: boolean; error: AuthError | null }> => {

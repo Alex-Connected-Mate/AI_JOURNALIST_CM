@@ -1,32 +1,61 @@
-import React from 'react';
-import { useRouter } from 'next/router';
-import { useUser } from '@supabase/auth-helpers-react';
-import Loader from './ui/Loader';
-import { useLoggerNew } from '../hooks/useLoggerNew';
+'use client';
 
-/**
- * Composant qui protège les routes contre les accès non authentifiés
- */
-const ProtectedRoute = ({ children }) => {
-  const router = useRouter();
-  const user = useUser();
-  const log = useLoggerNew('ProtectedRoute');
-  
-  // Si nous sommes côté client et que l'utilisateur n'est pas authentifié
-  React.useEffect(() => {
-    if (!user && typeof window !== 'undefined') {
-      log.warn('Tentative d\'accès à une route protégée sans authentification');
-      router.push('/auth/login');
-    }
-  }, [user, router, log]);
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { useStore } from '@/lib/store';
 
-  // Afficher un loader pendant la vérification
-  if (!user) {
-    return <Loader fullScreen={true} />;
-  }
+// Custom hook to get current user (reusing the pattern from AuthChecker)
+const useUser = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Si l'utilisateur est authentifié, afficher le contenu protégé
-  return <>{children}</>;
+  useEffect(() => {
+    // Get initial user
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+
+    getUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return { user, loading };
 };
 
-export default ProtectedRoute; 
+export default function ProtectedRoute({ children }) {
+  const router = useRouter();
+  const { user, loading } = useUser();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      // Redirect to login if not authenticated
+      router.push('/auth/login');
+    }
+  }, [user, loading, router]);
+
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  // Don't render children if not authenticated
+  if (!user) {
+    return null;
+  }
+
+  return children;
+} 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-const { getMessages, formatDate, formatTime, formatDateTime } = require('@/lib/i18n');
-const Cookies = require('js-cookie');
+import { getMessages, formatDate, formatTime, formatDateTime } from '@/lib/i18n';
+import Cookies from 'js-cookie';
 
 // Create the context
 const LocaleContext = createContext();

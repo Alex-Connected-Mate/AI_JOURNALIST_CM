@@ -6,16 +6,13 @@ export const metadata = {
   description: 'A platform for professors to create and manage interactive sessions',
 };
 
-// Default language
-export const DEFAULT_LANGUAGE = 'en';
-
 export default function RootLayout({ 
   children 
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang={DEFAULT_LANGUAGE}>
+    <html lang="en">
       <body className="antialiased">
         <RootClientLayout>
           <main className="min-h-screen relative">

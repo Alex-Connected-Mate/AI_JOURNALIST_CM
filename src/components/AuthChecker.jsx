@@ -1,70 +1,67 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { useUser, useSupabaseClient } from '@supabase/auth-helpers-react';
-import { Box, CircularProgress } from '@mui/material';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import { useStore } from '@/lib/store';
 import { useLoggerNew } from '../hooks/useLoggerNew';
 
-/**
- * AuthChecker Component
- * 
- * Un composant pour vérifier et mettre à jour l'état d'authentification.
- * Il s'assure que l'utilisateur est correctement synchronisé avec Supabase.
- * 
- * Peut être utilisé de deux façons:
- * 1. Comme composant autonome pour une vérification silencieuse (<AuthChecker />)
- * 2. Comme wrapper pour protéger du contenu (<AuthChecker>{children}</AuthChecker>)
- */
-const AuthChecker = ({ children }) => {
-  const router = useRouter();
-  const supabaseClient = useSupabaseClient();
-  const user = useUser();
-  const [isLoading, setIsLoading] = useState(true);
-  const log = useLoggerNew('AuthChecker');
+// Custom hook to get current user
+const useUser = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Skip auth check for public pages
-    const publicPaths = ['/auth/login', '/auth/register', '/auth/reset-password'];
-    
-    if (publicPaths.includes(router.pathname)) {
-      setIsLoading(false);
-      return;
-    }
-
-    const checkUser = async () => {
-      try {
-        log.info('Vérification de l\'authentification utilisateur');
-        
-        if (!user) {
-          log.warn('Utilisateur non authentifié, redirection vers login');
-          router.push('/auth/login');
-        } else {
-          log.info('Utilisateur authentifié', { userId: user.id });
-        }
-      } catch (error) {
-        log.error('Erreur lors de la vérification de l\'authentification', { error });
-        router.push('/auth/login');
-      } finally {
-        setIsLoading(false);
-      }
+    // Get initial user
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
     };
 
-    checkUser();
-  }, [user, router, supabaseClient, log]);
+    getUser();
 
-  if (isLoading) {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return { user, loading };
+};
+
+export default function AuthChecker({ children }) {
+  const router = useRouter();
+  const logger = useLoggerNew('AuthChecker');
+  const { user, loading } = useUser();
+  const { setUser, setIsAuthenticated } = useStore();
+
+  useEffect(() => {
+    logger.debug('AuthChecker monté');
+    
+    if (!loading) {
+      setUser(user);
+      setIsAuthenticated(!!user);
+      
+      if (user) {
+        logger.debug('Utilisateur connecté:', user.email);
+      } else {
+        logger.debug('Aucun utilisateur connecté');
+      }
+    }
+  }, [user, loading, setUser, setIsAuthenticated, logger]);
+
+  // Don't render children until we know the auth state
+  if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
     );
   }
 
-  return <>{children}</>;
-};
-
-export default AuthChecker; 
+  return children;
+} 
