@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useReadingTracker } from '@/hooks/useReadingTracker';
 import ReadingProgressTracker from './ReadingProgressTracker';
+import ParticleEffect from './ParticleEffect';
+import SoundManager from './SoundManager';
 
 interface ReadingSessionWrapperProps {
   children: React.ReactNode;
@@ -89,6 +91,16 @@ const ReadingSessionWrapper: React.FC<ReadingSessionWrapperProps> = ({
   return (
     <div className={className}>
       {children}
+      
+      {/* Gestionnaire de sons */}
+      <SoundManager enabled={settings.enableSounds} />
+      
+      {/* Effet de particules subtiles pendant la lecture */}
+      <ParticleEffect 
+        isActive={isReading && settings.enableLiveActivity}
+        intensity="low"
+        color="#6366F1"
+      />
       
       {/* Afficher le tracker seulement si pas dismissé et si une session est active ou si il y a des posts restants */}
       {!isDismissed && (isReading || totalPostsRemaining > 0) && (

@@ -6,6 +6,7 @@ interface ReadingSettings {
   enableReadingNotifications: boolean;
   enableDynamicIsland: boolean;
   enableLiveActivity: boolean;
+  enableSounds: boolean;
 }
 
 interface ReadingState {
@@ -31,7 +32,8 @@ export const useReadingTracker = () => {
   const [settings, setSettings] = useState<ReadingSettings>({
     enableReadingNotifications: true,
     enableDynamicIsland: true,
-    enableLiveActivity: true
+    enableLiveActivity: true,
+    enableSounds: true
   });
 
   // Charger les paramètres depuis localStorage
@@ -108,6 +110,11 @@ export const useReadingTracker = () => {
     };
     setReadingState(newState);
     
+    // Jouer le son de début
+    if (settings.enableSounds && typeof window !== 'undefined' && (window as any).readingSounds) {
+      (window as any).readingSounds.startReading();
+    }
+    
     // Envoyer notification si activée
     if (settings.enableReadingNotifications && 'Notification' in window && Notification.permission === 'granted') {
       new Notification('📖 Lecture démarrée', {
@@ -135,6 +142,16 @@ export const useReadingTracker = () => {
     
     setReadingState(newState);
     saveState(newState);
+
+    // Jouer le son approprié
+    if (settings.enableSounds && typeof window !== 'undefined' && (window as any).readingSounds) {
+      const remaining = newState.totalPostsToday - newState.postsReadToday;
+      if (remaining === 0) {
+        (window as any).readingSounds.achievement();
+      } else {
+        (window as any).readingSounds.stopReading();
+      }
+    }
 
     // Notification de fin avec statistiques
     if (settings.enableReadingNotifications && 'Notification' in window && Notification.permission === 'granted') {

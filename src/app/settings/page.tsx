@@ -771,6 +771,32 @@ export default function SettingsPage() {
                       </span>
                     </label>
                   </div>
+
+                  <div className="flex items-center justify-between px-2 py-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">Sons immersifs</p>
+                      <p className="text-sm text-gray-500">Effets sonores harmoniques pour début/fin de lecture et succès</p>
+                    </div>
+                    <label className="relative inline-block w-14 h-7">
+                      <input
+                        type="checkbox"
+                        className="opacity-0 w-0 h-0"
+                        checked={readingSettings.enableSounds}
+                        onChange={(e) => updateReadingSettings({ enableSounds: e.target.checked })}
+                      />
+                      <span 
+                        className={`absolute cursor-pointer inset-0 rounded-full transition-all duration-300 ${
+                          readingSettings.enableSounds ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span 
+                          className={`absolute h-5 w-5 top-1 bg-white rounded-full transition-all duration-300 transform ${
+                            readingSettings.enableSounds ? 'translate-x-7' : 'translate-x-1'
+                          }`}
+                        ></span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">

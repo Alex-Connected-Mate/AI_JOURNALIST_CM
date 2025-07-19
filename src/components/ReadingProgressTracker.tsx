@@ -31,6 +31,7 @@ const ReadingProgressTracker: React.FC<ReadingProgressProps> = ({
   const [currentSession, setCurrentSession] = useState<ReadingSession | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [timeSpent, setTimeSpent] = useState(0);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   // Demander permission pour les notifications
   useEffect(() => {
@@ -52,6 +53,7 @@ const ReadingProgressTracker: React.FC<ReadingProgressProps> = ({
       setCurrentSession(session);
       setIsVisible(true);
       setTimeSpent(0);
+      setIsDismissed(false);
 
       // Notification de début de lecture
       if (settings.enableReadingNotifications && Notification.permission === 'granted') {
@@ -63,9 +65,11 @@ const ReadingProgressTracker: React.FC<ReadingProgressProps> = ({
         });
       }
     } else if (!isReading && currentSession) {
-      // Fin de lecture
-      setCurrentSession(null);
-      setTimeout(() => setIsVisible(false), 2000); // Fade out après 2 secondes
+      // Fin de lecture avec délai pour l'animation
+      setTimeout(() => {
+        setCurrentSession(null);
+        setTimeout(() => setIsVisible(false), 300);
+      }, 1000);
     }
   }, [isReading, currentPostId, currentSession, totalPostsRemaining, settings.enableReadingNotifications]);
 
@@ -91,77 +95,171 @@ const ReadingProgressTracker: React.FC<ReadingProgressProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Dynamic Island Component
+  // Gérer la fermeture manuelle
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    onDismiss();
+  };
+
+  // Dynamic Island Component - Style iOS avec design sophistiqué
   const DynamicIsland = () => {
-    if (!settings.enableDynamicIsland || !isVisible) return null;
+    if (!settings.enableDynamicIsland || !isVisible || isDismissed) return null;
 
     return (
-      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-in-out">
-        <div className="bg-black text-white px-6 py-3 rounded-full flex items-center space-x-3 shadow-lg backdrop-blur-sm bg-opacity-90 min-w-64">
-          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">
-              {isReading ? '📖 Lecture en cours' : '✅ Lecture terminée'}
+      <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 animate-slide-in-top">
+        <div className="relative group">
+          {/* Glow effect */}
+          <div className="absolute inset-0 bg-black/20 rounded-full blur-xl scale-110 opacity-60 animate-pulse-glow"></div>
+          
+          {/* Main island */}
+          <div className="relative bg-black/90 backdrop-blur-2xl text-white rounded-full flex items-center space-x-4 shadow-2xl border border-white/10 animate-morph-in shimmer-effect">
+            <div className="pl-6 pr-2 py-3 flex items-center space-x-3">
+              {/* Reading indicator */}
+              <div className="relative">
+                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping opacity-20"></div>
+              </div>
+              
+              {/* Content */}
+              <div className="flex flex-col">
+                <div className="text-sm font-medium font-bricolage">
+                  {isReading ? '📖 Lecture active' : '✅ Terminé'}
+                </div>
+                <div className="text-xs text-white/70 font-mono">
+                  {formatTime(timeSpent)}
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-gray-300">
-              {isReading ? formatTime(timeSpent) : 'Session terminée'}
+            
+            {/* Posts counter with morphing animation */}
+            <div className="relative">
+              <div className="bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 mr-6 border border-white/10">
+                <div className="text-xs font-semibold font-mono text-center min-w-[16px]">
+                  {totalPostsRemaining}
+                </div>
+              </div>
+              {totalPostsRemaining > 0 && (
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
+              )}
             </div>
           </div>
-          <div className="text-xs bg-gray-800 px-2 py-1 rounded-full">
-            {totalPostsRemaining}
+          
+          {/* Interaction hint */}
+          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="text-xs text-gray-600 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-lg border border-gray-200">
+              Lecture en cours...
+            </div>
           </div>
         </div>
       </div>
     );
   };
 
-  // Live Activity Component
+  // Live Activity Component - Design glassmorphism avancé
   const LiveActivity = () => {
-    if (!settings.enableLiveActivity || !isVisible) return null;
+    if (!settings.enableLiveActivity || !isVisible || isDismissed) return null;
+
+    const progressPercentage = totalPostsRemaining > 0 ? 
+      Math.max(10, Math.min(90, ((10 - totalPostsRemaining) / 10) * 100)) : 100;
 
     return (
-      <div className="fixed bottom-6 right-6 z-40 transition-all duration-300 ease-in-out">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 max-w-sm">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Session de lecture
-                </span>
+      <div className="fixed bottom-8 right-8 z-40 animate-slide-in-right">
+        <div className="relative group">
+          {/* Glow background */}
+          <div className="absolute -inset-2 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-emerald-600/20 rounded-2xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity duration-300 animate-pulse"></div>
+          
+          {/* Main container */}
+          <div className="relative bg-white/80 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/50 p-5 max-w-xs animate-morph-in shimmer-effect">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-0 w-3 h-3 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full animate-ping opacity-30"></div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 font-bricolage">
+                    Session active
+                  </h3>
+                  <p className="text-xs text-gray-600">
+                    Lecture en cours
+                  </p>
+                </div>
               </div>
               
-              <div className="space-y-1">
-                <div className="text-xs text-gray-600 dark:text-gray-300">
-                  Temps: {formatTime(timeSpent)}
+              <button
+                onClick={handleDismiss}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100/50"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-3 border border-blue-200/50">
+                <div className="text-lg font-bold text-blue-700 font-mono">
+                  {formatTime(timeSpent)}
                 </div>
-                <div className="text-xs text-gray-600 dark:text-gray-300">
-                  Posts restants: {totalPostsRemaining}
+                <div className="text-xs text-blue-600/80 font-medium">
+                  Temps écoulé
                 </div>
               </div>
-
-              {totalPostsRemaining > 0 && (
-                <div className="mt-3">
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
-                    <div 
-                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${Math.max(10, 100 - (totalPostsRemaining * 10))}%` 
-                      }}
-                    ></div>
-                  </div>
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-xl p-3 border border-orange-200/50">
+                <div className="text-lg font-bold text-orange-700 font-mono">
+                  {totalPostsRemaining}
                 </div>
-              )}
+                <div className="text-xs text-orange-600/80 font-medium">
+                  Posts restants
+                </div>
+              </div>
             </div>
-            
-            <button
-              onClick={onDismiss}
-              className="ml-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+
+            {/* Progress Section */}
+            {totalPostsRemaining > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-600">Progression du jour</span>
+                  <span className="text-xs font-mono text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full">
+                    {Math.round(progressPercentage)}%
+                  </span>
+                </div>
+                
+                {/* Advanced Progress Bar */}
+                <div className="relative">
+                  <div className="w-full bg-gray-200/60 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 transition-all duration-1000 ease-out relative"
+                      style={{ width: `${progressPercentage}%` }}
+                    >
+                      {/* Shimmer effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Progress indicator dot */}
+                  <div 
+                    className="absolute top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-lg border border-gray-300 transition-all duration-1000"
+                    style={{ left: `${progressPercentage}%`, marginLeft: '-3px' }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {/* Motivational message */}
+            <div className="mt-4 pt-3 border-t border-gray-200/50">
+              <p className="text-xs text-gray-600 text-center">
+                {totalPostsRemaining === 0 ? (
+                  <span className="text-emerald-600 font-medium">🎉 Tous les posts lus !</span>
+                ) : totalPostsRemaining === 1 ? (
+                  <span className="text-orange-600 font-medium">⚡ Plus qu'un post !</span>
+                ) : (
+                  <span>👏 Continuez comme ça !</span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       </div>
