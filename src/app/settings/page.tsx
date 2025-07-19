@@ -10,6 +10,7 @@ import TextAreaComponent from '@/components/TextArea';
 import ImageSelectorComponent from '@/components/ImageSelector';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from '@/components/LocaleProvider';
+import { useReadingTracker } from '@/hooks/useReadingTracker';
 
 // Helper function to format dates
 const formatDate = (dateString: string | null | undefined): string => {
@@ -48,6 +49,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { t, locale } = useTranslation();
   const { user, userProfile, updateProfile, uploadAvatar: uploadAvatarToStore, fetchUserProfile, logout, authChecked } = useStore();
+  const { settings: readingSettings, updateSettings: updateReadingSettings, stats: readingStats } = useReadingTracker();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -672,6 +674,137 @@ export default function SettingsPage() {
           </div>
           
           <div className="space-y-8">
+            <div className="second-level-block p-6 rounded-xl">
+              <h3 className="text-lg font-semibold mb-4">Notifications de lecture</h3>
+              <div className="space-y-4">
+                <div className="bg-purple-50 border-l-4 border-purple-500 p-4 mb-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-purple-700">
+                        Configurez les notifications et le suivi de vos sessions de lecture. Ces fonctionnalités vous aident à rester concentré et à suivre votre progression.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2 py-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">Dynamic Island</p>
+                      <p className="text-sm text-gray-500">Affiche une notification persistante en haut de l'écran pendant la lecture</p>
+                    </div>
+                    <label className="relative inline-block w-14 h-7">
+                      <input
+                        type="checkbox"
+                        className="opacity-0 w-0 h-0"
+                        checked={readingSettings.enableDynamicIsland}
+                        onChange={(e) => updateReadingSettings({ enableDynamicIsland: e.target.checked })}
+                      />
+                      <span 
+                        className={`absolute cursor-pointer inset-0 rounded-full transition-all duration-300 ${
+                          readingSettings.enableDynamicIsland ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span 
+                          className={`absolute h-5 w-5 top-1 bg-white rounded-full transition-all duration-300 transform ${
+                            readingSettings.enableDynamicIsland ? 'translate-x-7' : 'translate-x-1'
+                          }`}
+                        ></span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between px-2 py-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">Live Activity</p>
+                      <p className="text-sm text-gray-500">Affiche un widget détaillé avec temps et progression en bas à droite</p>
+                    </div>
+                    <label className="relative inline-block w-14 h-7">
+                      <input
+                        type="checkbox"
+                        className="opacity-0 w-0 h-0"
+                        checked={readingSettings.enableLiveActivity}
+                        onChange={(e) => updateReadingSettings({ enableLiveActivity: e.target.checked })}
+                      />
+                      <span 
+                        className={`absolute cursor-pointer inset-0 rounded-full transition-all duration-300 ${
+                          readingSettings.enableLiveActivity ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span 
+                          className={`absolute h-5 w-5 top-1 bg-white rounded-full transition-all duration-300 transform ${
+                            readingSettings.enableLiveActivity ? 'translate-x-7' : 'translate-x-1'
+                          }`}
+                        ></span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between px-2 py-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">Notifications push</p>
+                      <p className="text-sm text-gray-500">Notifications système pour le début/fin de lecture et rappels</p>
+                    </div>
+                    <label className="relative inline-block w-14 h-7">
+                      <input
+                        type="checkbox"
+                        className="opacity-0 w-0 h-0"
+                        checked={readingSettings.enableReadingNotifications}
+                        onChange={(e) => updateReadingSettings({ enableReadingNotifications: e.target.checked })}
+                      />
+                      <span 
+                        className={`absolute cursor-pointer inset-0 rounded-full transition-all duration-300 ${
+                          readingSettings.enableReadingNotifications ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span 
+                          className={`absolute h-5 w-5 top-1 bg-white rounded-full transition-all duration-300 transform ${
+                            readingSettings.enableReadingNotifications ? 'translate-x-7' : 'translate-x-1'
+                          }`}
+                        ></span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">
+                    <strong>Statistiques du jour :</strong>
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="text-center p-2 bg-white rounded">
+                      <div className="text-lg font-bold text-blue-600">{readingStats.readToday}</div>
+                      <div className="text-xs text-gray-600">Posts lus</div>
+                    </div>
+                    <div className="text-center p-2 bg-white rounded">
+                      <div className="text-lg font-bold text-orange-600">{readingStats.remaining}</div>
+                      <div className="text-xs text-gray-600">Restants</div>
+                    </div>
+                  </div>
+                  <ul className="text-xs text-gray-500 space-y-1">
+                    <li>• Suivi automatique du temps de lecture</li>
+                    <li>• Comptage des posts lus dans la journée</li>
+                    <li>• Rappels visuels pour ne pas oublier de terminer la lecture</li>
+                    <li>• Statistiques de progression en temps réel</li>
+                  </ul>
+                  <div className="mt-3">
+                    <a 
+                      href="/demo-reading" 
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      → Tester les fonctionnalités
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="second-level-block p-6 rounded-xl">
               <h3 className="text-lg font-semibold mb-4">Statut du compte</h3>
               <div className="space-y-2">
