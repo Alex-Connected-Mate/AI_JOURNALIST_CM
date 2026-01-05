@@ -1,10 +1,14 @@
 /**
- * useLogger.js (DÉPRÉCIÉ)
- * Ce fichier ne sert que de proxy vers useLoggerNew.js
- * Il est conservé pour la compatibilité avec le code existant.
+ * useLogger.js
+ * 
+ * ATTENTION: Ce fichier est obsolète et sert uniquement de proxy vers useLoggerNew
+ * Ce fichier est conservé pour assurer la compatibilité avec le code existant
+ * Utilisez useLoggerNew.js directement pour les nouveaux développements
  */
 
 const { useLoggerNew } = require('./useLoggerNew');
 
-// Utiliser la nouvelle implémentation 
-module.exports = useLoggerNew; 
+// Export en CommonJS pour éviter les problèmes de module
+module.exports = {
+  useLogger: useLoggerNew
+}; 

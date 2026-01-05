@@ -1,0 +1,18 @@
+{
+  "presets": [
+    ["next/babel", {
+      "preset-env": {
+        "modules": "auto",
+        "loose": true
+      }
+    }]
+  ],
+  "plugins": [
+    ["@babel/plugin-transform-modules-commonjs", {
+      "allowTopLevelThis": true,
+      "loose": true,
+      "strict": false,
+      "importInterop": "node"
+    }]
+  ]
+} 

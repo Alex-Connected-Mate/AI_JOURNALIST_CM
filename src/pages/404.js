@@ -1,7 +1,7 @@
-const React = require('react');
-const Link = require('next/link');
+import React from 'react';
+import Link from 'next/link';
 
-module.exports = function Custom404() {
+export default function Custom404() {
   return (
     <div style={{ 
       display: 'flex', 
@@ -28,8 +28,8 @@ module.exports = function Custom404() {
   );
 }
 
-// Force server-side rendering for this page
-module.exports.getStaticProps = async function() {
+// Export getStaticProps comme une fonction séparée plutôt qu'une propriété du composant
+export function getStaticProps() {
   return {
     props: {}, // will be passed to the page component as props
   };

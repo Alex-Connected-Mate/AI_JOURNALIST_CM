@@ -1,27 +1,24 @@
 {
-  "framework": "nextjs",
+  "version": 2,
   "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "ignoreCommand": "exit 0",
   "devCommand": "npm run dev",
-  "cleanUrls": true,
-  "regions": ["cdg1"],
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "skipBuild": true,
-        "installCommand": "npm install",
-        "buildCommand": "npm run vercel-build",
-        "outputDirectory": ".next",
-        "nodeVersion": "22.x"
-      }
+  "functions": {
+    "api/*": {
+      "memory": 1024,
+      "maxDuration": 60
     }
+  },
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/" }
   ],
   "env": {
-    "NEXT_TYPECHECK": "false",
-    "NEXT_WEBPACK_TYPECHECK": "false",
-    "NEXT_MINIMAL_ERROR_HANDLING": "true",
-    "NODE_OPTIONS": "--max-old-space-size=4096"
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NODE_ENV": "production"
   }
 } 

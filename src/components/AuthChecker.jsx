@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useUser, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Box, CircularProgress } from '@mui/material';
-import { useLoggerNew } from '../hooks/useLoggerNew';
+const { useLoggerNew } = require('../hooks/useLoggerNew');
 
 /**
  * AuthChecker Component

@@ -12,7 +12,6 @@ import { useStore } from '@/lib/store';
 import { usePathname, useRouter } from 'next/navigation';
 import { ConfirmProvider } from '@/components/providers/ConfirmProvider';
 import { LocaleProvider } from '@/components/LocaleProvider';
-import { useSupabase } from '@/lib/supabase/client';
 
 // Création du client Supabase
 const supabase = createClient();
@@ -25,9 +24,13 @@ export default function RootClientLayout({ children }) {
   const pathname = usePathname();
   const { showLogs } = useStore();
   const router = useRouter();
-  const { supabase: supabaseClient } = useSupabase();
+  // Utilisation du client supabase créé directement - évite les problèmes de SSR
+  const supabaseClient = supabase;
 
   useEffect(() => {
+    // N'exécuter que côté client
+    if (typeof window === 'undefined') return;
+    
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -36,7 +39,7 @@ export default function RootClientLayout({ children }) {
     });
 
     return () => {
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, [router, supabaseClient]);
 

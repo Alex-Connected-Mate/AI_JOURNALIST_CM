@@ -2,7 +2,7 @@ import React from 'react';
 import { useRouter } from 'next/router';
 import { useUser } from '@supabase/auth-helpers-react';
 import Loader from './ui/Loader';
-import { useLoggerNew } from '../hooks/useLoggerNew';
+const { useLoggerNew } = require('../hooks/useLoggerNew');
 
 /**
  * Composant qui protège les routes contre les accès non authentifiés

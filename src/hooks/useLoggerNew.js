@@ -180,5 +180,5 @@ function useLoggerNew(context = 'App') {
   };
 }
 
-// Exporter le hook
-export { useLoggerNew }; 
+// Exporter le hook en CommonJS
+module.exports = { useLoggerNew }; 

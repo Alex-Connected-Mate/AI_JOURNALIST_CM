@@ -1,77 +1,293 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Button, 
+  IconButton, 
+  Box, 
+  Menu, 
+  MenuItem, 
+  useMediaQuery,
+  useTheme,
+  Avatar,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemButton,
+  Divider
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ArticleIcon from '@mui/icons-material/Article';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
-import Image from 'next/image';
-
-interface HeaderProps {
-  user?: {
-    email?: string;
-    name?: string;
-  };
-  logout?: () => void;
-}
+import { useLocale } from './LocaleProvider';
+import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
+import LanguageSwitcher from './LanguageSwitcher';
 
 /**
- * Header Component
- * 
- * A floating header displayed in the top-right corner of the application.
- * Contains navigation links and branding.
+ * Composant d'en-tête de l'application
+ * Gère la navigation, le menu utilisateur et l'adaptation responsive
  */
-const Header: React.FC<HeaderProps> = ({ user, logout }) => {
-  return (
-    <div className="floating-header">
-      {/* Home icon */}
-      <Link href="/dashboard" className="text-gray-500 hover:text-gray-700 p-2 rounded-lg transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-        </svg>
-      </Link>
+const Header: React.FC = () => {
+  const { t } = useLocale();
+  const router = useRouter();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const session = useSession();
+  const supabase = useSupabaseClient();
+  
+  // États pour les menus et tiroirs
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const userMenuOpen = Boolean(userMenuAnchor);
+  
+  // Déterminer si l'utilisateur est connecté
+  const isLoggedIn = !!session;
+  
+  // Gestionnaires d'événements
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+  
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+  
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+  
+  const handleLogout = async () => {
+    handleUserMenuClose();
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+  
+  const navigateTo = (path: string) => {
+    router.push(path);
+    handleUserMenuClose();
+    setMobileMenuOpen(false);
+  };
+  
+  // Liens de navigation
+  const navLinks = [
+    { 
+      title: t('dashboard') || 'Dashboard', 
+      path: '/dashboard',
+      icon: <DashboardIcon />,
+      requireAuth: true 
+    },
+    { 
+      title: t('articles') || 'Articles', 
+      path: '/articles',
+      icon: <ArticleIcon />,
+      requireAuth: true 
+    },
+    { 
+      title: t('settings') || 'Settings', 
+      path: '/settings',
+      icon: <SettingsIcon />,
+      requireAuth: true 
+    },
+  ];
+  
+  // Filtrer les liens en fonction du statut de connexion
+  const filteredNavLinks = navLinks.filter(link => 
+    (link.requireAuth && isLoggedIn) || (!link.requireAuth)
+  );
+  
+  // Menu utilisateur
+  const renderUserMenu = () => (
+    <Menu
+      anchorEl={userMenuAnchor}
+      id="user-menu"
+      open={userMenuOpen}
+      onClose={handleUserMenuClose}
+      PaperProps={{
+        elevation: 3,
+        sx: { minWidth: 180 }
+      }}
+      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+    >
+      <MenuItem onClick={() => navigateTo('/profile')}>
+        <ListItemIcon>
+          <AccountCircleIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>{t('profile') || 'Profile'}</ListItemText>
+      </MenuItem>
       
-      {/* Settings icon */}
-      <Link href="/settings" className="text-gray-500 hover:text-gray-700 p-2 rounded-lg transition-all">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-        </svg>
-      </Link>
+      <Divider />
       
-      {/* Divider */}
-      <div className="h-4 w-px bg-gray-200"></div>
-      
-      {/* Powered by */}
-      <div className="powered-by flex items-center gap-2">
-        <span className="text-xs text-gray-500">Powered by</span>
-        <Image 
-          src="/logo.png" 
-          alt="ConnectedMate Logo" 
-          width={40} 
-          height={20} 
-          priority 
-        />
-      </div>
-      
-      {user && (
-        <>
-          <div className="h-4 w-px bg-gray-200"></div>
+      <MenuItem onClick={handleLogout}>
+        <ListItemIcon>
+          <ExitToAppIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>{t('logout')}</ListItemText>
+      </MenuItem>
+    </Menu>
+  );
+  
+  // Menu mobile (drawer)
+  const renderMobileDrawer = () => (
+    <Drawer
+      anchor="left"
+      open={mobileMenuOpen}
+      onClose={() => setMobileMenuOpen(false)}
+    >
+      <Box sx={{ width: 250 }} role="presentation">
+        <Box 
+          sx={{ 
+            p: 2, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            borderBottom: `1px solid ${theme.palette.divider}`
+          }}
+        >
+          <Typography variant="h6" component="div">
+            Connected Mate
+          </Typography>
+        </Box>
+        
+        <List>
+          {filteredNavLinks.map((link) => (
+            <ListItemButton 
+              key={link.path} 
+              onClick={() => navigateTo(link.path)}
+              selected={router.pathname === link.path}
+            >
+              <ListItemIcon>{link.icon}</ListItemIcon>
+              <ListItemText primary={link.title} />
+            </ListItemButton>
+          ))}
           
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600 hidden md:inline">
-              {user.email}
-            </span>
-            {logout && (
-              <button 
-                onClick={logout}
-                className="text-gray-500 hover:text-gray-700 p-2 rounded-lg transition-all"
-                aria-label="Déconnexion"
-                title="Déconnexion"
+          {isLoggedIn ? (
+            <ListItemButton onClick={handleLogout}>
+              <ListItemIcon><ExitToAppIcon /></ListItemIcon>
+              <ListItemText primary={t('logout')} />
+            </ListItemButton>
+          ) : (
+            <>
+              <ListItemButton onClick={() => navigateTo('/login')}>
+                <ListItemText primary={t('login')} />
+              </ListItemButton>
+              <ListItemButton onClick={() => navigateTo('/register')}>
+                <ListItemText primary={t('register')} />
+              </ListItemButton>
+            </>
+          )}
+        </List>
+      </Box>
+    </Drawer>
+  );
+  
+  return (
+    <>
+      <AppBar position="static" color="default" elevation={1}>
+        <Toolbar>
+          {isMobile && (
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={handleMobileMenuToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+          
+          <Link href="/" passHref>
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{ 
+                flexGrow: 1, 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              Connected Mate
+            </Typography>
+          </Link>
+          
+          {/* Navigation pour desktop */}
+          {!isMobile && (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {filteredNavLinks.map((link) => (
+                <Button
+                  key={link.path}
+                  color="inherit"
+                  onClick={() => navigateTo(link.path)}
+                  sx={{ 
+                    mx: 1,
+                    ...(router.pathname === link.path && {
+                      borderBottom: `2px solid ${theme.palette.primary.main}`,
+                    })
+                  }}
+                >
+                  {link.title}
+                </Button>
+              ))}
+            </Box>
+          )}
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <LanguageSwitcher />
+            
+            {isLoggedIn ? (
+              <IconButton
+                onClick={handleUserMenuOpen}
+                size="small"
+                edge="end"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                color="inherit"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                </svg>
-              </button>
+                <Avatar 
+                  sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}
+                >
+                  {session?.user?.email?.charAt(0).toUpperCase() || 'U'}
+                </Avatar>
+              </IconButton>
+            ) : (
+              !isMobile && (
+                <Box sx={{ display: 'flex' }}>
+                  <Button 
+                    color="inherit" 
+                    onClick={() => navigateTo('/login')}
+                    sx={{ ml: 1 }}
+                  >
+                    {t('login')}
+                  </Button>
+                  <Button 
+                    variant="contained" 
+                    color="primary"
+                    onClick={() => navigateTo('/register')}
+                    sx={{ ml: 1 }}
+                  >
+                    {t('register')}
+                  </Button>
+                </Box>
+              )
             )}
-          </div>
-        </>
-      )}
-    </div>
+          </Box>
+        </Toolbar>
+      </AppBar>
+      
+      {renderUserMenu()}
+      {renderMobileDrawer()}
+    </>
   );
 };
 
